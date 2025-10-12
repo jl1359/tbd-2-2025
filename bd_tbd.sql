@@ -8,7 +8,7 @@ CREATE TABLE ROL (
   nombre VARCHAR(50) NOT NULL,
   descripcion VARCHAR(255),
   UNIQUE KEY uq_rol_nombre (nombre)
-)B;
+);
 
 CREATE TABLE ESTADO_PUBLICACION (
   id_estado_pub INT PRIMARY KEY AUTO_INCREMENT,
@@ -50,7 +50,7 @@ CREATE TABLE TIPO_MOVIMIENTO (
     nombre VARCHAR(50) NOT NULL,
     descripcion VARCHAR(255),
     UNIQUE KEY uq_tipo_mov_nombre (nombre)
-) ENGINE=InnoDB;
+);
 
 CREATE TABLE TIPO_BITACORA (
   id_tipo_bit INT PRIMARY KEY AUTO_INCREMENT,
@@ -176,16 +176,6 @@ CREATE TABLE CATEGORIA_PRODUCTO (
   UNIQUE KEY uq_cat_prod_nombre (nombre)
 );
 
-CREATE TABLE SUBCATEGORIA_PRODUCTO (
-  id_subcat_prod INT PRIMARY KEY AUTO_INCREMENT,
-  id_cat_prod INT NOT NULL,
-  nombre VARCHAR(100) NOT NULL,
-  descripcion VARCHAR(255),
-  UNIQUE KEY uq_subcat_nombre (id_cat_prod, nombre),
-  FOREIGN KEY (id_cat_prod) REFERENCES CATEGORIA_PRODUCTO(id_cat_prod)
-    ON UPDATE CASCADE ON DELETE RESTRICT
-);
-
 CREATE TABLE PRODUCTO (
   id_prod INT PRIMARY KEY AUTO_INCREMENT,
   id_cat_prod INT NOT NULL,
@@ -195,8 +185,6 @@ CREATE TABLE PRODUCTO (
   precio DECIMAL(15,2) NOT NULL,
   peso DECIMAL(10,2),
   FOREIGN KEY (id_cat_prod) REFERENCES CATEGORIA_PRODUCTO(id_cat_prod)
-    ON UPDATE CASCADE ON DELETE RESTRICT,
-  FOREIGN KEY (id_subcat_prod) REFERENCES SUBCATEGORIA_PRODUCTO(id_subcat_prod)
     ON UPDATE CASCADE ON DELETE RESTRICT,
   CONSTRAINT chk_producto_precio CHECK (precio >= 0),
   CONSTRAINT chk_producto_peso CHECK (peso IS NULL OR peso >= 0)
@@ -577,7 +565,6 @@ CREATE INDEX idx_serv_cat_estado ON SERVICIO(id_cat_serv, id_estado_serv);
 CREATE INDEX idx_serv_usuario ON SERVICIO(id_us);
 
 CREATE INDEX idx_producto_cat ON PRODUCTO(id_cat_prod);
-CREATE INDEX idx_producto_subcat ON PRODUCTO(id_subcat_prod);
 
 CREATE INDEX idx_intercambio_comprador ON INTERCAMBIO(id_us_comp);
 CREATE INDEX idx_intercambio_vendedor ON INTERCAMBIO(id_us_vend);

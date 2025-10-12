@@ -1,507 +1,598 @@
-CREATE DATABASE IF NOT EXISTS servineo
+CREATE DATABASE TruequeComercioCircular
   DEFAULT CHARACTER SET utf8mb4
   DEFAULT COLLATE utf8mb4_unicode_ci;
-USE servineo;
+USE TruequeComercioCircular;
 
-CREATE TABLE rol (
-  id_rol           INT AUTO_INCREMENT PRIMARY KEY,
-  nombre_rol       VARCHAR(50) NOT NULL UNIQUE,
-  descripcion_rol  VARCHAR(100)
+CREATE TABLE ROL (
+  id_rol INT PRIMARY KEY AUTO_INCREMENT,
+  nombre VARCHAR(50) NOT NULL,
+  descripcion VARCHAR(255),
+  UNIQUE KEY uq_rol_nombre (nombre)
+)B;
+
+CREATE TABLE ESTADO_PUBLICACION (
+  id_estado_pub INT PRIMARY KEY AUTO_INCREMENT,
+  nombre VARCHAR(50) NOT NULL,
+  descripcion VARCHAR(255),
+  UNIQUE KEY uq_est_pub_nombre (nombre)
+);
+
+CREATE TABLE ESTADO_SERVICIO (
+  id_estado_serv INT PRIMARY KEY AUTO_INCREMENT,
+  nombre VARCHAR(50) NOT NULL,
+  descripcion VARCHAR(255),
+  UNIQUE KEY uq_est_serv_nombre (nombre)
+);
+
+CREATE TABLE ESTADO_PROMOCION (
+  id_estado_prom INT PRIMARY KEY AUTO_INCREMENT,
+  nombre VARCHAR(50) NOT NULL,
+  descripcion VARCHAR(255),
+  UNIQUE KEY uq_est_prom_nombre (nombre)
+);
+
+CREATE TABLE ESTADO_TRANSACCION (
+  id_estado_trans INT PRIMARY KEY AUTO_INCREMENT,
+  nombre VARCHAR(50) NOT NULL,
+  descripcion VARCHAR(255),
+  UNIQUE KEY uq_est_trans_nombre (nombre)
+);
+
+CREATE TABLE ESTADO_REPORTE (
+  id_estado_rep INT PRIMARY KEY AUTO_INCREMENT,
+  nombre VARCHAR(50) NOT NULL,
+  descripcion VARCHAR(255),
+  UNIQUE KEY uq_est_rep_nombre (nombre)
+);
+
+CREATE TABLE TIPO_MOVIMIENTO (
+    id_tipo_mov INT PRIMARY KEY AUTO_INCREMENT,
+    nombre VARCHAR(50) NOT NULL,
+    descripcion VARCHAR(255),
+    UNIQUE KEY uq_tipo_mov_nombre (nombre)
 ) ENGINE=InnoDB;
 
-CREATE TABLE usuario (
-  id_us            INT AUTO_INCREMENT PRIMARY KEY,
-  id_rol           INT NOT NULL,
-  nombre_us        VARCHAR(50) NOT NULL,
-  apellido_us      VARCHAR(50) NOT NULL,
-  correo_us        VARCHAR(100) NOT NULL UNIQUE,
-  telefono_us      VARCHAR(20),
-  direccion_us     VARCHAR(255),
-  ciudad_us        VARCHAR(100),
-  pais_us          VARCHAR(100),
-  fecha_registro   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  estado_us        TINYINT(1) NOT NULL DEFAULT 1,
-  CONSTRAINT fk_usuario_rol
-    FOREIGN KEY (id_rol) REFERENCES rol(id_rol)
+CREATE TABLE TIPO_BITACORA (
+  id_tipo_bit INT PRIMARY KEY AUTO_INCREMENT,
+  nombre VARCHAR(50) NOT NULL,
+  descripcion VARCHAR(255),
+  UNIQUE KEY uq_tipo_bit_nombre (nombre)
+);
+
+CREATE TABLE UNIDAD_MEDIDA (
+  id_um INT PRIMARY KEY AUTO_INCREMENT,
+  nombre VARCHAR(50) NOT NULL,
+  simbolo VARCHAR(10) NOT NULL,
+  UNIQUE KEY uq_um_nombre (nombre),
+  UNIQUE KEY uq_um_simbolo (simbolo)
+);
+
+CREATE TABLE USUARIO (
+  id_us INT PRIMARY KEY AUTO_INCREMENT,
+  id_rol INT NOT NULL,
+  nombre VARCHAR(100) NOT NULL,
+  apellido VARCHAR(100) NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  telefono VARCHAR(20),
+  direccion VARCHAR(255),
+  fecha_registro DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  activo BOOLEAN NOT NULL DEFAULT TRUE,
+  FOREIGN KEY (id_rol) REFERENCES ROL(id_rol)
     ON UPDATE CASCADE ON DELETE RESTRICT
-) ENGINE=InnoDB;
+);
 
-CREATE TABLE detalle_usuario (
-  id_us                  INT PRIMARY KEY,
-  cant_pub               INT DEFAULT 0,
-  ultimo_ingreso         DATETIME,
-  likes                  INT DEFAULT 0,
-  favoritos              INT DEFAULT 0,
-  denuncias              INT DEFAULT 0,
-  intercambios_realizados INT DEFAULT 0,
-  huella_contaminacion   DECIMAL(10,2) DEFAULT 0,
-  CONSTRAINT fk_detalle_usuario
-    FOREIGN KEY (id_us) REFERENCES usuario(id_us)
+CREATE TABLE DETALLE_USUARIO (
+  id_us INT PRIMARY KEY,
+  cant_anuncios INT NOT NULL DEFAULT 0,
+  ult_ingreso DATETIME,
+  likes INT NOT NULL DEFAULT 0,
+  favoritos INT NOT NULL DEFAULT 0,
+  denuncias INT NOT NULL DEFAULT 0,
+  ventas INT NOT NULL DEFAULT 0,
+  FOREIGN KEY (id_us) REFERENCES USUARIO(id_us)
     ON UPDATE CASCADE ON DELETE CASCADE
-) ENGINE=InnoDB;
+);
 
-CREATE TABLE acceso (
-  id_acceso        INT AUTO_INCREMENT PRIMARY KEY,
-  id_us            INT NOT NULL,
-  fecha_acceso     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  ip_acc           VARCHAR(100),
-  estado_acc       TINYINT(1) DEFAULT 1,
-  CONSTRAINT fk_acceso_usuario
-    FOREIGN KEY (id_us) REFERENCES usuario(id_us)
+CREATE TABLE ACCESO (
+  id_acc INT PRIMARY KEY AUTO_INCREMENT,
+  id_us INT NOT NULL,
+  fecha_acc DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  exito BOOLEAN NOT NULL,
+  ip VARCHAR(45),
+  agente VARCHAR(500),
+  FOREIGN KEY (id_us) REFERENCES USUARIO(id_us)
     ON UPDATE CASCADE ON DELETE CASCADE
-) ENGINE=InnoDB;
+);
 
-CREATE TABLE contrasena (
-  id_contra        INT AUTO_INCREMENT PRIMARY KEY,
-  id_us            INT NOT NULL UNIQUE,
-  hash_contra      TEXT NOT NULL,
-  salt_contra      TEXT NOT NULL,
-  fecha_cambio     DATETIME DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_contra_usuario
-    FOREIGN KEY (id_us) REFERENCES usuario(id_us)
+CREATE TABLE CONTRASENA (
+  id_cmb INT PRIMARY KEY AUTO_INCREMENT,
+  id_us INT NOT NULL,
+  hash VARBINARY(255) NOT NULL,  -- bcrypt/argon2
+  fecha_cambio DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_contrasena_usuario (id_us),
+  FOREIGN KEY (id_us) REFERENCES USUARIO(id_us)
     ON UPDATE CASCADE ON DELETE CASCADE
-) ENGINE=InnoDB;
+);
 
-CREATE TABLE billetera (
-  id_billetera       INT AUTO_INCREMENT PRIMARY KEY,
-  id_us              INT NOT NULL UNIQUE,
-  monto_total        DECIMAL(10,2) NOT NULL DEFAULT 0,
-  actualizacion_bill DATETIME DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_billetera_usuario
-    FOREIGN KEY (id_us) REFERENCES usuario(id_us)
-    ON UPDATE CASCADE ON DELETE CASCADE
-) ENGINE=InnoDB;
+CREATE TABLE BILLETERA (
+  id_us INT PRIMARY KEY,
+  cuenta_bancaria VARCHAR(100),
+  saldo DECIMAL(15,2) NOT NULL DEFAULT 0,
+  actualizado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (id_us) REFERENCES USUARIO(id_us)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT chk_billetera_saldo CHECK (saldo >= 0)
+);
 
-CREATE TABLE ubicacion (
-  id_ubi         INT AUTO_INCREMENT PRIMARY KEY,
-  direccion_ubi  VARCHAR(150) NOT NULL,
-  lat            DECIMAL(10,6),
-  lon            DECIMAL(10,6),
-  referencia     VARCHAR(255)
-) ENGINE=InnoDB;
+CREATE TABLE UBICACION (
+  id_ub INT PRIMARY KEY AUTO_INCREMENT,
+  direccion VARCHAR(500) NOT NULL
+);
 
-CREATE TABLE unidad_medida (
-  id_um        INT AUTO_INCREMENT PRIMARY KEY,
-  nombre_um    VARCHAR(50) NOT NULL UNIQUE,
-  simbolo_um   VARCHAR(10) NOT NULL
-) ENGINE=InnoDB;
+CREATE TABLE ORGANIZACION (
+  id_org INT PRIMARY KEY AUTO_INCREMENT,
+  nombre VARCHAR(255) NOT NULL,
+  tipo VARCHAR(100) NOT NULL,
+  correo VARCHAR(255),
+  telefono VARCHAR(20),
+  direccion VARCHAR(500),
+  fecha_fundacion DATE,
+  sitio_web VARCHAR(500),
+  descripcion TEXT,
+  UNIQUE KEY uq_org_nombre (nombre)
+);
 
-CREATE TABLE categoria_servicio (
-  id_cat_serv      INT AUTO_INCREMENT PRIMARY KEY,
-  nombre_cat_serv  VARCHAR(100) NOT NULL UNIQUE,
-  desc_cat_serv    VARCHAR(200)
-) ENGINE=InnoDB;
-
-CREATE TABLE estado_servicio (
-  id_estado_serv     INT AUTO_INCREMENT PRIMARY KEY,
-  nombre_estado_serv VARCHAR(50) NOT NULL,
-  desc_estado_serv   VARCHAR(100)
-) ENGINE=InnoDB;
-
-CREATE TABLE servicio (
-  id_servicio    INT AUTO_INCREMENT PRIMARY KEY,
-  id_us          INT NOT NULL,
-  id_cat_serv    INT NOT NULL,
-  id_estado_serv INT NOT NULL,
-  nombre_serv    VARCHAR(100) NOT NULL,
-  desc_serv      VARCHAR(200),
-  precio_serv    DECIMAL(10,2) NOT NULL,
-  duracion_serv  INT,
-  estado_serv    TINYINT(1) DEFAULT 1,
-  id_um          INT,
-  CONSTRAINT fk_serv_usuario
-    FOREIGN KEY (id_us) REFERENCES usuario(id_us)
+CREATE TABLE EVENTO (
+  cod_evento INT PRIMARY KEY AUTO_INCREMENT,
+  id_org INT NOT NULL,
+  titulo VARCHAR(255) NOT NULL,
+  descripcion TEXT,
+  fecha_ini DATE NOT NULL,
+  fecha_fin DATE NOT NULL,
+  lugar VARCHAR(255) NOT NULL,
+  precio DECIMAL(10,2) NOT NULL DEFAULT 0,
+  activo BOOLEAN NOT NULL DEFAULT TRUE,
+  FOREIGN KEY (id_org) REFERENCES ORGANIZACION(id_org)
     ON UPDATE CASCADE ON DELETE RESTRICT,
-  CONSTRAINT fk_serv_categoria
-    FOREIGN KEY (id_cat_serv) REFERENCES categoria_servicio(id_cat_serv)
-    ON UPDATE CASCADE ON DELETE RESTRICT,
-  CONSTRAINT fk_serv_estado
-    FOREIGN KEY (id_estado_serv) REFERENCES estado_servicio(id_estado_serv)
-    ON UPDATE CASCADE ON DELETE RESTRICT,
-  CONSTRAINT fk_serv_um
-    FOREIGN KEY (id_um) REFERENCES unidad_medida(id_um)
-    ON UPDATE CASCADE ON DELETE SET NULL
-) ENGINE=InnoDB;
+  CONSTRAINT chk_evento_fechas CHECK (fecha_fin >= fecha_ini),
+  CONSTRAINT chk_evento_precio CHECK (precio >= 0)
+);
 
-CREATE TABLE categoria_producto (
-  id_cat_prod          INT AUTO_INCREMENT PRIMARY KEY,
-  nombre_cat_prod      VARCHAR(50) NOT NULL UNIQUE,
-  descripcion_cat_prod VARCHAR(150)
-) ENGINE=InnoDB;
+CREATE TABLE EVENTO_USUARIO (
+  cod_evento INT,
+  id_us INT,
+  PRIMARY KEY (cod_evento, id_us),
+  FOREIGN KEY (cod_evento) REFERENCES EVENTO(cod_evento)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  FOREIGN KEY (id_us) REFERENCES USUARIO(id_us)
+    ON UPDATE CASCADE ON DELETE CASCADE
+);
 
-CREATE TABLE producto (
-  id_prod     INT AUTO_INCREMENT PRIMARY KEY,
+CREATE TABLE CATEGORIA_PRODUCTO (
+  id_cat_prod INT PRIMARY KEY AUTO_INCREMENT,
+  nombre VARCHAR(100) NOT NULL,
+  descripcion VARCHAR(255),
+  UNIQUE KEY uq_cat_prod_nombre (nombre)
+);
+
+CREATE TABLE SUBCATEGORIA_PRODUCTO (
+  id_subcat_prod INT PRIMARY KEY AUTO_INCREMENT,
   id_cat_prod INT NOT NULL,
-  nombre_prod VARCHAR(50) NOT NULL,
-  desc_prod   VARCHAR(150),
-  precio_prod DECIMAL(10,2) NOT NULL,
-  peso_prod   DECIMAL(10,2),
-  id_um       INT,
-  CONSTRAINT fk_prod_categoria
-    FOREIGN KEY (id_cat_prod) REFERENCES categoria_producto(id_cat_prod)
-    ON UPDATE CASCADE ON DELETE RESTRICT,
-  CONSTRAINT fk_prod_um
-    FOREIGN KEY (id_um) REFERENCES unidad_medida(id_um)
-    ON UPDATE CASCADE ON DELETE SET NULL
-) ENGINE=InnoDB;
-
-
-CREATE TABLE estado_publicacion (
-  id_estado_pub     INT AUTO_INCREMENT PRIMARY KEY,
-  nombre_estado_pub VARCHAR(50) NOT NULL,
-  desc_estado_pub   VARCHAR(50)
-) ENGINE=InnoDB;
-
-CREATE TABLE publicacion (
-  id_pub         INT AUTO_INCREMENT PRIMARY KEY,
-  id_us          INT NOT NULL,
-  id_estado_pub  INT NOT NULL,
-  titulo_pub     VARCHAR(100) NOT NULL,
-  desc_pub       VARCHAR(200),
-  valor_creditos DECIMAL(10,2) DEFAULT 0,
-  fecha_pub      DATETIME DEFAULT CURRENT_TIMESTAMP,
-  activa         TINYINT(1) DEFAULT 1,
-  CONSTRAINT fk_pub_usuario
-    FOREIGN KEY (id_us) REFERENCES usuario(id_us)
-    ON UPDATE CASCADE ON DELETE RESTRICT,
-  CONSTRAINT fk_pub_estado
-    FOREIGN KEY (id_estado_pub) REFERENCES estado_publicacion(id_estado_pub)
+  nombre VARCHAR(100) NOT NULL,
+  descripcion VARCHAR(255),
+  UNIQUE KEY uq_subcat_nombre (id_cat_prod, nombre),
+  FOREIGN KEY (id_cat_prod) REFERENCES CATEGORIA_PRODUCTO(id_cat_prod)
     ON UPDATE CASCADE ON DELETE RESTRICT
-) ENGINE=InnoDB;
+);
 
-CREATE TABLE publicacion_servicio (
-  id_pub      INT NOT NULL,
-  id_servicio INT NOT NULL,
-  horario     VARCHAR(120),
-  PRIMARY KEY (id_pub, id_servicio),
-  CONSTRAINT fk_pubserv_pub
-    FOREIGN KEY (id_pub) REFERENCES publicacion(id_pub)
-    ON UPDATE CASCADE ON DELETE CASCADE,
-  CONSTRAINT fk_pubserv_serv
-    FOREIGN KEY (id_servicio) REFERENCES servicio(id_servicio)
-    ON UPDATE CASCADE ON DELETE RESTRICT
-) ENGINE=InnoDB;
+CREATE TABLE PRODUCTO (
+  id_prod INT PRIMARY KEY AUTO_INCREMENT,
+  id_cat_prod INT NOT NULL,
+  id_subcat_prod INT NOT NULL,
+  nombre VARCHAR(255) NOT NULL,
+  descripcion TEXT,
+  precio DECIMAL(15,2) NOT NULL,
+  peso DECIMAL(10,2),
+  FOREIGN KEY (id_cat_prod) REFERENCES CATEGORIA_PRODUCTO(id_cat_prod)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  FOREIGN KEY (id_subcat_prod) REFERENCES SUBCATEGORIA_PRODUCTO(id_subcat_prod)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT chk_producto_precio CHECK (precio >= 0),
+  CONSTRAINT chk_producto_peso CHECK (peso IS NULL OR peso >= 0)
+);
 
-CREATE TABLE publicacion_producto (
-  id_pub  INT NOT NULL,
-  id_prod INT NOT NULL,
-  cantidad INT NOT NULL DEFAULT 1,
+CREATE TABLE CATEGORIA_SERVICIO (
+  id_cat_serv INT PRIMARY KEY AUTO_INCREMENT,
+  nombre VARCHAR(100) NOT NULL,
+  descripcion VARCHAR(255),
+  UNIQUE KEY uq_cat_serv_nombre (nombre)
+);
+
+CREATE TABLE SERVICIO (
+  id_serv INT PRIMARY KEY AUTO_INCREMENT,
+  id_cat_serv INT NOT NULL,
+  id_us INT NOT NULL, -- dueño del servicio
+  nombre VARCHAR(255) NOT NULL,
+  descripcion TEXT,
+  precio DECIMAL(15,2) NOT NULL,
+  duracion_min INT,
+  id_estado_serv INT NOT NULL,
+  FOREIGN KEY (id_cat_serv) REFERENCES CATEGORIA_SERVICIO(id_cat_serv)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  FOREIGN KEY (id_us) REFERENCES USUARIO(id_us)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  FOREIGN KEY (id_estado_serv) REFERENCES ESTADO_SERVICIO(id_estado_serv)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT chk_servicio_precio CHECK (precio >= 0),
+  CONSTRAINT chk_servicio_duracion CHECK (duracion_min IS NULL OR duracion_min >= 0)
+);
+
+CREATE TABLE PUBLICACION (
+  id_pub INT PRIMARY KEY AUTO_INCREMENT,
+  id_us INT NOT NULL,
+  id_ub INT NOT NULL,
+  id_estado_pub INT NOT NULL,
+  titulo VARCHAR(255) NOT NULL,
+  descripcion TEXT,
+  valor_creditos DECIMAL(15,2) NOT NULL DEFAULT 0,
+  fecha_pub DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  fecha_act DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (id_us) REFERENCES USUARIO(id_us)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  FOREIGN KEY (id_ub) REFERENCES UBICACION(id_ub)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  FOREIGN KEY (id_estado_pub) REFERENCES ESTADO_PUBLICACION(id_estado_pub)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT chk_publicacion_creditos CHECK (valor_creditos >= 0)
+);
+
+CREATE TABLE PUBLICACION_PRODUCTO (
+  id_pub INT,
+  id_prod INT,
+  cantidad INT NOT NULL,
+  id_um INT NOT NULL,
   PRIMARY KEY (id_pub, id_prod),
-  CONSTRAINT fk_pubprod_pub
-    FOREIGN KEY (id_pub) REFERENCES publicacion(id_pub)
+  FOREIGN KEY (id_pub) REFERENCES PUBLICACION(id_pub)
     ON UPDATE CASCADE ON DELETE CASCADE,
-  CONSTRAINT fk_pubprod_prod
-    FOREIGN KEY (id_prod) REFERENCES producto(id_prod)
+  FOREIGN KEY (id_prod) REFERENCES PRODUCTO(id_prod)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  FOREIGN KEY (id_um) REFERENCES UNIDAD_MEDIDA(id_um)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT chk_pubprod_cantidad CHECK (cantidad > 0)
+);
+
+CREATE TABLE PUBLICACION_SERVICIO (
+  id_pub INT,
+  id_serv INT,
+  horario VARCHAR(100) NOT NULL,
+  PRIMARY KEY (id_pub, id_serv),
+  FOREIGN KEY (id_pub) REFERENCES PUBLICACION(id_pub)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  FOREIGN KEY (id_serv) REFERENCES SERVICIO(id_serv)
     ON UPDATE CASCADE ON DELETE RESTRICT
-) ENGINE=InnoDB;
+);
 
+CREATE TABLE POTENCIADOR (
+  id_poten INT PRIMARY KEY AUTO_INCREMENT,
+  id_us INT NOT NULL,
+  id_pub INT NOT NULL,
+  nombre VARCHAR(100) NOT NULL,
+  precio DECIMAL(10,2) NOT NULL,
+  duracion_dias INT NOT NULL,
+  fecha_inicio DATETIME NOT NULL,
+  fecha_fin DATETIME NOT NULL,
+  activo BOOLEAN NOT NULL DEFAULT TRUE,
+  FOREIGN KEY (id_us) REFERENCES USUARIO(id_us)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  FOREIGN KEY (id_pub) REFERENCES PUBLICACION(id_pub)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT chk_poten_precio CHECK (precio >= 0),
+  CONSTRAINT chk_poten_duracion CHECK (duracion_dias > 0),
+  CONSTRAINT chk_poten_fechas CHECK (fecha_fin >= fecha_inicio)
+);
 
-CREATE TABLE estado_promocion (
-  id_estado_prom     INT AUTO_INCREMENT PRIMARY KEY,
-  nombre_estado_prom VARCHAR(100) NOT NULL,
-  desc_estado_prom   VARCHAR(250)
-) ENGINE=InnoDB;
-
-CREATE TABLE promocion (
-  id_prom        INT AUTO_INCREMENT PRIMARY KEY,
+CREATE TABLE PROMOCION (
+  id_prom INT PRIMARY KEY AUTO_INCREMENT,
+  titulo VARCHAR(255) NOT NULL,
+  descripcion TEXT,
+  fecha_ini DATE NOT NULL,
+  fecha_fin DATE NOT NULL,
+  banner VARCHAR(500),
+  descuento DECIMAL(5,2) NOT NULL,
   id_estado_prom INT NOT NULL,
-  titulo_prom    VARCHAR(50) NOT NULL,
-  desc_prom      VARCHAR(100),
-  fecha_ini_prom DATE NOT NULL,
-  fecha_fin_prom DATE NOT NULL,
-  descuento      DECIMAL(5,2) DEFAULT 0,
-  activa         TINYINT(1) DEFAULT 1,
-  CONSTRAINT fk_prom_estado
-    FOREIGN KEY (id_estado_prom) REFERENCES estado_promocion(id_estado_prom)
-    ON UPDATE CASCADE ON DELETE RESTRICT
-) ENGINE=InnoDB;
+  FOREIGN KEY (id_estado_prom) REFERENCES ESTADO_PROMOCION(id_estado_prom)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT chk_prom_fechas CHECK (fecha_fin >= fecha_ini),
+  CONSTRAINT chk_prom_desc CHECK (descuento >= 0 AND descuento <= 100)
+);
 
-CREATE TABLE promocion_servicios (
-  id_prom     INT NOT NULL,
-  id_servicio INT NOT NULL,
-  PRIMARY KEY (id_prom, id_servicio),
-  CONSTRAINT fk_promserv_prom
-    FOREIGN KEY (id_prom) REFERENCES promocion(id_prom)
-    ON UPDATE CASCADE ON DELETE CASCADE,
-  CONSTRAINT fk_promserv_serv
-    FOREIGN KEY (id_servicio) REFERENCES servicio(id_servicio)
-    ON UPDATE CASCADE ON DELETE RESTRICT
-) ENGINE=InnoDB;
-
-CREATE TABLE promocion_productos (
-  id_prom INT NOT NULL,
-  id_prod INT NOT NULL,
+CREATE TABLE PROMOCION_PRODUCTO (
+  id_prom INT,
+  id_prod INT,
   PRIMARY KEY (id_prom, id_prod),
-  CONSTRAINT fk_promprod_prom
-    FOREIGN KEY (id_prom) REFERENCES promocion(id_prom)
+  FOREIGN KEY (id_prom) REFERENCES PROMOCION(id_prom)
     ON UPDATE CASCADE ON DELETE CASCADE,
-  CONSTRAINT fk_promprod_prod
-    FOREIGN KEY (id_prod) REFERENCES producto(id_prod)
+  FOREIGN KEY (id_prod) REFERENCES PRODUCTO(id_prod)
     ON UPDATE CASCADE ON DELETE RESTRICT
-) ENGINE=InnoDB;
+);
 
-
-CREATE TABLE organizacion (
-  id_org         INT AUTO_INCREMENT PRIMARY KEY,
-  nombre_org     VARCHAR(100) NOT NULL,
-  sitio_web      VARCHAR(150),
-  telefono_org   VARCHAR(20),
-  correo_org     VARCHAR(100),
-  direccion_org  VARCHAR(255),
-  descripcion_org VARCHAR(255)
-) ENGINE=InnoDB;
-
-CREATE TABLE reporte (
-  id_reporte   INT AUTO_INCREMENT PRIMARY KEY,
-  id_us        INT NOT NULL,
-  id_pub       INT,
-  tipo_repor   INT,
-  medio_repor  VARCHAR(200),
-  desc_repor   TEXT,
-  estado_repor TINYINT(1) DEFAULT 1,
-  fecha_repor  DATETIME DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_reporte_usuario
-    FOREIGN KEY (id_us) REFERENCES usuario(id_us)
-    ON UPDATE CASCADE ON DELETE RESTRICT,
-  CONSTRAINT fk_reporte_pub
-    FOREIGN KEY (id_pub) REFERENCES publicacion(id_pub)
-    ON UPDATE CASCADE ON DELETE SET NULL
-) ENGINE=InnoDB;
-
-CREATE TABLE tipo_bitacora (
-  id_tipo_bit   INT AUTO_INCREMENT PRIMARY KEY,
-  nombre_bit    VARCHAR(65) NOT NULL UNIQUE,
-  desc_tipo_bit VARCHAR(100)
-) ENGINE=InnoDB;
-
-CREATE TABLE bitacora (
-  id_bitacora  INT AUTO_INCREMENT PRIMARY KEY,
-  id_tipo_bit  INT,
-  desc_bit     VARCHAR(200),
-  ip_direccion VARCHAR(100),
-  fecha_bit    DATETIME DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_bit_tipo
-    FOREIGN KEY (id_tipo_bit) REFERENCES tipo_bitacora(id_tipo_bit)
-    ON UPDATE CASCADE ON DELETE SET NULL
-) ENGINE=InnoDB;
-
-CREATE TABLE paquete_credito (
-  id_paquete   INT AUTO_INCREMENT PRIMARY KEY,
-  nombre_paq   VARCHAR(50) NOT NULL,
-  cantidad_cred INT NOT NULL,
-  precio_cred  DECIMAL(10,2) NOT NULL,
-  estado       TINYINT(1) DEFAULT 1
-) ENGINE=InnoDB;
-
-CREATE TABLE compra_credito (
-  id_compra      INT AUTO_INCREMENT PRIMARY KEY,
-  id_paquete     INT,
-  id_us          INT NOT NULL,
-  monto_cred     DECIMAL(10,2) NOT NULL,
-  estado_compra  TINYINT(1) DEFAULT 1,
-  referencia_comp VARCHAR(100),
-  proveedor_comp  VARCHAR(100),
-  fecha_compra   DATETIME DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_compra_paq
-    FOREIGN KEY (id_paquete) REFERENCES paquete_credito(id_paquete)
-    ON UPDATE CASCADE ON DELETE SET NULL,
-  CONSTRAINT fk_compra_usuario
-    FOREIGN KEY (id_us) REFERENCES usuario(id_us)
-    ON UPDATE CASCADE ON DELETE RESTRICT
-) ENGINE=InnoDB;
-
--- ===========================
--- Intercambios / Transacciones / Movimientos
--- ===========================
-
-CREATE TABLE intercambio (
-  id_inter         INT AUTO_INCREMENT PRIMARY KEY,
-  id_us_ofertante  INT NOT NULL,
-  id_us_demandante INT NOT NULL,
-  costo_inter      DECIMAL(10,2) DEFAULT 0,
-  fecha_ini        DATETIME,
-  fecha_fin        DATETIME,
-  estado_inter     VARCHAR(30) DEFAULT 'pendiente',
-  CONSTRAINT fk_inter_ofer
-    FOREIGN KEY (id_us_ofertante) REFERENCES usuario(id_us)
-    ON UPDATE CASCADE ON DELETE RESTRICT,
-  CONSTRAINT fk_inter_dema
-    FOREIGN KEY (id_us_demandante) REFERENCES usuario(id_us)
-    ON UPDATE CASCADE ON DELETE RESTRICT
-) ENGINE=InnoDB;
-
-CREATE TABLE transaccion (
-  id_transaccion INT AUTO_INCREMENT PRIMARY KEY,
-  id_inter       INT,
-  id_us          INT NOT NULL,
-  fecha_trans    DATETIME DEFAULT CURRENT_TIMESTAMP,
-  monto_trans    DECIMAL(10,2) NOT NULL,
-  exito_trans    TINYINT(1) DEFAULT 1,
-  CONSTRAINT fk_trans_usuario
-    FOREIGN KEY (id_us) REFERENCES usuario(id_us)
-    ON UPDATE CASCADE ON DELETE RESTRICT,
-  CONSTRAINT fk_trans_inter
-    FOREIGN KEY (id_inter) REFERENCES intercambio(id_inter)
-    ON UPDATE CASCADE ON DELETE SET NULL
-) ENGINE=InnoDB;
-
-CREATE TABLE tipo_movimiento (
-  id_tipo_mov     INT AUTO_INCREMENT PRIMARY KEY,
-  nombre_tipo_mov VARCHAR(50) NOT NULL,
-  descr_tipo_mov  VARCHAR(100)
-) ENGINE=InnoDB;
-
-CREATE TABLE movimiento (
-  id_mov       INT AUTO_INCREMENT PRIMARY KEY,
-  id_us        INT NOT NULL,
-  id_compra    INT,
-  id_inter     INT,
-  id_tipo_mov  INT NOT NULL,
-  cant_mov     DECIMAL(10,2) NOT NULL,
-  fecha_mov    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  desc_mov     VARCHAR(150),
-  CONSTRAINT fk_mov_usuario
-    FOREIGN KEY (id_us) REFERENCES usuario(id_us)
-    ON UPDATE CASCADE ON DELETE RESTRICT,
-  CONSTRAINT fk_mov_compra
-    FOREIGN KEY (id_compra) REFERENCES compra_credito(id_compra)
-    ON UPDATE CASCADE ON DELETE SET NULL,
-  CONSTRAINT fk_mov_inter
-    FOREIGN KEY (id_inter) REFERENCES intercambio(id_inter)
-    ON UPDATE CASCADE ON DELETE SET NULL,
-  CONSTRAINT fk_mov_tipo
-    FOREIGN KEY (id_tipo_mov) REFERENCES tipo_movimiento(id_tipo_mov)
-    ON UPDATE CASCADE ON DELETE RESTRICT
-) ENGINE=InnoDB;
-
-CREATE TABLE recompensa (
-  id_recompensa INT AUTO_INCREMENT PRIMARY KEY,
-  tipo_recom    VARCHAR(100) NOT NULL,
-  nombre_recom  VARCHAR(100) NOT NULL,
-  monto_recom   DECIMAL(10,2) DEFAULT 0
-) ENGINE=InnoDB;
-
-CREATE TABLE usuario_logro (
-  id_recompensa INT NOT NULL,
-  id_us         INT NOT NULL,
-  fecha_obtenido DATE NOT NULL DEFAULT (CURRENT_DATE),
-  PRIMARY KEY (id_recompensa, id_us),
-  CONSTRAINT fk_ul_recompensa
-    FOREIGN KEY (id_recompensa) REFERENCES recompensa(id_recompensa)
-    ON UPDATE CASCADE ON DELETE RESTRICT,
-  CONSTRAINT fk_ul_usuario
-    FOREIGN KEY (id_us) REFERENCES usuario(id_us)
-    ON UPDATE CASCADE ON DELETE CASCADE
-) ENGINE=InnoDB;
-
-CREATE TABLE evento (
-  id_evento     INT AUTO_INCREMENT PRIMARY KEY,
-  id_org        INT,
-  nombre_even   VARCHAR(50) NOT NULL,
-  desc_even     VARCHAR(200),
-  fecha_ini_even DATE,
-  fecha_fin_even DATE,
-  precio_even   DECIMAL(10,2) DEFAULT 0,
-  activo        TINYINT(1) DEFAULT 1,
-  CONSTRAINT fk_evento_org
-    FOREIGN KEY (id_org) REFERENCES organizacion(id_org)
-    ON UPDATE CASCADE ON DELETE SET NULL
-) ENGINE=InnoDB;
-
-CREATE TABLE evento_usuario (
-  cod_evento_us INT AUTO_INCREMENT PRIMARY KEY,
-  id_evento     INT NOT NULL,
-  id_us         INT NOT NULL,
-  fecha_reg     DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_evento_user (id_evento, id_us),
-  CONSTRAINT fk_eu_evento
-    FOREIGN KEY (id_evento) REFERENCES evento(id_evento)
+CREATE TABLE PROMOCION_SERVICIO (
+  id_prom INT,
+  id_serv INT,
+  PRIMARY KEY (id_prom, id_serv),
+  FOREIGN KEY (id_prom) REFERENCES PROMOCION(id_prom)
     ON UPDATE CASCADE ON DELETE CASCADE,
-  CONSTRAINT fk_eu_usuario
-    FOREIGN KEY (id_us) REFERENCES usuario(id_us)
-    ON UPDATE CASCADE ON DELETE CASCADE
-) ENGINE=InnoDB;
+  FOREIGN KEY (id_serv) REFERENCES SERVICIO(id_serv)
+    ON UPDATE CASCADE ON DELETE RESTRICT
+);
 
-CREATE TABLE dimension_impacto (
-  id_dim         INT AUTO_INCREMENT PRIMARY KEY,
-  nombre_dim     VARCHAR(150) NOT NULL,
-  descripcion_dim VARCHAR(150),
-  co2            VARCHAR(70),
-  agua           VARCHAR(70),
-  energia        VARCHAR(70),
-  desechos       VARCHAR(70)
-) ENGINE=InnoDB;
+CREATE TABLE PAQUETE_CREDITO (
+  id_paquete INT PRIMARY KEY AUTO_INCREMENT,
+  nombre VARCHAR(100) NOT NULL,
+  cantidad_creditos INT NOT NULL,
+  precio DECIMAL(15,2) NOT NULL,
+  activo BOOLEAN NOT NULL DEFAULT TRUE,
+  CONSTRAINT chk_paq_creditos CHECK (cantidad_creditos > 0),
+  CONSTRAINT chk_paq_precio CHECK (precio >= 0),
+  UNIQUE KEY uq_paquete_nombre (nombre)
+);
 
-CREATE TABLE impacto_mensual (
-  id_impacto  INT AUTO_INCREMENT PRIMARY KEY,
-  mes_impacto DATE NOT NULL,
-  id_dim      INT NOT NULL,
-  id_us       INT NOT NULL,
-  UNI_id_um   INT,
-  USU_id_um   INT,
-  valor_total DECIMAL(10,2) DEFAULT 0,
-  CONSTRAINT fk_impmen_dim
-    FOREIGN KEY (id_dim) REFERENCES dimension_impacto(id_dim)
+CREATE TABLE COMPRA_CREDITO (
+  id_compra INT PRIMARY KEY AUTO_INCREMENT,
+  id_us INT NOT NULL,
+  id_paquete INT NOT NULL,
+  creditos INT NOT NULL,
+  monto DECIMAL(15,2) NOT NULL,
+  proveedor VARCHAR(100) NOT NULL,
+  referencia VARCHAR(100),
+  creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  aprobado_en DATETIME,
+  FOREIGN KEY (id_us) REFERENCES USUARIO(id_us)
     ON UPDATE CASCADE ON DELETE RESTRICT,
-  CONSTRAINT fk_impmen_usuario
-    FOREIGN KEY (id_us) REFERENCES usuario(id_us)
-    ON UPDATE CASCADE ON DELETE CASCADE,
-  CONSTRAINT fk_impmen_uni_um
-    FOREIGN KEY (UNI_id_um) REFERENCES unidad_medida(id_um)
+  FOREIGN KEY (id_paquete) REFERENCES PAQUETE_CREDITO(id_paquete)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT chk_compra_creditos CHECK (creditos > 0),
+  CONSTRAINT chk_compra_monto CHECK (monto >= 0)
+);
+
+CREATE TABLE INTERCAMBIO (
+  id_inter INT PRIMARY KEY AUTO_INCREMENT,
+  id_us_comp INT NOT NULL,  -- comprador/solicitante
+  id_us_vend INT NOT NULL,  -- vendedor/ofertante
+  id_pub INT NOT NULL,
+  id_ub_origen INT NOT NULL,
+  id_ub_destino INT NOT NULL,
+  id_um INT NOT NULL,
+  costo_reembolso DECIMAL(15,2),
+  fecha_sol DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  fecha_acept DATETIME,
+  fecha_comp DATETIME,
+  FOREIGN KEY (id_us_comp) REFERENCES USUARIO(id_us)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  FOREIGN KEY (id_us_vend) REFERENCES USUARIO(id_us)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  FOREIGN KEY (id_pub) REFERENCES PUBLICACION(id_pub)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  FOREIGN KEY (id_ub_origen) REFERENCES UBICACION(id_ub)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  FOREIGN KEY (id_ub_destino) REFERENCES UBICACION(id_ub)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  FOREIGN KEY (id_um) REFERENCES UNIDAD_MEDIDA(id_um)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT chk_inter_costo CHECK (costo_reembolso IS NULL OR costo_reembolso >= 0)
+);
+
+CREATE TABLE TRANSACCION (
+  id_trans INT PRIMARY KEY AUTO_INCREMENT,
+  id_us INT NOT NULL,
+  id_us2 INT NOT NULL,
+  id_inter INT,
+  cod_evento INT,
+  fecha_trans DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  monto DECIMAL(15,2) NOT NULL,
+  id_estado_trans INT NOT NULL,
+  FOREIGN KEY (id_us) REFERENCES USUARIO(id_us)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  FOREIGN KEY (id_us2) REFERENCES USUARIO(id_us)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  FOREIGN KEY (id_inter) REFERENCES INTERCAMBIO(id_inter)
     ON UPDATE CASCADE ON DELETE SET NULL,
-  CONSTRAINT fk_impmen_usu_um
-    FOREIGN KEY (USU_id_um) REFERENCES unidad_medida(id_um)
-    ON UPDATE CASCADE ON DELETE SET NULL
-) ENGINE=InnoDB;
-
-CREATE TABLE evento_impacto (
-  id_eimpacto     INT AUTO_INCREMENT PRIMARY KEY,
-  id_evento       INT NOT NULL,
-  categoria_evento VARCHAR(50),
-  fecha_registro  DATETIME DEFAULT CURRENT_TIMESTAMP,
-  notas           TEXT,
-  CONSTRAINT fk_eimpacto_evento
-    FOREIGN KEY (id_evento) REFERENCES evento(id_evento)
-    ON UPDATE CASCADE ON DELETE CASCADE
-) ENGINE=InnoDB;
-
-CREATE TABLE evento_impacto_detalle (
-  id_detalle    INT AUTO_INCREMENT PRIMARY KEY,
-  id_eimpacto   INT NOT NULL,
-  id_dim        INT NOT NULL,
-  id_um         INT,
-  valor_impacto DECIMAL(12,2),
-  CONSTRAINT fk_eimpdet_eimp
-    FOREIGN KEY (id_eimpacto) REFERENCES evento_impacto(id_eimpacto)
-    ON UPDATE CASCADE ON DELETE CASCADE,
-  CONSTRAINT fk_eimpdet_dim
-    FOREIGN KEY (id_dim) REFERENCES dimension_impacto(id_dim)
+  FOREIGN KEY (cod_evento) REFERENCES EVENTO(cod_evento)
+    ON UPDATE CASCADE ON DELETE SET NULL,
+  FOREIGN KEY (id_estado_trans) REFERENCES ESTADO_TRANSACCION(id_estado_trans)
     ON UPDATE CASCADE ON DELETE RESTRICT,
-  CONSTRAINT fk_eimpdet_um
-    FOREIGN KEY (id_um) REFERENCES unidad_medida(id_um)
+  CONSTRAINT chk_trans_monto CHECK (monto >= 0)
+);
+
+CREATE TABLE MOVIMIENTO (
+  id_mov INT PRIMARY KEY AUTO_INCREMENT,
+  id_us INT NOT NULL,
+  id_tipo_mov INT NOT NULL,
+  cantidad DECIMAL(15,2) NOT NULL,
+  fecha_mov DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  descripcion VARCHAR(255),
+  id_inter INT,
+  id_compra INT,
+  FOREIGN KEY (id_us) REFERENCES USUARIO(id_us)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  FOREIGN KEY (id_tipo_mov) REFERENCES TIPO_MOVIMIENTO(id_tipo_mov)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  FOREIGN KEY (id_inter) REFERENCES INTERCAMBIO(id_inter)
+    ON UPDATE CASCADE ON DELETE SET NULL,
+  FOREIGN KEY (id_compra) REFERENCES COMPRA_CREDITO(id_compra)
+    ON UPDATE CASCADE ON DELETE SET NULL,
+  CONSTRAINT chk_mov_cantidad CHECK (cantidad > 0)
+);
+
+CREATE TABLE ORIGEN_IMPACTO (
+  id_origen_imp INT PRIMARY KEY AUTO_INCREMENT,
+  nombre VARCHAR(100) NOT NULL,
+  descripcion VARCHAR(255),
+  UNIQUE KEY uq_origen_imp_nombre (nombre)
+);
+
+CREATE TABLE DIMENSION_IMPACTO (
+  id_dim INT PRIMARY KEY AUTO_INCREMENT,
+  nombre VARCHAR(100) NOT NULL,
+  descripcion VARCHAR(255),
+  UNIQUE KEY uq_dim_imp_nombre (nombre)
+);
+
+CREATE TABLE DIMENSION_UNIDAD (
+  id_dim INT,
+  id_um INT,
+  PRIMARY KEY (id_dim, id_um),
+  FOREIGN KEY (id_dim) REFERENCES DIMENSION_IMPACTO(id_dim)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  FOREIGN KEY (id_um) REFERENCES UNIDAD_MEDIDA(id_um)
+    ON UPDATE CASCADE ON DELETE RESTRICT
+);
+
+CREATE TABLE FACTOR_CONVERSION (
+  id_dim INT,
+  id_um_origen INT,
+  id_um_dest INT,
+  factor DECIMAL(15,6) NOT NULL,
+  PRIMARY KEY (id_dim, id_um_origen, id_um_dest),
+  FOREIGN KEY (id_dim) REFERENCES DIMENSION_IMPACTO(id_dim)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  FOREIGN KEY (id_um_origen) REFERENCES UNIDAD_MEDIDA(id_um)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  FOREIGN KEY (id_um_dest) REFERENCES UNIDAD_MEDIDA(id_um)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT chk_factor_pos CHECK (factor > 0)
+);
+
+CREATE TABLE EVENTO_IMPACTO (
+  id_impacto INT PRIMARY KEY AUTO_INCREMENT,
+  id_us INT NOT NULL,
+  id_origen_imp INT NOT NULL,
+  categoria VARCHAR(100) NOT NULL,
+  creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  notas TEXT,
+  FOREIGN KEY (id_us) REFERENCES USUARIO(id_us)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  FOREIGN KEY (id_origen_imp) REFERENCES ORIGEN_IMPACTO(id_origen_imp)
+    ON UPDATE CASCADE ON DELETE RESTRICT
+);
+
+CREATE TABLE EVENTO_IMPACTO_DETALLE (
+  id_impacto INT,
+  id_dim INT,
+  valor DECIMAL(15,4) NOT NULL,
+  id_um INT NOT NULL,
+  PRIMARY KEY (id_impacto, id_dim),
+  FOREIGN KEY (id_impacto) REFERENCES EVENTO_IMPACTO(id_impacto)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  FOREIGN KEY (id_dim) REFERENCES DIMENSION_IMPACTO(id_dim)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  FOREIGN KEY (id_um) REFERENCES UNIDAD_MEDIDA(id_um)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT chk_ei_valor CHECK (valor >= 0)
+);
+
+CREATE TABLE IMPACTO_MENSUAL (
+  ym DATE,
+  id_us INT,
+  id_dim INT,
+  categoria VARCHAR(100),
+  valor_total DECIMAL(15,4) NOT NULL,
+  id_um INT NOT NULL,
+  PRIMARY KEY (ym, id_us, id_dim, categoria),
+  FOREIGN KEY (id_us) REFERENCES USUARIO(id_us)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  FOREIGN KEY (id_dim) REFERENCES DIMENSION_IMPACTO(id_dim)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  FOREIGN KEY (id_um) REFERENCES UNIDAD_MEDIDA(id_um)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT chk_imp_mensual_valor CHECK (valor_total >= 0)
+);
+
+CREATE TABLE RECOMPENSA (
+  id_rec INT PRIMARY KEY AUTO_INCREMENT,
+  tipo VARCHAR(50) NOT NULL,
+  nombre VARCHAR(100) NOT NULL,
+  monto DECIMAL(15,2) NOT NULL,
+  CONSTRAINT chk_recompensa_monto CHECK (monto >= 0)
+);
+
+CREATE TABLE USUARIO_LOGRO (
+  id_us INT,
+  id_rec INT,
+  fecha_obtencion DATE NOT NULL,
+  PRIMARY KEY (id_us, id_rec),
+  FOREIGN KEY (id_us) REFERENCES USUARIO(id_us)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  FOREIGN KEY (id_rec) REFERENCES RECOMPENSA(id_rec)
+    ON UPDATE CASCADE ON DELETE RESTRICT
+);
+
+CREATE TABLE REPORTE (
+  id_reporte INT PRIMARY KEY AUTO_INCREMENT,
+  id_reportante INT NOT NULL,
+  id_usuario_reportado INT,
+  id_pub_reportada INT,
+  motivo VARCHAR(500) NOT NULL,
+  fecha_reporte DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  id_admin_resuelve INT,
+  id_estado_rep INT NOT NULL,
+  FOREIGN KEY (id_reportante) REFERENCES USUARIO(id_us)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  FOREIGN KEY (id_usuario_reportado) REFERENCES USUARIO(id_us)
+    ON UPDATE CASCADE ON DELETE SET NULL,
+  FOREIGN KEY (id_pub_reportada) REFERENCES PUBLICACION(id_pub)
+    ON UPDATE CASCADE ON DELETE SET NULL,
+  FOREIGN KEY (id_admin_resuelve) REFERENCES USUARIO(id_us)
+    ON UPDATE CASCADE ON DELETE SET NULL,
+  FOREIGN KEY (id_estado_rep) REFERENCES ESTADO_REPORTE(id_estado_rep)
+    ON UPDATE CASCADE ON DELETE RESTRICT
+);
+
+CREATE TABLE BITACORA (
+  id_bitacora INT PRIMARY KEY AUTO_INCREMENT,
+  id_tipo_bit INT NOT NULL,
+  id_us INT,
+  entidad VARCHAR(100) NOT NULL,
+  id_entidad INT,
+  accion VARCHAR(100) NOT NULL,
+  descripcion TEXT,
+  ip VARCHAR(45),
+  fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (id_tipo_bit) REFERENCES TIPO_BITACORA(id_tipo_bit)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  FOREIGN KEY (id_us) REFERENCES USUARIO(id_us)
     ON UPDATE CASCADE ON DELETE SET NULL
-) ENGINE=InnoDB;
+);
 
-CREATE TABLE potenciador (
-  id_poten       INT AUTO_INCREMENT PRIMARY KEY,
-  id_us          INT NOT NULL,
-  nombre_poten   VARCHAR(50) NOT NULL,
-  precio_poten   DECIMAL(10,2) NOT NULL,
-  duracion_poten INT, -- días
-  fecha_ini_poten DATE,
-  fecha_fin_poten DATE,
-  estado_poten   TINYINT(1) DEFAULT 1,
-  CONSTRAINT fk_poten_usuario
-    FOREIGN KEY (id_us) REFERENCES usuario(id_us)
-    ON UPDATE CASCADE ON DELETE CASCADE
-) ENGINE=InnoDB;
+CREATE INDEX idx_usuario_email ON USUARIO(email);
+CREATE INDEX idx_usuario_rol ON USUARIO(id_rol);
 
+CREATE INDEX idx_publicacion_usuario ON PUBLICACION(id_us);
+CREATE INDEX idx_publicacion_estado ON PUBLICACION(id_estado_pub);
+CREATE INDEX idx_publicacion_fecha ON PUBLICACION(fecha_pub);
+CREATE INDEX idx_publicacion_ub ON PUBLICACION(id_ub);
 
-CREATE INDEX idx_usuario_correo ON usuario(correo_us);
-CREATE INDEX idx_pub_estado ON publicacion(id_estado_pub);
-CREATE INDEX idx_servicio_cat ON servicio(id_cat_serv);
-CREATE INDEX idx_producto_cat ON producto(id_cat_prod);
-CREATE INDEX idx_prom_activa ON promocion(activa);
-CREATE INDEX idx_mov_us_fecha ON movimiento(id_us, fecha_mov);
-CREATE INDEX idx_trans_user_fecha ON transaccion(id_us, fecha_trans);
-CREATE INDEX idx_evento_org ON evento(id_org);
+CREATE INDEX idx_serv_cat_estado ON SERVICIO(id_cat_serv, id_estado_serv);
+CREATE INDEX idx_serv_usuario ON SERVICIO(id_us);
+
+CREATE INDEX idx_producto_cat ON PRODUCTO(id_cat_prod);
+CREATE INDEX idx_producto_subcat ON PRODUCTO(id_subcat_prod);
+
+CREATE INDEX idx_intercambio_comprador ON INTERCAMBIO(id_us_comp);
+CREATE INDEX idx_intercambio_vendedor ON INTERCAMBIO(id_us_vend);
+CREATE INDEX idx_intercambio_fecha ON INTERCAMBIO(fecha_sol);
+
+CREATE INDEX idx_transaccion_fecha ON TRANSACCION(fecha_trans);
+CREATE INDEX idx_transaccion_inter ON TRANSACCION(id_inter);
+
+CREATE INDEX idx_movimiento_usuario ON MOVIMIENTO(id_us);
+CREATE INDEX idx_movimiento_fecha ON MOVIMIENTO(fecha_mov);
+
+CREATE INDEX idx_evento_fecha ON EVENTO(fecha_ini);
+CREATE INDEX idx_evento_usuario ON EVENTO_USUARIO(id_us);
+
+CREATE INDEX idx_reporte_fecha ON REPORTE(fecha_reporte);
+CREATE INDEX idx_bitacora_fecha ON BITACORA(fecha);
+CREATE INDEX idx_impacto_usuario ON EVENTO_IMPACTO(id_us);
+CREATE INDEX idx_impacto_fecha ON EVENTO_IMPACTO(creado_en);

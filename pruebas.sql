@@ -119,6 +119,7 @@ INSERT INTO USUARIO (id_rol, nombre, apellido, email, telefono, direccion) VALUE
 (3,'Brenda','León','brenda1@tcc.bo','70010019','Av. H 170'),
 (3,'Fabián','Aguilar','fabian1@tcc.bo','70010020','Av. I 180'),
 (3,'Gabriela','Mendoza','gabriela1@tcc.bo','70010021','Av. J 190');
+(3,'Gabriela','Fernadez','gabriela1@tcc.bo','70010021','Av. J 190');
 
 INSERT INTO BILLETERA (id_us, cuenta_bancaria, saldo) VALUES
 (1,'BANCO-0001',1000),(2,'BANCO-0002',200),

@@ -142,6 +142,8 @@ INSERT INTO CATEGORIA_SERVICIO (nombre, descripcion) VALUES
 ('Reparaciones','Mantenimiento'),('Educación','Clases/Tutorías'),
 ('Transporte','Movilidad'),('Eventos','Soporte en eventos');
 
+
+
 INSERT INTO PRODUCTO (id_cat_prod, nombre, descripcion, precio, peso) VALUES
 (1,'Licuadora','Licuadora 1.5L',150,3.2),
 (1,'Microondas','800W básico',300,12.0),
@@ -165,6 +167,8 @@ INSERT INTO PRODUCTO (id_cat_prod, nombre, descripcion, precio, peso) VALUES
 (5,'Leche 1L','Entera',2.5,1.0),
 (5,'Harina 1kg','Trigo',3.5,1.0),
 (2,'Gorro','Tejido',18,0.2);
+-- NO SE PUDO AGREGAR ESTOS DATOS
+
 
 INSERT INTO SERVICIO (id_cat_serv, id_us, nombre, descripcion, precio, duracion_min, id_estado_serv) VALUES
 (1,6,'Reparación de licuadoras','Cambio de cuchillas',30,60,1),
@@ -216,12 +220,16 @@ INSERT INTO PUBLICACION (id_us, id_ub, id_estado_pub, titulo, descripcion, valor
 (7,4,2,'Fotografía 1h','Sesión retrato',10),
 (8,5,2,'Edición de fotos','Retoque',7);
 
+
+
 -- Para PUBLICACION_PRODUCTO usamos UM = kg (simple, homogéneo para demo)
 INSERT INTO PUBLICACION_PRODUCTO (id_pub, id_prod, cantidad, id_um) VALUES
 (1,1,1,@um_kg),(2,2,1,@um_kg),(3,4,1,@um_kg),(4,8,1,@um_kg),(5,10,1,@um_kg),
 (6,13,1,@um_kg),(7,14,1,@um_kg),(8,15,1,@um_kg),(9,16,1,@um_kg),(10,17,1,@um_kg),
 (11,18,1,@um_kg),(12,19,1,@um_kg),(13,18,1,@um_kg),(14,20,2,@um_kg),(15,21,2,@um_kg),
 (16,22,1,@um_kg),(17,7,1,@um_kg);
+-- NO SE PUDO AGREGAR ESTA TABLA
+
 
 INSERT INTO PUBLICACION_SERVICIO (id_pub, id_serv, horario) VALUES
 (18,1,'L-V 9:00-17:00'),
@@ -338,7 +346,13 @@ INSERT INTO PROMOCION (titulo, descripcion, fecha_ini, fecha_fin, banner, descue
 ('Semana Verde','Descuentos eco','2025-10-05','2025-10-12',NULL,10,2),
 ('Viernes Circular','Promo puntual','2025-10-17','2025-10-17',NULL,15,1);
 
+
+
 INSERT INTO PROMOCION_PRODUCTO (id_prom, id_prod) VALUES (1,1),(1,10),(1,16);
+-- NO SE PUDO AGREGAR ESTE DATO
+
+
+
 INSERT INTO PROMOCION_SERVICIO (id_prom, id_serv) VALUES (1,1),(1,4),(1,10);
 
 -- Bitácora

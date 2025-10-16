@@ -1,7 +1,10 @@
-CREATE DATABASE TruequeComercioCircular
+DROP DATABASE IF EXISTS TruequeComercioCircular;
+CREATE DATABASE IF NOT EXISTS TruequeComercioCircular
   DEFAULT CHARACTER SET utf8mb4
   DEFAULT COLLATE utf8mb4_unicode_ci;
 USE TruequeComercioCircular;
+
+-- Catálogos / Estados
 
 CREATE TABLE ROL (
   id_rol INT PRIMARY KEY AUTO_INCREMENT,
@@ -45,19 +48,22 @@ CREATE TABLE ESTADO_REPORTE (
   UNIQUE KEY uq_est_rep_nombre (nombre)
 );
 
+-- Señal de signo para el cálculo de saldos
+
 CREATE TABLE TIPO_MOVIMIENTO (
-    id_tipo_mov INT PRIMARY KEY AUTO_INCREMENT,
-    nombre VARCHAR(50) NOT NULL,
-    descripcion VARCHAR(255),
-    UNIQUE KEY uq_tipo_mov_nombre (nombre)
-);
+  id_tipo_mov INT PRIMARY KEY AUTO_INCREMENT,
+  nombre VARCHAR(50) NOT NULL,
+  signo ENUM('IN','OUT') NOT NULL,        -- IN = abono/ingreso ^ OUT = débito/egreso
+  descripcion VARCHAR(255),
+  UNIQUE KEY uq_tipo_mov_nombre (nombre)
+) ;
 
 CREATE TABLE TIPO_BITACORA (
   id_tipo_bit INT PRIMARY KEY AUTO_INCREMENT,
   nombre VARCHAR(50) NOT NULL,
   descripcion VARCHAR(255),
   UNIQUE KEY uq_tipo_bit_nombre (nombre)
-);
+) ;
 
 CREATE TABLE UNIDAD_MEDIDA (
   id_um INT PRIMARY KEY AUTO_INCREMENT,
@@ -65,8 +71,8 @@ CREATE TABLE UNIDAD_MEDIDA (
   simbolo VARCHAR(10) NOT NULL,
   UNIQUE KEY uq_um_nombre (nombre),
   UNIQUE KEY uq_um_simbolo (simbolo)
-);
-
+) ;
+-- Entidades base de usuarios
 CREATE TABLE USUARIO (
   id_us INT PRIMARY KEY AUTO_INCREMENT,
   id_rol INT NOT NULL,
@@ -79,7 +85,7 @@ CREATE TABLE USUARIO (
   activo BOOLEAN NOT NULL DEFAULT TRUE,
   FOREIGN KEY (id_rol) REFERENCES ROL(id_rol)
     ON UPDATE CASCADE ON DELETE RESTRICT
-);
+) ;
 
 CREATE TABLE DETALLE_USUARIO (
   id_us INT PRIMARY KEY,
@@ -102,7 +108,7 @@ CREATE TABLE ACCESO (
   agente VARCHAR(500),
   FOREIGN KEY (id_us) REFERENCES USUARIO(id_us)
     ON UPDATE CASCADE ON DELETE CASCADE
-);
+) ;
 
 CREATE TABLE CONTRASENA (
   id_cmb INT PRIMARY KEY AUTO_INCREMENT,
@@ -114,21 +120,27 @@ CREATE TABLE CONTRASENA (
     ON UPDATE CASCADE ON DELETE CASCADE
 );
 
+-- Sin 'saldo' (lo calculamos vía vista)
+
 CREATE TABLE BILLETERA (
   id_us INT PRIMARY KEY,
   cuenta_bancaria VARCHAR(100),
-  saldo DECIMAL(15,2) NOT NULL DEFAULT 0,
   actualizado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (id_us) REFERENCES USUARIO(id_us)
-    ON UPDATE CASCADE ON DELETE CASCADE,
-  CONSTRAINT chk_billetera_saldo CHECK (saldo >= 0)
+    ON UPDATE CASCADE ON DELETE CASCADE
 );
+
+-- Ubicación / Organización / Eventos
 
 CREATE TABLE UBICACION (
   id_ub INT PRIMARY KEY AUTO_INCREMENT,
-  direccion VARCHAR(500) NOT NULL
-);
+  direccion VARCHAR(500) NOT NULL,
+  ciudad VARCHAR(100),
+  provincia VARCHAR(100),
+  lat DECIMAL(9,6),
+  lon DECIMAL(9,6)
+) ;
 
 CREATE TABLE ORGANIZACION (
   id_org INT PRIMARY KEY AUTO_INCREMENT,
@@ -141,7 +153,7 @@ CREATE TABLE ORGANIZACION (
   sitio_web VARCHAR(500),
   descripcion TEXT,
   UNIQUE KEY uq_org_nombre (nombre)
-);
+) ;
 
 CREATE TABLE EVENTO (
   cod_evento INT PRIMARY KEY AUTO_INCREMENT,
@@ -157,7 +169,7 @@ CREATE TABLE EVENTO (
     ON UPDATE CASCADE ON DELETE RESTRICT,
   CONSTRAINT chk_evento_fechas CHECK (fecha_fin >= fecha_ini),
   CONSTRAINT chk_evento_precio CHECK (precio >= 0)
-);
+) ;
 
 CREATE TABLE EVENTO_USUARIO (
   cod_evento INT,
@@ -167,19 +179,20 @@ CREATE TABLE EVENTO_USUARIO (
     ON UPDATE CASCADE ON DELETE CASCADE,
   FOREIGN KEY (id_us) REFERENCES USUARIO(id_us)
     ON UPDATE CASCADE ON DELETE CASCADE
-);
+) ;
+
+-- Productos / Servicios / Publicaciones
 
 CREATE TABLE CATEGORIA_PRODUCTO (
   id_cat_prod INT PRIMARY KEY AUTO_INCREMENT,
   nombre VARCHAR(100) NOT NULL,
   descripcion VARCHAR(255),
   UNIQUE KEY uq_cat_prod_nombre (nombre)
-);
+) ;
 
 CREATE TABLE PRODUCTO (
   id_prod INT PRIMARY KEY AUTO_INCREMENT,
   id_cat_prod INT NOT NULL,
-  id_subcat_prod INT NOT NULL,
   nombre VARCHAR(255) NOT NULL,
   descripcion TEXT,
   precio DECIMAL(15,2) NOT NULL,
@@ -188,7 +201,7 @@ CREATE TABLE PRODUCTO (
     ON UPDATE CASCADE ON DELETE RESTRICT,
   CONSTRAINT chk_producto_precio CHECK (precio >= 0),
   CONSTRAINT chk_producto_peso CHECK (peso IS NULL OR peso >= 0)
-);
+) ;
 
 CREATE TABLE CATEGORIA_SERVICIO (
   id_cat_serv INT PRIMARY KEY AUTO_INCREMENT,
@@ -214,13 +227,14 @@ CREATE TABLE SERVICIO (
     ON UPDATE CASCADE ON DELETE RESTRICT,
   CONSTRAINT chk_servicio_precio CHECK (precio >= 0),
   CONSTRAINT chk_servicio_duracion CHECK (duracion_min IS NULL OR duracion_min >= 0)
-);
+) ;
 
 CREATE TABLE PUBLICACION (
   id_pub INT PRIMARY KEY AUTO_INCREMENT,
   id_us INT NOT NULL,
   id_ub INT NOT NULL,
   id_estado_pub INT NOT NULL,
+  tipo ENUM('PRODUCTO','SERVICIO') NOT NULL, -- REGLA: una publicación es de un solo tipo
   titulo VARCHAR(255) NOT NULL,
   descripcion TEXT,
   valor_creditos DECIMAL(15,2) NOT NULL DEFAULT 0,
@@ -232,7 +246,8 @@ CREATE TABLE PUBLICACION (
     ON UPDATE CASCADE ON DELETE RESTRICT,
   FOREIGN KEY (id_estado_pub) REFERENCES ESTADO_PUBLICACION(id_estado_pub)
     ON UPDATE CASCADE ON DELETE RESTRICT,
-  CONSTRAINT chk_publicacion_creditos CHECK (valor_creditos >= 0)
+  CONSTRAINT chk_publicacion_creditos CHECK (valor_creditos >= 0),
+  CONSTRAINT chk_pub_fechas CHECK (fecha_act >= fecha_pub)
 );
 
 CREATE TABLE PUBLICACION_PRODUCTO (
@@ -248,7 +263,7 @@ CREATE TABLE PUBLICACION_PRODUCTO (
   FOREIGN KEY (id_um) REFERENCES UNIDAD_MEDIDA(id_um)
     ON UPDATE CASCADE ON DELETE RESTRICT,
   CONSTRAINT chk_pubprod_cantidad CHECK (cantidad > 0)
-);
+) ;
 
 CREATE TABLE PUBLICACION_SERVICIO (
   id_pub INT,
@@ -260,6 +275,8 @@ CREATE TABLE PUBLICACION_SERVICIO (
   FOREIGN KEY (id_serv) REFERENCES SERVICIO(id_serv)
     ON UPDATE CASCADE ON DELETE RESTRICT
 );
+
+-- Potenciadores / Promociones
 
 CREATE TABLE POTENCIADOR (
   id_poten INT PRIMARY KEY AUTO_INCREMENT,
@@ -278,7 +295,7 @@ CREATE TABLE POTENCIADOR (
   CONSTRAINT chk_poten_precio CHECK (precio >= 0),
   CONSTRAINT chk_poten_duracion CHECK (duracion_dias > 0),
   CONSTRAINT chk_poten_fechas CHECK (fecha_fin >= fecha_inicio)
-);
+) ;
 
 CREATE TABLE PROMOCION (
   id_prom INT PRIMARY KEY AUTO_INCREMENT,
@@ -287,13 +304,13 @@ CREATE TABLE PROMOCION (
   fecha_ini DATE NOT NULL,
   fecha_fin DATE NOT NULL,
   banner VARCHAR(500),
-  descuento DECIMAL(5,2) NOT NULL,
+  descuento DECIMAL(5,2) NOT NULL, -- 0..100 %
   id_estado_prom INT NOT NULL,
   FOREIGN KEY (id_estado_prom) REFERENCES ESTADO_PROMOCION(id_estado_prom)
     ON UPDATE CASCADE ON DELETE RESTRICT,
   CONSTRAINT chk_prom_fechas CHECK (fecha_fin >= fecha_ini),
   CONSTRAINT chk_prom_desc CHECK (descuento >= 0 AND descuento <= 100)
-);
+) ;
 
 CREATE TABLE PROMOCION_PRODUCTO (
   id_prom INT,
@@ -303,7 +320,7 @@ CREATE TABLE PROMOCION_PRODUCTO (
     ON UPDATE CASCADE ON DELETE CASCADE,
   FOREIGN KEY (id_prod) REFERENCES PRODUCTO(id_prod)
     ON UPDATE CASCADE ON DELETE RESTRICT
-);
+) ;
 
 CREATE TABLE PROMOCION_SERVICIO (
   id_prom INT,
@@ -313,7 +330,9 @@ CREATE TABLE PROMOCION_SERVICIO (
     ON UPDATE CASCADE ON DELETE CASCADE,
   FOREIGN KEY (id_serv) REFERENCES SERVICIO(id_serv)
     ON UPDATE CASCADE ON DELETE RESTRICT
-);
+) ;
+
+-- Créditos / Movimientos / Transacciones
 
 CREATE TABLE PAQUETE_CREDITO (
   id_paquete INT PRIMARY KEY AUTO_INCREMENT,
@@ -324,7 +343,7 @@ CREATE TABLE PAQUETE_CREDITO (
   CONSTRAINT chk_paq_creditos CHECK (cantidad_creditos > 0),
   CONSTRAINT chk_paq_precio CHECK (precio >= 0),
   UNIQUE KEY uq_paquete_nombre (nombre)
-);
+) ;
 
 CREATE TABLE COMPRA_CREDITO (
   id_compra INT PRIMARY KEY AUTO_INCREMENT,
@@ -342,7 +361,14 @@ CREATE TABLE COMPRA_CREDITO (
     ON UPDATE CASCADE ON DELETE RESTRICT,
   CONSTRAINT chk_compra_creditos CHECK (creditos > 0),
   CONSTRAINT chk_compra_monto CHECK (monto >= 0)
-);
+) ;
+
+-- Estados de intercambio + cantidad
+CREATE TABLE ESTADO_INTERCAMBIO (
+  id_estado_inter INT PRIMARY KEY AUTO_INCREMENT,
+  nombre VARCHAR(50) UNIQUE NOT NULL,
+  descripcion VARCHAR(255)
+) ;
 
 CREATE TABLE INTERCAMBIO (
   id_inter INT PRIMARY KEY AUTO_INCREMENT,
@@ -352,10 +378,12 @@ CREATE TABLE INTERCAMBIO (
   id_ub_origen INT NOT NULL,
   id_ub_destino INT NOT NULL,
   id_um INT NOT NULL,
+  cantidad DECIMAL(15,4) NOT NULL,
   costo_reembolso DECIMAL(15,2),
   fecha_sol DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   fecha_acept DATETIME,
   fecha_comp DATETIME,
+  id_estado_inter INT NOT NULL,
   FOREIGN KEY (id_us_comp) REFERENCES USUARIO(id_us)
     ON UPDATE CASCADE ON DELETE RESTRICT,
   FOREIGN KEY (id_us_vend) REFERENCES USUARIO(id_us)
@@ -368,13 +396,19 @@ CREATE TABLE INTERCAMBIO (
     ON UPDATE CASCADE ON DELETE RESTRICT,
   FOREIGN KEY (id_um) REFERENCES UNIDAD_MEDIDA(id_um)
     ON UPDATE CASCADE ON DELETE RESTRICT,
-  CONSTRAINT chk_inter_costo CHECK (costo_reembolso IS NULL OR costo_reembolso >= 0)
-);
+  FOREIGN KEY (id_estado_inter) REFERENCES ESTADO_INTERCAMBIO(id_estado_inter)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT chk_inter_costo CHECK (costo_reembolso IS NULL OR costo_reembolso >= 0),
+  CONSTRAINT chk_inter_fechas CHECK (
+      (fecha_acept IS NULL OR fecha_acept >= fecha_sol)
+  AND (fecha_comp  IS NULL OR fecha_comp  >= COALESCE(fecha_acept, fecha_sol))
+  )
+) ;
 
 CREATE TABLE TRANSACCION (
   id_trans INT PRIMARY KEY AUTO_INCREMENT,
-  id_us INT NOT NULL,
-  id_us2 INT NOT NULL,
+  id_us INT NOT NULL,    -- origen
+  id_us2 INT NOT NULL,   -- destino
   id_inter INT,
   cod_evento INT,
   fecha_trans DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -391,7 +425,7 @@ CREATE TABLE TRANSACCION (
   FOREIGN KEY (id_estado_trans) REFERENCES ESTADO_TRANSACCION(id_estado_trans)
     ON UPDATE CASCADE ON DELETE RESTRICT,
   CONSTRAINT chk_trans_monto CHECK (monto >= 0)
-);
+) ;
 
 CREATE TABLE MOVIMIENTO (
   id_mov INT PRIMARY KEY AUTO_INCREMENT,
@@ -411,14 +445,15 @@ CREATE TABLE MOVIMIENTO (
   FOREIGN KEY (id_compra) REFERENCES COMPRA_CREDITO(id_compra)
     ON UPDATE CASCADE ON DELETE SET NULL,
   CONSTRAINT chk_mov_cantidad CHECK (cantidad > 0)
-);
+) ;
 
+-- Impacto ambiental
 CREATE TABLE ORIGEN_IMPACTO (
   id_origen_imp INT PRIMARY KEY AUTO_INCREMENT,
   nombre VARCHAR(100) NOT NULL,
   descripcion VARCHAR(255),
   UNIQUE KEY uq_origen_imp_nombre (nombre)
-);
+) ;
 
 CREATE TABLE DIMENSION_IMPACTO (
   id_dim INT PRIMARY KEY AUTO_INCREMENT,
@@ -435,7 +470,7 @@ CREATE TABLE DIMENSION_UNIDAD (
     ON UPDATE CASCADE ON DELETE CASCADE,
   FOREIGN KEY (id_um) REFERENCES UNIDAD_MEDIDA(id_um)
     ON UPDATE CASCADE ON DELETE RESTRICT
-);
+) ;
 
 CREATE TABLE FACTOR_CONVERSION (
   id_dim INT,
@@ -449,7 +484,7 @@ CREATE TABLE FACTOR_CONVERSION (
     ON UPDATE CASCADE ON DELETE RESTRICT,
   FOREIGN KEY (id_um_dest) REFERENCES UNIDAD_MEDIDA(id_um)
     ON UPDATE CASCADE ON DELETE RESTRICT,
-  CONSTRAINT chk_factor_pos CHECK (factor > 0)
+  CONSTRAINT chk_fc_pos CHECK (factor > 0)
 );
 
 CREATE TABLE EVENTO_IMPACTO (
@@ -463,7 +498,7 @@ CREATE TABLE EVENTO_IMPACTO (
     ON UPDATE CASCADE ON DELETE CASCADE,
   FOREIGN KEY (id_origen_imp) REFERENCES ORIGEN_IMPACTO(id_origen_imp)
     ON UPDATE CASCADE ON DELETE RESTRICT
-);
+) ;
 
 CREATE TABLE EVENTO_IMPACTO_DETALLE (
   id_impacto INT,
@@ -481,12 +516,15 @@ CREATE TABLE EVENTO_IMPACTO_DETALLE (
 );
 
 CREATE TABLE IMPACTO_MENSUAL (
-  ym DATE,
+  ym DATE,                 -- usar día 1 del mes
   id_us INT,
   id_dim INT,
   categoria VARCHAR(100),
   valor_total DECIMAL(15,4) NOT NULL,
   id_um INT NOT NULL,
+  -- columnas generadas para analítica
+  anio  SMALLINT AS (YEAR(ym)) STORED,
+  mes   TINYINT  AS (MONTH(ym)) STORED,
   PRIMARY KEY (ym, id_us, id_dim, categoria),
   FOREIGN KEY (id_us) REFERENCES USUARIO(id_us)
     ON UPDATE CASCADE ON DELETE CASCADE,
@@ -497,6 +535,9 @@ CREATE TABLE IMPACTO_MENSUAL (
   CONSTRAINT chk_imp_mensual_valor CHECK (valor_total >= 0)
 );
 
+-- =============================================
+-- Recompensas / Reportes / Bitácora
+-- =============================================
 CREATE TABLE RECOMPENSA (
   id_rec INT PRIMARY KEY AUTO_INCREMENT,
   tipo VARCHAR(50) NOT NULL,
@@ -514,7 +555,7 @@ CREATE TABLE USUARIO_LOGRO (
     ON UPDATE CASCADE ON DELETE CASCADE,
   FOREIGN KEY (id_rec) REFERENCES RECOMPENSA(id_rec)
     ON UPDATE CASCADE ON DELETE RESTRICT
-);
+) ;
 
 CREATE TABLE REPORTE (
   id_reporte INT PRIMARY KEY AUTO_INCREMENT,
@@ -535,7 +576,7 @@ CREATE TABLE REPORTE (
     ON UPDATE CASCADE ON DELETE SET NULL,
   FOREIGN KEY (id_estado_rep) REFERENCES ESTADO_REPORTE(id_estado_rep)
     ON UPDATE CASCADE ON DELETE RESTRICT
-);
+) ;
 
 CREATE TABLE BITACORA (
   id_bitacora INT PRIMARY KEY AUTO_INCREMENT,
@@ -551,7 +592,9 @@ CREATE TABLE BITACORA (
     ON UPDATE CASCADE ON DELETE RESTRICT,
   FOREIGN KEY (id_us) REFERENCES USUARIO(id_us)
     ON UPDATE CASCADE ON DELETE SET NULL
-);
+) ;
+
+-- Índices recomendados
 
 CREATE INDEX idx_usuario_email ON USUARIO(email);
 CREATE INDEX idx_usuario_rol ON USUARIO(id_rol);
@@ -560,9 +603,11 @@ CREATE INDEX idx_publicacion_usuario ON PUBLICACION(id_us);
 CREATE INDEX idx_publicacion_estado ON PUBLICACION(id_estado_pub);
 CREATE INDEX idx_publicacion_fecha ON PUBLICACION(fecha_pub);
 CREATE INDEX idx_publicacion_ub ON PUBLICACION(id_ub);
+CREATE INDEX idx_pub_usuario_fecha ON PUBLICACION(id_us, fecha_pub);
 
 CREATE INDEX idx_serv_cat_estado ON SERVICIO(id_cat_serv, id_estado_serv);
 CREATE INDEX idx_serv_usuario ON SERVICIO(id_us);
+CREATE INDEX idx_serv_estado_user ON SERVICIO(id_estado_serv, id_us);
 
 CREATE INDEX idx_producto_cat ON PRODUCTO(id_cat_prod);
 
@@ -581,5 +626,10 @@ CREATE INDEX idx_evento_usuario ON EVENTO_USUARIO(id_us);
 
 CREATE INDEX idx_reporte_fecha ON REPORTE(fecha_reporte);
 CREATE INDEX idx_bitacora_fecha ON BITACORA(fecha);
+CREATE INDEX idx_bitacora_objeto ON BITACORA(entidad, id_entidad, fecha);
+
 CREATE INDEX idx_impacto_usuario ON EVENTO_IMPACTO(id_us);
 CREATE INDEX idx_impacto_fecha ON EVENTO_IMPACTO(creado_en);
+CREATE INDEX idx_imp_mensual_user_dim_mes ON IMPACTO_MENSUAL(id_us,id_dim,anio,mes);
+
+CREATE INDEX idx_ub_geo ON UBICACION(ciudad, provincia);

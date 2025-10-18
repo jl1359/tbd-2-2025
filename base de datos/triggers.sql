@@ -389,6 +389,7 @@ END$$
 DELIMITER ;
 
 /*procedimiento Para qué: Otorga logros simples (ej. ≥10 anuncios) en USUARIO_LOGRO.
+
 Úsalo: Post-acciones relevantes (crear publicación) o en jobs periódicos.*/
 DROP PROCEDURE IF EXISTS sp_verificar_logros;
 DELIMITER $$

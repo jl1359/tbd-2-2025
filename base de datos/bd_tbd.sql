@@ -11,7 +11,7 @@ CREATE TABLE ROL (
   nombre VARCHAR(50) NOT NULL,
   descripcion VARCHAR(255),
   UNIQUE KEY uq_rol_nombre (nombre)
-) ;
+);
 
 CREATE TABLE ESTADO_PUBLICACION (
   id_estado_pub INT PRIMARY KEY AUTO_INCREMENT,

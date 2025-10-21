@@ -1,288 +1,322 @@
-use truequeComercioCircular;
--- Nuevos datos para ROL
+-- ROL
 INSERT INTO ROL (nombre, descripcion) VALUES
 ('Admin', 'Administrador completo'),
 ('User', 'Usuario básico'),
 ('Guest', 'Invitado limitado'),
 ('Moderator', 'Moderador de contenido'),
-('Admin', 'Duplicado para probar error'); -- Debería fallar por UNIQUE
+('Admin', 'Duplicado para probar error'), -- Debería fallar por UNIQUE
+('NombreMuyLargoParaProbarLimiteDeCincuentaCaracteresExcedido', 'Excede longitud'); -- Debería fallar por VARCHAR(50)
 
--- Nuevos datos para ESTADO_PUBLICACION
+-- ESTADO_PUBLICACION
 INSERT INTO ESTADO_PUBLICACION (nombre, descripcion) VALUES
 ('Activo', 'Publicación visible'),
 ('Inactivo', NULL), -- Prueba descripción nula
 ('Pendiente', 'En revisión'),
 ('Eliminado', 'Borrado permanentemente'),
-('ActivoLargoNombreParaProbarLimiteDe50', 'Descripción larga'); -- Nombre > 50, debería fallar
+('NombreMuyLargoParaProbarLimiteDeCincuentaCaracteresExcedido', 'Excede longitud'), -- Debería fallar por VARCHAR(50)
+('Activo', 'Duplicado'); -- Debería fallar por UNIQUE
 
--- Nuevos datos para ESTADO_SERVICIO
+-- ESTADO_SERVICIO
 INSERT INTO ESTADO_SERVICIO (nombre, descripcion) VALUES
 ('Disponible', 'Servicio listo'),
 ('Pausado', ''),
 ('Finalizado', 'Servicio completado'),
 ('Cancelado', 'Servicio anulado'),
-('Disponible', 'Duplicado'); -- Debería fallar
+('Disponible', 'Duplicado'), -- Debería fallar por UNIQUE
+('NombreMuyLargoParaProbarLimiteDeCincuentaCaracteresExcedido', 'Excede longitud'); -- Debería fallar por VARCHAR(50)
 
--- Nuevos datos para ESTADO_PROMOCION
+-- ESTADO_PROMOCION
 INSERT INTO ESTADO_PROMOCION (nombre, descripcion) VALUES
 ('Activa', 'Promoción en curso'),
 ('Expirada', 'Promoción terminada'),
 ('Planificada', 'Promoción futura'),
 ('Cancelada', 'Promoción cancelada'),
-('Activa', 'Duplicado'); -- Fallo esperado
+('Activa', 'Duplicado'), -- Debería fallar por UNIQUE
+('NombreMuyLargoParaProbarLimiteDeCincuentaCaracteresExcedido', 'Excede longitud'); -- Debería fallar por VARCHAR(50)
 
--- Nuevos datos para ESTADO_TRANSACCION
+-- ESTADO_TRANSACCION
 INSERT INTO ESTADO_TRANSACCION (nombre, descripcion) VALUES
 ('Pendiente', 'Transacción en espera'),
 ('Completada', 'Transacción finalizada'),
 ('Rechazada', 'Transacción denegada'),
 ('Anulada', 'Transacción cancelada'),
-('Pendiente', 'Duplicado'); -- Fallo
+('Pendiente', 'Duplicado'), -- Debería fallar por UNIQUE
+('NombreMuyLargoParaProbarLimiteDeCincuentaCaracteresExcedido', 'Excede longitud'); -- Debería fallar por VARCHAR(50)
 
--- Nuevos datos para ESTADO_REPORTE
+-- ESTADO_REPORTE
 INSERT INTO ESTADO_REPORTE (nombre, descripcion) VALUES
 ('Abierto', 'Reporte recibido'),
 ('Cerrado', 'Reporte resuelto'),
 ('En Revisión', 'Reporte en análisis'),
 ('Descartado', 'Reporte sin mérito'),
-('Abierto#', 'Con carácter especial');
+('Abierto#', 'Con carácter especial'), -- Válido
+('NombreMuyLargoParaProbarLimiteDeCincuentaCaracteresExcedido', 'Excede longitud'); -- Debería fallar por VARCHAR(50)
 
--- Nuevos datos para TIPO_MOVIMIENTO
-INSERT INTO TIPO_MOVIMIENTO (nombre, descripcion) VALUES
-('Ingreso', 'Aumento de saldo'),
-('Egreso', 'Disminución de saldo'),
-('Bloqueo', 'Retención temporal'),
-('Liberación', 'Liberación de retención'),
-('Ingreso', 'Duplicado'); -- Fallo
+-- TIPO_MOVIMIENTO
+INSERT INTO TIPO_MOVIMIENTO (nombre, signo, descripcion) VALUES
+('Ingreso', 'IN', 'Aumento de saldo'),
+('Egreso', 'OUT', 'Disminución de saldo'),
+('Bloqueo', 'OUT', 'Retención temporal'),
+('Liberación', 'IN', 'Liberación de retención'),
+('Ingreso', 'IN', 'Duplicado'), -- Debería fallar por UNIQUE
+('NombreMuyLargoParaProbarLimiteDeCincuentaCaracteresExcedido', 'IN', 'Excede longitud'); -- Debería fallar por VARCHAR(50)
 
--- Nuevos datos para TIPO_BITACORA
+-- TIPO_BITACORA
 INSERT INTO TIPO_BITACORA (nombre, descripcion) VALUES
 ('Seguridad', 'Accesos y seguridad'),
 ('Negocio', 'Operaciones de negocio'),
 ('Sistema', 'Eventos del sistema'),
 ('Auditoria', 'Registros de auditoría'),
-('Seguridad', 'Duplicado'); -- Fallo
+('Seguridad', 'Duplicado'), -- Debería fallar por UNIQUE
+('NombreMuyLargoParaProbarLimiteDeCincuentaCaracteresExcedido', 'Excede longitud'); -- Debería fallar por VARCHAR(50)
 
--- Nuevos datos para UNIDAD_MEDIDA
+-- UNIDAD_MEDIDA
 INSERT INTO UNIDAD_MEDIDA (nombre, simbolo) VALUES
 ('Litro', 'L'),
 ('Kilómetro', 'km'),
 ('Minuto', 'min'),
 ('Pieza', 'pz'),
-('Litro', 'L'); -- Fallo por nombre y símbolo
+('Litro', 'L'), -- Debería fallar por UNIQUE (nombre y símbolo)
+('NombreMuyLargoParaProbarLimiteDeCincuentaCaracteresExcedido', 'Excede'), -- Debería fallar por VARCHAR(50)
+('Kilogramo', 'kg'); -- Válido
 
--- Nuevos datos para USUARIO
+-- USUARIO
 INSERT INTO USUARIO (id_rol, nombre, apellido, email, telefono, direccion) VALUES
 (1, 'Juan', 'Pérez', 'juan@email.com', '70000001', 'Calle 1'),
 (2, 'María', 'López', 'maria@email.com', '70000002', 'Calle 2'),
 (3, 'Pedro', 'García', 'pedro@email.com', '70000003', 'Calle 3'),
-(99, 'Luis', 'Martínez', 'luis@email.com', '70000004', 'Calle 4'), -- Fallo por FK id_rol no existe
-(1, 'Juan', 'Pérez', 'juan@email.com', '70000005', 'Calle 5'); -- Fallo por email duplicado
+(99, 'Luis', 'Martínez', 'luis@email.com', '70000004', 'Calle 4'), -- Debería fallar por FK id_rol
+(1, 'Ana', 'Gómez', 'juan@email.com', '70000005', 'Calle 5'); -- Debería fallar por UNIQUE email
 
--- Nuevos datos para DETALLE_USUARIO
+-- DETALLE_USUARIO
 INSERT INTO DETALLE_USUARIO (id_us, cant_anuncios, ult_ingreso, likes, favoritos, denuncias, ventas) VALUES
 (1, 3, '2025-10-14', 5, 2, 0, 1),
 (2, 4, '2025-10-14', 7, 3, 1, 2),
-(3, 2, '2025-10-14', -1, 1, 0, 0), -- Debería fallar si hay check en likes >= 0
-(4, 5, '2025-10-14', 6, 4, 0, 3),
-(5, 1, '2025-10-14', 2, 0, 0, 0);
+(3, 2, '2025-10-14', -1, 1, 0, 0), -- Debería fallar si hay CHECK implícito para likes >= 0
+(99, 5, '2025-10-14', 6, 4, 0, 3); -- Debería fallar por FK id_us
 
--- Nuevos datos para ACCESO
+-- ACCESO
 INSERT INTO ACCESO (id_us, fecha_acc, exito, ip, agente) VALUES
 (1, '2025-10-14', TRUE, '192.168.1.1', 'Chrome'),
-(2, '2025-10-14', FALSE, 'invalid-ip', 'Firefox'), -- Debería funcionar
-(3, '2025-10-14', TRUE, '192.168.1.3', 'Safari');
+(2, '2025-10-14', FALSE, '192.168.1.2', 'Firefox'),
+(3, '2025-10-14', TRUE, '192.168.1.3', 'Safari'),
+(99, '2025-10-14', TRUE, '192.168.1.4', 'Edge'); -- Debería fallar por FK id_us
 
--- Nuevos datos para CONTRASENA
+-- CONTRASENA
 INSERT INTO CONTRASENA (id_us, hash) VALUES
 (1, AES_ENCRYPT('pass1', 'key')),
 (2, AES_ENCRYPT('pass2', 'key')),
-(3, ''); -- Fallo por NOT NULL
+(3, AES_ENCRYPT('pass3', 'key')),
+(3, AES_ENCRYPT('pass4', 'key')), -- Debería fallar por UNIQUE id_us
+(99, AES_ENCRYPT('pass5', 'key')); -- Debería fallar por FK id_us
 
--- Nuevos datos para BILLETERA
-INSERT INTO BILLETERA (id_us, cuenta_bancaria, saldo) VALUES
-(1, 'ACCT1', 100.00),
-(2, 'ACCT2', -50.00); -- Fallo por check saldo >= 0
+-- BILLETERA
+INSERT INTO BILLETERA (id_us, cuenta_bancaria) VALUES
+(1, 'ACCT1'),
+(2, 'ACCT2'),
+(3, 'ACCT3'),
+(99, 'ACCT4'); -- Debería fallar por FK id_us
 
--- Nuevos datos para UBICACION
-INSERT INTO UBICACION (direccion) VALUES
-('Calle A'),
-(''); -- Fallo por NOT NULL
+-- UBICACION
+INSERT INTO UBICACION (direccion, ciudad, provincia, lat, lon) VALUES
+('Calle A', 'Ciudad A', 'Provincia A', 40.7128, -74.0060),
+('Calle B', 'Ciudad B', 'Provincia B', 34.0522, -118.2437),
+('', 'Ciudad C', 'Provincia C', 51.5074, -0.1278), -- Debería fallar por NOT NULL direccion
+('Calle D', NULL, NULL, NULL, NULL); -- Válido, ciudad/provincia/lat/lon permiten NULL
 
--- Nuevos datos para ORGANIZACION
+-- ORGANIZACION
 INSERT INTO ORGANIZACION (nombre, tipo, correo) VALUES
 ('Org1', 'ONG', 'org1@email.com'),
-('Org1', 'Empresa', 'org2@email.com'); -- Fallo por UNIQUE nombre
+('Org2', 'Empresa', 'org2@email.com'),
+('Org1', 'Cooperativa', 'org3@email.com'), -- Debería fallar por UNIQUE nombre
+('OrganizaciónConNombreMuyLargoParaProbarLimiteDeDoscientosCincuentaYCincoCaracteresExcedido1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890', 'ONG', 'org4@email.com'); -- Debería fallar por VARCHAR(255)
 
--- Nuevos datos para EVENTO
+-- EVENTO
 INSERT INTO EVENTO (id_org, titulo, descripcion, fecha_ini, fecha_fin, lugar, precio, activo) VALUES
 (1, 'Evento 1', 'Descripción 1', '2025-10-15', '2025-10-16', 'Lugar 1', 10.00, TRUE),
-(2, 'Evento 2', 'Descripción 2', '2025-10-20', '2025-10-19', 'Lugar 2', 20.00, FALSE), -- Fallo por fecha_fin < fecha_ini
-(3, 'Evento 3', 'Descripción 3', '2025-10-25', '2025-10-26', 'Lugar 3', -5.00, TRUE); -- Fallo por check precio >= 0
+(2, 'Evento 2', 'Descripción 2', '2025-10-20', '2025-10-19', 'Lugar 2', 20.00, FALSE), -- Debería fallar por CHECK fecha_fin >= fecha_ini
+(1, 'Evento 3', 'Descripción 3', '2025-10-25', '2025-10-26', 'Lugar 3', -5.00, TRUE); -- Debería fallar por CHECK precio >= 0
 
--- Nuevos datos para EVENTO_USUARIO
+-- EVENTO_USUARIO
 INSERT INTO EVENTO_USUARIO (cod_evento, id_us) VALUES
 (1, 1),
-(2, 2), -- Fallo si evento 2 no existe
-(3, 3);
+(2, 2), -- Puede fallar si evento 2 no se insertó
+(3, 3); -- Puede fallar si evento 3 no se insertó
 
--- Nuevos datos para CATEGORIA_PRODUCTO
+-- CATEGORIA_PRODUCTO
 INSERT INTO CATEGORIA_PRODUCTO (nombre, descripcion) VALUES
-('Cat1', 'Descripción 1'),
-('Cat2', 'Descripción 2'),
-('Cat1', 'Duplicado'); -- Fallo por UNIQUE
+('Electrónica', 'Productos electrónicos'),
+('Ropa', 'Vestimenta'),
+('Electrónica', 'Duplicado'), -- Debería fallar por UNIQUE
+('CategoríaConNombreMuyLargoParaProbarLimiteDeCienCaracteresExcedido1234567890123456789012345678901234', 'Excede longitud'); -- Debería fallar por VARCHAR(100)
 
--- Nuevos datos para PRODUCTO
-INSERT INTO PRODUCTO (id_cat_prod, id_subcat_prod, nombre, descripcion, precio, peso) VALUES
-(1, 1, 'Prod1', 'Descripción 1', 50.00, 2.0),
-(2, 2, 'Prod2', 'Descripción 2', -10.00, 1.0), -- Fallo por check precio >= 0
-(3, 3, 'Prod3', 'Descripción 3', 30.00, -1.0); -- Fallo por check peso >= 0
+-- PRODUCTO
+INSERT INTO PRODUCTO (id_cat_prod, nombre, descripcion, precio, peso) VALUES
+(1, 'Teléfono', 'Smartphone', 500.00, 0.2),
+(2, 'Camisa', 'Camisa de algodón', 20.00, 0.3),
+(1, 'Laptop', 'Laptop moderna', -10.00, 1.5), -- Debería fallar por CHECK precio >= 0
+(1, 'Tablet', 'Tablet ligera', 300.00, -0.1); -- Debería fallar por CHECK peso >= 0
 
--- Nuevos datos para CATEGORIA_SERVICIO
+-- CATEGORIA_SERVICIO
 INSERT INTO CATEGORIA_SERVICIO (nombre, descripcion) VALUES
-('ServCat1', 'Descripción 1'),
-('ServCat2', 'Descripción 2'),
-('ServCat1', 'Duplicado'); -- Fallo
+('Reparaciones', 'Servicios de reparación'),
+('Consultoría', 'Asesoramiento profesional'),
+('Reparaciones', 'Duplicado'), -- Debería fallar por UNIQUE
+('CategoríaConNombreMuyLargoParaProbarLimiteDeCienCaracteresExcedido1234567890123456789012345678901234', 'Excede longitud'); -- Debería fallar por VARCHAR(100)
 
--- Nuevos datos para SERVICIO
+-- SERVICIO
 INSERT INTO SERVICIO (id_cat_serv, id_us, nombre, descripcion, precio, duracion_min, id_estado_serv) VALUES
-(1, 1, 'Serv1', 'Descripción 1', 40.00, 60, 1),
-(2, 2, 'Serv2', 'Descripción 2', -20.00, 30, 2), -- Fallo por check precio >= 0
-(3, 3, 'Serv3', 'Descripción 3', 50.00, -10, 3); -- Fallo por check duracion_min >= 0
+(1, 1, 'Reparación de PC', 'Reparación de computadoras', 50.00, 60, 1),
+(2, 2, 'Consultoría Fiscal', 'Asesoría fiscal', 100.00, 120, 1),
+(1, 3, 'Reparación de Móvil', 'Reparación de smartphones', -20.00, 30, 1), -- Debería fallar por CHECK precio >= 0
+(1, 1, 'Mantenimiento', 'Mantenimiento general', 40.00, -10, 1); -- Debería fallar por CHECK duracion_min >= 0
 
--- Nuevos datos para PUBLICACION
-INSERT INTO PUBLICACION (id_us, id_ub, id_estado_pub, titulo, descripcion, valor_creditos) VALUES
-(1, 1, 1, 'Pub1', 'Descripción 1', 60.00),
-(2, 2, 2, 'Pub2', 'Descripción 2', -5.00), -- Fallo por check valor_creditos >= 0
-(3, 3, 3, 'Pub3', 'Descripción 3', 70.00);
+-- PUBLICACION
+INSERT INTO PUBLICACION (id_us, id_ub, id_estado_pub, tipo, titulo, descripcion, valor_creditos) VALUES
+(1, 1, 1, 'PRODUCTO', 'Venta Teléfono', 'Teléfono usado', 50.00),
+(2, 2, 2, 'SERVICIO', 'Reparación PC', 'Reparación rápida', 30.00),
+(3, 3, 3, 'PRODUCTO', 'Camisa Nueva', 'Camisa sin usar', -5.00), -- Debería fallar por CHECK valor_creditos >= 0
+(1, 1, 1, 'PRODUCTO', 'Laptop Usada', 'Laptop en buen estado', 100.00);
 
--- Nuevos datos para PUBLICACION_PRODUCTO
+-- PUBLICACION_PRODUCTO
 INSERT INTO PUBLICACION_PRODUCTO (id_pub, id_prod, cantidad, id_um) VALUES
 (1, 1, 2, 1),
-(2, 2, 0, 2), -- Fallo por check cantidad > 0
-(3, 3, 1, 3);
+(3, 2, 0, 2), -- Debería fallar por CHECK cantidad > 0
+(4, 1, 1, 1);
 
--- Nuevos datos para PUBLICACION_SERVICIO
+-- PUBLICACION_SERVICIO
 INSERT INTO PUBLICACION_SERVICIO (id_pub, id_serv, horario) VALUES
-(1, 1, 'L-V 09:00-17:00'),
-(2, 2, ''), -- Fallo por NOT NULL
-(3, 3, 'S-D 10:00-18:00');
+(2, 1, 'L-V 09:00-17:00'),
+(2, 2, ''), -- Debería fallar por NOT NULL horario
+(4, 1, 'S-D 10:00-18:00');
 
--- Nuevos datos para POTENCIADOR
+-- POTENCIADOR
 INSERT INTO POTENCIADOR (id_us, id_pub, nombre, precio, duracion_dias, fecha_inicio, fecha_fin) VALUES
 (1, 1, 'Boost', 15.00, 5, '2025-10-14', '2025-10-19'),
-(2, 2, 'Highlight', -10.00, 3, '2025-10-15', '2025-10-17'), -- Fallo por check precio >= 0
-(3, 3, 'Top', 20.00, 0, '2025-10-16', '2025-10-20'); -- Fallo por check duracion_dias > 0
+(2, 2, 'Highlight', -10.00, 3, '2025-10-15', '2025-10-17'), -- Debería fallar por CHECK precio >= 0
+(3, 4, 'Top', 20.00, 0, '2025-10-16', '2025-10-20'); -- Debería fallar por CHECK duracion_dias > 0
 
--- Nuevos datos para PROMOCION
+-- PROMOCION
 INSERT INTO PROMOCION (titulo, descripcion, fecha_ini, fecha_fin, banner, descuento, id_estado_prom) VALUES
 ('Promo1', 'Descuento 1', '2025-10-15', '2025-10-20', NULL, 10.00, 1),
-('Promo2', 'Descuento 2', '2025-10-25', '2025-10-20', NULL, 15.00, 2), -- Fallo por fecha_fin < fecha_ini
-('Promo3', 'Descuento 3', '2025-10-30', '2025-11-05', NULL, 101.00, 3); -- Fallo por check descuento <= 100
+('Promo2', 'Descuento 2', '2025-10-25', '2025-10-20', NULL, 15.00, 2), -- Debería fallar por CHECK fecha_fin >= fecha_ini
+('Promo3', 'Descuento 3', '2025-10-30', '2025-11-05', NULL, 101.00, 3); -- Debería fallar por CHECK descuento <= 100
 
--- Nuevos datos para PROMOCION_PRODUCTO
+-- PROMOCION_PRODUCTO
 INSERT INTO PROMOCION_PRODUCTO (id_prom, id_prod) VALUES
 (1, 1),
-(2, 2), -- Fallo si promo2 no existe
-(3, 3);
+(2, 2), -- Puede fallar si promo2 no se insertó
+(3, 1); -- Puede fallar si promo3 no se insertó
 
--- Nuevos datos para PROMOCION_SERVICIO
+-- PROMOCION_SERVICIO
 INSERT INTO PROMOCION_SERVICIO (id_prom, id_serv) VALUES
 (1, 1),
-(2, 2), -- Fallo
-(3, 3);
+(2, 2), -- Puede fallar si promo2 no se insertó
+(3, 1); -- Puede fallar si promo3 no se insertó
 
--- Nuevos datos para PAQUETE_CREDITO
+-- PAQUETE_CREDITO
 INSERT INTO PAQUETE_CREDITO (nombre, cantidad_creditos, precio) VALUES
 ('Basic', 100, 50.00),
-('Standard', 200, -10.00), -- Fallo por check precio >= 0
+('Standard', 200, -10.00), -- Debería fallar por CHECK precio >= 0
 ('Premium', 500, 200.00);
 
--- Nuevos datos para COMPRA_CREDITO
+-- COMPRA_CREDITO
 INSERT INTO COMPRA_CREDITO (id_us, id_paquete, creditos, monto, proveedor, referencia) VALUES
 (1, 1, 100, 50.00, 'Stripe', 'REF001'),
-(2, 2, 200, -20.00, 'PayPal', 'REF002'), -- Fallo por check monto >= 0
+(2, 3, 200, -20.00, 'PayPal', 'REF002'), -- Debería fallar por CHECK monto >= 0
 (3, 3, 500, 200.00, 'Stripe', 'REF003');
 
--- Nuevos datos para INTERCAMBIO
-INSERT INTO INTERCAMBIO (id_us_comp, id_us_vend, id_pub, id_ub_origen, id_ub_destino, id_um, costo_reembolso, fecha_acept) VALUES
-(1, 2, 1, 1, 2, 1, 10.00, '2025-10-14'),
-(2, 3, 2, 2, 3, 2, -5.00, '2025-10-14'), -- Fallo por check costo_reembolso >= 0
-(3, 4, 3, 3, 4, 3, 15.00, '2025-10-14');
+-- ESTADO_INTERCAMBIO
+INSERT INTO ESTADO_INTERCAMBIO (nombre, descripcion) VALUES
+('Solicitado', 'Intercambio solicitado'),
+('Aceptado', 'Intercambio aceptado'),
+('Completado', 'Intercambio completado'),
+('Cancelado', 'Intercambio cancelado'),
+('Solicitado', 'Duplicado'), -- Debería fallar por UNIQUE
+('NombreMuyLargoParaProbarLimiteDeCincuentaCaracteresExcedido', 'Excede longitud'); -- Debería fallar por VARCHAR(50)
 
--- Nuevos datos para TRANSACCION
-INSERT INTO TRANSACCION (id_us, id_us2, id_inter, monto, id_estado_trans) VALUES
-(1, 2, 1, 60.00, 1),
-(2, 3, 2, -10.00, 2), -- Fallo por check monto >= 0
-(3, 4, 3, 70.00, 3);
+-- INTERCAMBIO
+INSERT INTO INTERCAMBIO (id_us_comp, id_us_vend, id_pub, id_ub_origen, id_ub_destino, id_um, cantidad, costo_reembolso, fecha_sol, fecha_acept, fecha_comp, id_estado_inter) VALUES
+(1, 2, 1, 1, 2, 1, 10.0000, 5.00, '2025-10-14', '2025-10-15', '2025-10-16', 1),
+(2, 3, 2, 2, 3, 2, 0.0000, 10.00, '2025-10-14', '2025-10-14', '2025-10-13', 2), -- Debería fallar por CHECK fechas
+(3, 1, 4, 3, 1, 1, -5.0000, 15.00, '2025-10-14', NULL, NULL, 3); -- Debería fallar por CHECK cantidad > 0
 
--- Nuevos datos para MOVIMIENTO
-INSERT INTO MOVIMIENTO (id_us, id_tipo_mov, cantidad, descripcion, id_inter) VALUES
-(1, 1, 60.00, 'Movimiento 1', 1),
-(2, 2, 0.00, 'Movimiento 2', 2), -- Fallo por check cantidad > 0
-(3, 3, 70.00, 'Movimiento 3', 3);
+-- TRANSACCION
+INSERT INTO TRANSACCION (id_us, id_us2, id_inter, cod_evento, fecha_trans, monto, id_estado_trans) VALUES
+(1, 2, 1, NULL, '2025-10-14', 60.00, 1),
+(2, 3, 2, NULL, '2025-10-14', -10.00, 2), -- Debería fallar por CHECK monto >= 0
+(3, 1, 1, 1, '2025-10-14', 70.00, 3);
 
--- Nuevos datos para ORIGEN_IMPACTO
+-- MOVIMIENTO
+INSERT INTO MOVIMIENTO (id_us, id_tipo_mov, cantidad, descripcion, id_inter, id_compra) VALUES
+(1, 1, 60.00, 'Movimiento 1', 1, NULL),
+(2, 2, 0.00, 'Movimiento 2', 2, NULL), -- Debería fallar por CHECK cantidad > 0
+(3, 3, 70.00, 'Movimiento 3', 1, 1);
+
+-- ORIGEN_IMPACTO
 INSERT INTO ORIGEN_IMPACTO (nombre, descripcion) VALUES
-('Origen1', 'Descripción 1'),
-('Origen2', 'Descripción 2'),
-('Origen1', 'Duplicado'); -- Fallo
+('Reciclaje', 'Impacto por reciclaje'),
+('Energía', 'Uso de energía renovable'),
+('Reciclaje', 'Duplicado'), -- Debería fallar por UNIQUE
+('OrigenConNombreMuyLargoParaProbarLimiteDeCienCaracteresExcedido1234567890123456789012345678901234', 'Excede longitud'); -- Debería fallar por VARCHAR(100)
 
--- Nuevos datos para DIMENSION_IMPACTO
+-- DIMENSION_IMPACTO
 INSERT INTO DIMENSION_IMPACTO (nombre, descripcion) VALUES
-('Dim1', 'Descripción 1'),
-('Dim2', 'Descripción 2'),
-('Dim1', 'Duplicado'); -- Fallo
+('CO2', 'Emisiones de carbono'),
+('Agua', 'Consumo de agua'),
+('CO2', 'Duplicado'), -- Debería fallar por UNIQUE
+('DimensiónConNombreMuyLargoParaProbarLimiteDeCienCaracteresExcedido1234567890123456789012345678901234', 'Excede longitud'); -- Debería fallar por VARCHAR(100)
 
--- Nuevos datos para DIMENSION_UNIDAD
+-- DIMENSION_UNIDAD
 INSERT INTO DIMENSION_UNIDAD (id_dim, id_um) VALUES
 (1, 1),
 (2, 2),
-(1, 2); -- Debería funcionar si no hay UNIQUE
+(1, 3); -- Válido
 
--- Nuevos datos para FACTOR_CONVERSION
+-- FACTOR_CONVERSION
 INSERT INTO FACTOR_CONVERSION (id_dim, id_um_origen, id_um_dest, factor) VALUES
-(1, 1, 1, 1.0),
-(2, 2, 2, 0.0), -- Fallo por check factor > 0
-(1, 1, 2, 2.0);
+(1, 1, 2, 1.000000),
+(2, 2, 3, 0.000000), -- Debería fallar por CHECK factor > 0
+(1, 3, 1, 2.000000);
 
--- Nuevos datos para EVENTO_IMPACTO
+-- EVENTO_IMPACTO
 INSERT INTO EVENTO_IMPACTO (id_us, id_origen_imp, categoria, creado_en, notas) VALUES
-(1, 1, 'Cat1', '2025-10-14', 'Nota 1'),
-(2, 2, 'Cat2', '2025-10-14', NULL),
-(3, 1, 'Cat3', '2025-10-14', 'Nota 3');
+(1, 1, 'Reducción', '2025-10-14', 'Nota 1'),
+(2, 2, 'Conservación', '2025-10-14', NULL),
+(3, 1, 'Reciclaje', '2025-10-14', 'Nota 3');
 
--- Nuevos datos para EVENTO_IMPACTO_DETALLE
+-- EVENTO_IMPACTO_DETALLE
 INSERT INTO EVENTO_IMPACTO_DETALLE (id_impacto, id_dim, valor, id_um) VALUES
-(1, 1, 10.0, 1),
-(2, 2, -5.0, 2), -- Fallo por check valor >= 0
-(3, 1, 15.0, 1);
+(1, 1, 10.0000, 1),
+(2, 2, -5.0000, 2), -- Debería fallar por CHECK valor >= 0
+(3, 1, 15.0000, 3);
 
--- Nuevos datos para IMPACTO_MENSUAL
+-- IMPACTO_MENSUAL
 INSERT INTO IMPACTO_MENSUAL (ym, id_us, id_dim, categoria, valor_total, id_um) VALUES
-('2025-10-01', 1, 1, 'Cat1', 10.0, 1),
-('2025-10-01', 2, 2, 'Cat2', -5.0, 2), -- Fallo
-('2025-10-01', 3, 1, 'Cat3', 15.0, 1);
+('2025-10-01', 1, 1, 'Reducción', 10.0000, 1),
+('2025-10-01', 2, 2, 'Conservación', -5.0000, 2), -- Debería fallar por CHECK valor_total >= 0
+('2025-10-01', 3, 1, 'Reciclaje', 15.0000, 3);
 
--- Nuevos datos para RECOMPENSA
+-- RECOMPENSA
 INSERT INTO RECOMPENSA (tipo, nombre, monto) VALUES
-('Tipo1', 'Recomp1', 100.00),
-('Tipo2', 'Recomp2', -50.00), -- Fallo
-('Tipo3', 'Recomp3', 200.00);
+('Medalla', 'EcoLíder', 100.00),
+('Insignia', 'EcoAmigo', -50.00), -- Debería fallar por CHECK monto >= 0
+('Puntos', 'EcoPuntos', 200.00);
 
--- Nuevos datos para USUARIO_LOGRO
+-- USUARIO_LOGRO
 INSERT INTO USUARIO_LOGRO (id_us, id_rec, fecha_obtencion) VALUES
 (1, 1, '2025-10-14'),
-(2, 2, '2025-10-14'), -- Fallo si recomp2 no existe
+(2, 3, '2025-10-14'),
 (3, 3, '2025-10-14');
 
--- Nuevos datos para REPORTE
+-- REPORTE
 INSERT INTO REPORTE (id_reportante, id_usuario_reportado, id_pub_reportada, motivo, id_estado_rep) VALUES
-(1, 2, 1, 'Motivo 1', 1),
-(2, 3, 2, 'Motivo 2', 2),
-(3, 4, 3, 'Motivo 3', 3);
+(1, 2, 1, 'Contenido inapropiado', 1),
+(2, 3, 2, 'Fraude', 2),
+(3, NULL, 4, 'Spam', 3);
 
--- Nuevos datos para BITACORA
-INSERT INTO BITACORA (id_type_bit, id_us, entidad, id_entidad, accion, descripcion, ip) VALUES
-(1, 1, 'Ent1', 1, 'Acc1', 'Desc1', '192.168.1.1'),
-(2, 2, 'Ent2', 2, 'Acc2', 'Desc2', '192.168.1.2');
+-- BITACORA
+INSERT INTO BITACORA (id_tipo_bit, id_us, entidad, id_entidad, accion, descripcion, ip) VALUES
+(1, 1, 'Publicación', 1, 'Creación', 'Creó publicación', '192.168.1.1'),
+(2, 2, 'Intercambio', 2, 'Aceptación', 'Aceptó intercambio', '192.168.1.2'),
+(3, NULL, 'Sistema', NULL, 'Error', 'Error de sistema', '192.168.1.3');

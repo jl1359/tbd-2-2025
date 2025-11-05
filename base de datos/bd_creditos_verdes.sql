@@ -125,9 +125,7 @@ CREATE TABLE DIMENSION_AMBIENTAL (
   descripcion VARCHAR(255)
 ) ENGINE=InnoDB;
 
-/* ===========================
-   USUARIOS Y SEGURIDAD
-   =========================== */
+/* USUARIOS Y SEGURIDAD*/
 CREATE TABLE USUARIO (
   id_usuario INT PRIMARY KEY AUTO_INCREMENT,
   id_rol INT NOT NULL,
@@ -154,9 +152,7 @@ CREATE TABLE BITACORA_ACCESO (
   id_resultado INT NOT NULL
 ) ENGINE=InnoDB;
 
-/* ===========================
-   PUBLICACIONES / PRODUCTOS / SERVICIOS
-   =========================== */
+/* PUBLICACIONES / PRODUCTOS / SERVICIOS*/
 CREATE TABLE PUBLICACION (
   id_publicacion INT PRIMARY KEY AUTO_INCREMENT,
   id_usuario INT NOT NULL,
@@ -213,9 +209,7 @@ CREATE TABLE CALIFICACION (
   CONSTRAINT uk_calif_user_pub UNIQUE (id_usuario, id_publicacion)
 ) ENGINE=InnoDB;
 
-/* ===========================
-   BILLETERA / PAGOS / MOVIMIENTOS
-   =========================== */
+/* BILLETERA / PAGOS / MOVIMIENTOS*/
 CREATE TABLE BILLETERA (
   id_billetera INT PRIMARY KEY AUTO_INCREMENT,
   id_usuario INT NOT NULL UNIQUE,
@@ -254,9 +248,7 @@ CREATE TABLE MOVIMIENTO_CREDITOS (
   id_referencia INT NULL
 ) ENGINE=InnoDB;
 
-/* ===========================
-   TRANSACCIONES (INTERCAMBIOS)
-   =========================== */
+/* TRANSACCIONES (INTERCAMBIOS)*/
 CREATE TABLE TRANSACCION (
   id_transaccion INT PRIMARY KEY AUTO_INCREMENT,
   id_comprador INT NOT NULL,
@@ -275,9 +267,7 @@ CREATE TABLE BITACORA_INTERCAMBIO (
   descripcion VARCHAR(500)
 ) ENGINE=InnoDB;
 
-/* ===========================
-   PROMOCIONES Y GAMIFICACIÓN
-   =========================== */
+/* PROMOCIONES Y GAMIFICACIÓN    */
 CREATE TABLE PROMOCION (
   id_promocion INT PRIMARY KEY AUTO_INCREMENT,
   id_tipo_promocion INT NOT NULL,
@@ -312,9 +302,7 @@ CREATE TABLE USUARIO_LOGRO (
   CONSTRAINT uk_user_logro UNIQUE (id_usuario, id_logro)
 ) ENGINE=InnoDB;
 
-/* ===========================
-   ACTIVIDADES SOSTENIBLES
-   =========================== */
+/* ACTIVIDADES SOSTENIBLES*/
 CREATE TABLE ACTIVIDAD_SOSTENIBLE (
   id_actividad INT PRIMARY KEY AUTO_INCREMENT,
   id_usuario INT NOT NULL,
@@ -324,9 +312,7 @@ CREATE TABLE ACTIVIDAD_SOSTENIBLE (
   evidencia_url VARCHAR(500)
 ) ENGINE=InnoDB;
 
-/* ===========================
-   PUBLICIDAD
-   =========================== */
+/* PUBLICIDAD*/
 CREATE TABLE PUBLICIDAD (
   id_publicidad INT PRIMARY KEY AUTO_INCREMENT,
   id_usuario INT NOT NULL,
@@ -357,9 +343,7 @@ CREATE TABLE REPORTE_IMPACTO (
   total_usuarios_activos BIGINT NOT NULL
 ) ENGINE=InnoDB;
 
-/* ===========================
-   AMBIENTAL
-   =========================== */
+/* AMBIENTAL*/
 CREATE TABLE EQUIVALENCIA_IMPACTO (
   id_equivalencia INT PRIMARY KEY AUTO_INCREMENT,
   id_categoria INT NOT NULL,
@@ -394,23 +378,13 @@ CREATE TABLE EVENTO_AMBIENTAL (
   descripcion VARCHAR(255)
 ) ENGINE=InnoDB;
 
-/* ======================================================
-   ÍNDICES (para FKs y consultas frecuentes)
-   ====================================================== */
+/* ÍNDICES (para FKs y consultas frecuentes)*/
 -- USUARIO
 CREATE INDEX ix_usuario_rol ON USUARIO (id_rol);
-
--- ROL_PERMISO
-CREATE INDEX ix_rolperm_rol ON ROL_PERMISO (id_rol);
-CREATE INDEX ix_rolperm_perm ON ROL_PERMISO (id_permiso);
 
 -- BITACORA_ACCESO
 CREATE INDEX ix_bitacceso_usuario ON BITACORA_ACCESO (id_usuario);
 CREATE INDEX ix_bitacceso_resultado ON BITACORA_ACCESO (id_resultado);
-
--- FACTOR_CONVERSION
-CREATE INDEX ix_factor_um_origen ON FACTOR_CONVERSION (id_um_origen);
-CREATE INDEX ix_factor_um_destino ON FACTOR_CONVERSION (id_um_destino);
 
 -- PUBLICACION
 CREATE INDEX ix_pub_usuario ON PUBLICACION (id_usuario);
@@ -427,16 +401,8 @@ CREATE INDEX ix_pubprod_um ON PUBLICACION_PRODUCTO (id_um);
 CREATE INDEX ix_pubserv_pub ON PUBLICACION_SERVICIO (id_publicacion);
 CREATE INDEX ix_pubserv_serv ON PUBLICACION_SERVICIO (id_servicio);
 
--- CALIFICACION
-CREATE INDEX ix_calif_usuario ON CALIFICACION (id_usuario);
-CREATE INDEX ix_calif_pub ON CALIFICACION (id_publicacion);
-
 -- BILLETERA
 CREATE INDEX ix_billetera_usuario ON BILLETERA (id_usuario);
-
--- SIGNO_X_TIPO_MOV
-CREATE INDEX ix_sxtm_tipo ON SIGNO_X_TIPO_MOV (id_tipo_movimiento);
-CREATE INDEX ix_sxtm_signo ON SIGNO_X_TIPO_MOV (id_signo);
 
 -- COMPRA_CREDITOS
 CREATE INDEX ix_compra_usuario ON COMPRA_CREDITOS (id_usuario);
@@ -457,15 +423,6 @@ CREATE INDEX ix_bitint_tx ON BITACORA_INTERCAMBIO (id_transaccion);
 CREATE INDEX ix_bitint_origen ON BITACORA_INTERCAMBIO (id_usuario_origen);
 CREATE INDEX ix_bitint_destino ON BITACORA_INTERCAMBIO (id_usuario_destino);
 
--- PROMOCION / PROMOCION_PUBLICACION
-CREATE INDEX ix_promo_tipo ON PROMOCION (id_tipo_promocion);
-CREATE INDEX ix_promopub_promo ON PROMOCION_PUBLICACION (id_promocion);
-CREATE INDEX ix_promopub_pub ON PROMOCION_PUBLICACION (id_publicacion);
-
--- LOGRO / USUARIO_LOGRO
-CREATE INDEX ix_logro_tipo ON LOGRO (id_tipo_logro);
-CREATE INDEX ix_userlogro_user ON USUARIO_LOGRO (id_usuario);
-CREATE INDEX ix_userlogro_logro ON USUARIO_LOGRO (id_logro);
 
 -- ACTIVIDAD_SOSTENIBLE
 CREATE INDEX ix_actsos_usuario ON ACTIVIDAD_SOSTENIBLE (id_usuario);
@@ -490,14 +447,7 @@ CREATE INDEX ix_impamb_tx ON IMPACTO_AMBIENTAL (id_transaccion);
 CREATE INDEX ix_impamb_categoria ON IMPACTO_AMBIENTAL (id_categoria);
 CREATE INDEX ix_impamb_periodo ON IMPACTO_AMBIENTAL (id_periodo);
 
--- EVENTO_AMBIENTAL
-CREATE INDEX ix_eventoamb_usuario ON EVENTO_AMBIENTAL (id_usuario);
-CREATE INDEX ix_eventoamb_dimension ON EVENTO_AMBIENTAL (id_dimension);
-CREATE INDEX ix_eventoamb_um ON EVENTO_AMBIENTAL (id_um);
-
-/* ===========================
-   CLAVES FORÁNEAS
-   =========================== */
+/* CLAVES FORÁNEAS*/
 -- USUARIO / ROL
 ALTER TABLE USUARIO
   ADD CONSTRAINT fk_usuario_rol

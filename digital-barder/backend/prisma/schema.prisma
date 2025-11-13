@@ -1,0 +1,523 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model actividad_sostenible {
+  id_actividad       Int     @id @default(autoincrement())
+  id_usuario         Int
+  id_tipo_actividad  Int
+  descripcion        String  @db.Text
+  creditos_otorgados Int
+  evidencia_url      String? @db.VarChar(500)
+
+  @@index([id_tipo_actividad], map: "fk_act_tipo")
+  @@index([id_usuario], map: "fk_act_usuario")
+}
+
+model billetera {
+  id_billetera    Int               @id @default(autoincrement())
+  id_usuario      Int               @unique(map: "id_usuario")
+  estado          billetera_estado? @default(ACTIVA)
+  saldo_creditos  BigInt?           @default(0)
+  saldo_bs        Decimal?          @default(0.00) @db.Decimal(12, 2)
+  cuenta_bancaria String?           @db.VarChar(100)
+}
+
+model bitacora_acceso {
+  id_acceso    Int       @id @default(autoincrement())
+  id_usuario   Int
+  fecha        DateTime? @db.DateTime(0)
+  direccion_ip String    @db.VarChar(45)
+  user_agent   String?   @db.VarChar(500)
+  id_resultado Int
+
+  @@index([id_resultado], map: "fk_bitacc_resultado")
+  @@index([id_usuario, fecha], map: "ix_bitacceso_usuario_fecha")
+}
+
+model bitacora_intercambio {
+  id_bitacora        Int     @id @default(autoincrement())
+  id_transaccion     Int
+  id_usuario_origen  Int
+  id_usuario_destino Int
+  cantidad_creditos  BigInt
+  descripcion        String? @db.VarChar(500)
+
+  @@index([id_usuario_destino], map: "fk_bi_usr_destino")
+  @@index([id_usuario_origen], map: "fk_bi_usr_origen")
+  @@index([id_transaccion], map: "ix_bitacora_trx")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model calificacion {
+  id_calificacion Int     @id @default(autoincrement())
+  id_usuario      Int
+  id_publicacion  Int
+  estrellas       Int     @db.TinyInt
+  comentario      String? @db.VarChar(300)
+
+  @@unique([id_usuario, id_publicacion], map: "id_usuario")
+  @@index([id_publicacion], map: "fk_calif_publicacion")
+}
+
+model categoria {
+  id_categoria Int     @id @default(autoincrement())
+  nombre       String  @unique(map: "nombre") @db.VarChar(100)
+  descripcion  String? @db.VarChar(255)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model compra_creditos {
+  id_compra           Int                     @id @default(autoincrement())
+  id_usuario          Int
+  id_paquete          Int
+  monto_bs            Decimal                 @db.Decimal(12, 2)
+  estado              compra_creditos_estado? @default(PENDIENTE)
+  id_transaccion_pago String?                 @unique(map: "id_transaccion_pago") @db.VarChar(255)
+
+  @@index([id_paquete], map: "fk_compra_paquete")
+  @@index([id_usuario], map: "fk_compra_usuario")
+  @@index([estado], map: "ix_compra_estado")
+}
+
+model dimension_ambiental {
+  id_dimension Int     @id @default(autoincrement())
+  codigo       String  @unique(map: "codigo") @db.VarChar(30)
+  nombre       String  @db.VarChar(100)
+  unidad_base  String? @db.VarChar(20)
+  descripcion  String? @db.VarChar(255)
+}
+
+model equivalencia_impacto {
+  id_equivalencia    Int     @id @default(autoincrement())
+  id_categoria       Int
+  id_um              Int?
+  co2_por_unidad     Decimal @db.Decimal(12, 6)
+  agua_por_unidad    Decimal @db.Decimal(12, 6)
+  energia_por_unidad Decimal @db.Decimal(12, 6)
+
+  @@unique([id_categoria, id_um], map: "id_categoria")
+  @@index([id_um], map: "fk_eq_um")
+}
+
+model evento_ambiental {
+  id_evento              Int                     @id @default(autoincrement())
+  id_usuario             Int
+  id_dimension           Int
+  fuente                 evento_ambiental_fuente
+  id_fuente              Int
+  categoria              String?                 @db.VarChar(100)
+  valor                  Decimal                 @db.Decimal(18, 6)
+  id_um                  Int?
+  contaminacion_reducida Decimal?                @db.Decimal(18, 6)
+  descripcion            String?                 @db.VarChar(255)
+
+  @@index([id_dimension], map: "fk_ev_dimension")
+  @@index([id_um], map: "fk_ev_um")
+  @@index([id_usuario], map: "fk_ev_usuario")
+}
+
+model impacto_ambiental {
+  id_impacto       Int     @id @default(autoincrement())
+  id_usuario       Int
+  id_transaccion   Int
+  id_categoria     Int
+  co2_ahorrado     Decimal @db.Decimal(12, 6)
+  agua_ahorrada    Decimal @db.Decimal(12, 6)
+  energia_ahorrada Decimal @db.Decimal(12, 6)
+  id_periodo       Int
+
+  @@index([id_transaccion], map: "fk_imp_tx")
+  @@index([id_categoria], map: "ix_impa_categoria")
+  @@index([id_periodo], map: "ix_impa_periodo")
+  @@index([id_usuario, id_periodo], map: "ix_impa_usuario_periodo")
+}
+
+model logro {
+  id_logro            Int     @id @default(autoincrement())
+  id_tipo_logro       Int
+  nombre              String  @db.VarChar(100)
+  descripcion         String? @db.VarChar(255)
+  meta_requerida      BigInt
+  creditos_recompensa BigInt
+
+  @@index([id_tipo_logro], map: "fk_logro_tipo")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model movimiento_creditos {
+  id_movimiento      Int     @id @default(autoincrement())
+  id_usuario         Int
+  id_tipo_movimiento Int
+  id_tipo_referencia Int
+  cantidad           BigInt
+  descripcion        String? @db.VarChar(255)
+  saldo_anterior     BigInt
+  saldo_posterior    BigInt
+  id_referencia      Int?
+
+  @@index([id_tipo_movimiento], map: "fk_mov_tipomov")
+  @@index([id_movimiento], map: "ix_mov_creado")
+  @@index([id_tipo_referencia], map: "ix_mov_tiporef")
+  @@index([id_usuario, id_movimiento], map: "ix_mov_usuario")
+}
+
+model paquete_creditos {
+  id_paquete        Int     @id @default(autoincrement())
+  nombre            String  @unique(map: "nombre") @db.VarChar(100)
+  cantidad_creditos BigInt
+  precio_bs         Decimal @db.Decimal(12, 2)
+  activo            Boolean @default(true)
+}
+
+model periodo {
+  id_periodo   Int       @id @default(autoincrement())
+  nombre       String    @unique(map: "nombre") @db.VarChar(50)
+  descripcion  String?   @db.VarChar(255)
+  fecha_inicio DateTime? @db.Date
+  fecha_fin    DateTime? @db.Date
+
+  @@index([fecha_inicio, fecha_fin], map: "ix_periodo_rango")
+}
+
+model permiso {
+  id_permiso  Int     @id @default(autoincrement())
+  nombre      String  @unique(map: "nombre") @db.VarChar(100)
+  descripcion String? @db.VarChar(255)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model producto {
+  id_producto  Int      @id @default(autoincrement())
+  id_categoria Int
+  nombre       String   @db.VarChar(255)
+  descripcion  String?  @db.VarChar(255)
+  precio       Decimal? @db.Decimal(12, 2)
+  peso         Decimal? @db.Decimal(10, 2)
+
+  @@index([id_categoria], map: "fk_producto_categoria")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model promocion {
+  id_promocion       Int               @id @default(autoincrement())
+  id_tipo_promocion  Int
+  nombre             String            @db.VarChar(100)
+  descripcion        String?           @db.VarChar(255)
+  creditos_otorgados BigInt
+  fecha_inicio       DateTime          @db.DateTime(0)
+  fecha_fin          DateTime          @db.DateTime(0)
+  estado             promocion_estado? @default(PROGRAMADA)
+
+  @@index([id_tipo_promocion], map: "fk_promocion_tipo")
+  @@index([estado, fecha_inicio, fecha_fin], map: "ix_promocion_activa")
+}
+
+model promocion_publicacion {
+  id_promocion   Int
+  id_publicacion Int
+
+  @@id([id_promocion, id_publicacion])
+  @@index([id_promocion], map: "ix_promopub_prom")
+  @@index([id_publicacion], map: "ix_promopub_pub")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model publicacion {
+  id_publicacion      Int                 @id @default(autoincrement())
+  id_usuario          Int
+  id_categoria        Int
+  id_tipo_publicacion Int
+  estado              publicacion_estado? @default(PUBLICADA)
+  id_ubicacion        Int?
+  titulo              String              @db.VarChar(200)
+  descripcion         String              @db.Text
+  valor_creditos      BigInt
+  imagen_url          String?             @db.VarChar(500)
+
+  @@index([id_tipo_publicacion], map: "fk_publicacion_tipopub")
+  @@index([id_ubicacion], map: "fk_publicacion_ubicacion")
+  @@index([id_categoria, estado], map: "ix_pub_categoria_estado")
+  @@index([id_usuario, estado], map: "ix_pub_usuario_estado")
+  @@fulltext([titulo, descripcion], map: "ft_pub_titulo_desc")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model publicacion_producto {
+  id_publicacion Int
+  id_producto    Int
+  cantidad       Decimal @db.Decimal(15, 4)
+  id_um          Int
+
+  @@id([id_publicacion, id_producto])
+  @@index([id_producto], map: "fk_pprd_producto")
+  @@index([id_um], map: "fk_pprd_um")
+}
+
+model publicacion_servicio {
+  id_publicacion Int
+  id_servicio    Int
+  horario        String @db.VarChar(100)
+
+  @@id([id_publicacion, id_servicio])
+  @@index([id_servicio], map: "fk_pserv_servicio")
+}
+
+model publicidad {
+  id_publicidad  Int                @id @default(autoincrement())
+  id_usuario     Int
+  id_ubicacion   Int
+  estado         publicidad_estado? @default(PROGRAMADA)
+  titulo         String             @db.VarChar(200)
+  descripcion    String?            @db.VarChar(255)
+  url_destino    String?            @db.VarChar(500)
+  fecha_inicio   DateTime           @db.DateTime(0)
+  fecha_fin      DateTime           @db.DateTime(0)
+  costo_creditos BigInt
+  clicks         BigInt?            @default(0)
+  impresiones    BigInt?            @default(0)
+
+  @@index([id_ubicacion], map: "fk_publicidad_ubipub")
+  @@index([id_usuario], map: "fk_publicidad_usuario")
+}
+
+model reporte_impacto {
+  id_reporte             Int     @id @default(autoincrement())
+  id_usuario             Int?
+  id_tipo_reporte        Int
+  id_periodo             Int
+  total_co2_ahorrado     Decimal @db.Decimal(12, 6)
+  total_agua_ahorrada    Decimal @db.Decimal(12, 6)
+  total_energia_ahorrada Decimal @db.Decimal(12, 6)
+  total_transacciones    BigInt
+  total_usuarios_activos BigInt
+
+  @@index([id_periodo], map: "fk_rep_periodo")
+  @@index([id_usuario], map: "fk_rep_usuario")
+  @@index([id_tipo_reporte, id_periodo, id_usuario], map: "ix_rep_unico_helper")
+}
+
+model resultado_acceso {
+  id_resultado Int     @id @default(autoincrement())
+  nombre       String  @unique(map: "nombre") @db.VarChar(50)
+  descripcion  String? @db.VarChar(255)
+}
+
+model rol {
+  id_rol      Int     @id @default(autoincrement())
+  nombre      String  @unique(map: "nombre") @db.VarChar(50)
+  descripcion String? @db.VarChar(255)
+}
+
+model rol_permiso {
+  id_rol     Int
+  id_permiso Int
+
+  @@id([id_rol, id_permiso])
+  @@index([id_permiso], map: "fk_rp_permiso")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model servicio {
+  id_servicio  Int              @id @default(autoincrement())
+  id_categoria Int
+  estado       servicio_estado? @default(ACTIVO)
+  nombre       String           @db.VarChar(255)
+  descripcion  String?          @db.Text
+  precio       Decimal?         @db.Decimal(12, 2)
+  duracion_min Int?             @db.SmallInt
+
+  @@index([id_categoria], map: "fk_servicio_categoria")
+}
+
+model signo_movimiento {
+  id_signo Int    @id @default(autoincrement())
+  nombre   String @unique(map: "nombre") @db.VarChar(20)
+}
+
+model signo_tipo_mov {
+  id_tipo_movimiento Int
+  id_signo           Int
+  creado_en          DateTime? @db.DateTime(0)
+
+  @@id([id_tipo_movimiento, id_signo])
+  @@index([id_signo], map: "ix_sxtm_signo")
+}
+
+model tipo_actividad {
+  id_tipo_actividad Int     @id @default(autoincrement())
+  nombre            String  @unique(map: "nombre") @db.VarChar(100)
+  descripcion       String? @db.VarChar(255)
+}
+
+model tipo_logro {
+  id_tipo_logro Int     @id @default(autoincrement())
+  nombre        String  @unique(map: "nombre") @db.VarChar(50)
+  descripcion   String? @db.VarChar(255)
+}
+
+model tipo_movimiento {
+  id_tipo_movimiento Int     @id @default(autoincrement())
+  nombre             String  @unique(map: "nombre") @db.VarChar(50)
+  descripcion        String? @db.VarChar(255)
+
+  @@index([nombre], map: "ix_tipomov_nombre")
+}
+
+model tipo_promocion {
+  id_tipo_promocion Int     @id @default(autoincrement())
+  nombre            String  @unique(map: "nombre") @db.VarChar(50)
+  descripcion       String? @db.VarChar(255)
+}
+
+model tipo_publicacion {
+  id_tipo_publicacion Int     @id @default(autoincrement())
+  nombre              String  @unique(map: "nombre") @db.VarChar(50)
+  descripcion         String? @db.VarChar(255)
+}
+
+model tipo_referencia {
+  id_tipo_referencia Int    @id @default(autoincrement())
+  nombre             String @unique(map: "nombre") @db.VarChar(30)
+
+  @@index([nombre], map: "ix_tiporef_nombre")
+}
+
+model tipo_reporte {
+  id_tipo_reporte Int     @id @default(autoincrement())
+  nombre          String  @unique(map: "nombre") @db.VarChar(50)
+  descripcion     String? @db.VarChar(255)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model transaccion {
+  id_transaccion    Int                 @id @default(autoincrement())
+  id_comprador      Int
+  id_vendedor       Int
+  id_publicacion    Int
+  cantidad_creditos BigInt
+  estado            transaccion_estado? @default(SOLICITADA)
+
+  @@index([estado], map: "ix_trans_estado")
+  @@index([id_comprador], map: "ix_tx_comprador")
+  @@index([id_publicacion], map: "ix_tx_publicacion")
+  @@index([id_vendedor], map: "ix_tx_vendedor")
+}
+
+model ubicacion {
+  id_ubicacion Int      @id @default(autoincrement())
+  direccion    String   @db.VarChar(500)
+  ciudad       String?  @db.VarChar(100)
+  provincia    String?  @db.VarChar(100)
+  latitud      Decimal? @db.Decimal(9, 6)
+  longitud     Decimal? @db.Decimal(9, 6)
+}
+
+model ubicacion_publicidad {
+  id_ubicacion Int     @id @default(autoincrement())
+  nombre       String  @unique(map: "nombre") @db.VarChar(100)
+  descripcion  String? @db.VarChar(255)
+  precio_base  Decimal @db.Decimal(12, 2)
+}
+
+model unidad_medida {
+  id_um   Int    @id @default(autoincrement())
+  nombre  String @unique(map: "nombre") @db.VarChar(100)
+  simbolo String @unique(map: "simbolo") @db.VarChar(20)
+}
+
+model usuario {
+  id_usuario    Int            @id @default(autoincrement())
+  id_rol        Int
+  estado        usuario_estado @default(ACTIVO)
+  nombre        String         @db.VarChar(100)
+  apellido      String?        @db.VarChar(100)
+  correo        String         @unique(map: "correo") @db.VarChar(255)
+  password_hash String?        @db.VarChar(255)
+  telefono      String?        @db.VarChar(25)
+  url_perfil    String?        @unique(map: "url_perfil") @db.VarChar(120)
+
+  @@index([id_rol], map: "fk_usuario_rol")
+}
+
+model usuario_logro {
+  id_usuario_logro Int     @id @default(autoincrement())
+  id_usuario       Int
+  id_logro         Int
+  progreso_actual  BigInt? @default(0)
+
+  @@unique([id_usuario, id_logro], map: "id_usuario")
+  @@index([id_logro], map: "fk_ulogro_logro")
+}
+
+enum billetera_estado {
+  ACTIVA
+  BLOQUEADA
+  CERRADA
+}
+
+enum servicio_estado {
+  ACTIVO
+  PAUSADO
+  INACTIVO
+  ELIMINADO
+}
+
+enum usuario_estado {
+  ACTIVO
+  SUSPENDIDO
+  BLOQUEADO
+  ELIMINADO
+}
+
+enum evento_ambiental_fuente {
+  PUBLICACION
+  TRANSACCION
+}
+
+enum publicidad_estado {
+  PROGRAMADA
+  ACTIVA
+  PAUSADA
+  FINALIZADA
+  CANCELADA
+}
+
+enum compra_creditos_estado {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
+  FALLIDO
+  REVERTIDO
+}
+
+enum publicacion_estado {
+  BORRADOR
+  PUBLICADA
+  PAUSADA
+  AGOTADA
+  OCULTA
+  ELIMINADA
+}
+
+enum transaccion_estado {
+  SOLICITADA
+  ACEPTADA
+  RECHAZADA
+  CANCELADA
+  COMPLETADA
+  ANULADA
+}
+
+enum promocion_estado {
+  PROGRAMADA
+  ACTIVA
+  PAUSADA
+  FINALIZADA
+  CANCELADA
+}

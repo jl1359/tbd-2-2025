@@ -1,7 +1,16 @@
+// src/modules/wallet/wallet.routes.js
 import { Router } from 'express'
-import { getSaldo } from './wallet.controller.js'
+import {
+    obtenerBilleteraUsuario,
+    movimientosUsuario,
+} from './wallet.controller.js'
 
-const r = Router()
-r.get('/me/:id_usuario', getSaldo)
+const router = Router()
 
-export default r
+// GET /api/wallet/:idUsuario
+router.get('/:idUsuario', obtenerBilleteraUsuario)
+
+// GET /api/wallet/:idUsuario/movimientos
+router.get('/:idUsuario/movimientos', movimientosUsuario)
+
+export default router

@@ -8,15 +8,17 @@ datasource db {
 }
 
 model actividad_sostenible {
-  id_actividad       Int     @id @default(autoincrement())
+  id_actividad       Int      @id @default(autoincrement())
   id_usuario         Int
   id_tipo_actividad  Int
-  descripcion        String  @db.Text
+  descripcion        String   @db.Text
   creditos_otorgados Int
-  evidencia_url      String? @db.VarChar(500)
+  evidencia_url      String?  @db.VarChar(500)
+  creado_en          DateTime @default(now()) @db.DateTime(0)
 
   @@index([id_tipo_actividad], map: "fk_act_tipo")
   @@index([id_usuario], map: "fk_act_usuario")
+  @@index([creado_en], map: "ix_actsost_creado_en")
 }
 
 model billetera {
@@ -29,11 +31,11 @@ model billetera {
 }
 
 model bitacora_acceso {
-  id_acceso    Int       @id @default(autoincrement())
+  id_acceso    Int      @id @default(autoincrement())
   id_usuario   Int
-  fecha        DateTime? @db.DateTime(0)
-  direccion_ip String    @db.VarChar(45)
-  user_agent   String?   @db.VarChar(500)
+  fecha        DateTime @default(now()) @db.DateTime(0)
+  direccion_ip String   @db.VarChar(45)
+  user_agent   String?  @db.VarChar(500)
   id_resultado Int
 
   @@index([id_resultado], map: "fk_bitacc_resultado")
@@ -79,10 +81,12 @@ model compra_creditos {
   monto_bs            Decimal                 @db.Decimal(12, 2)
   estado              compra_creditos_estado? @default(PENDIENTE)
   id_transaccion_pago String?                 @unique(map: "id_transaccion_pago") @db.VarChar(255)
+  creado_en           DateTime                @default(now()) @db.DateTime(0)
 
   @@index([id_paquete], map: "fk_compra_paquete")
   @@index([id_usuario], map: "fk_compra_usuario")
   @@index([estado], map: "ix_compra_estado")
+  @@index([creado_en], map: "ix_compra_creado_en")
 }
 
 model dimension_ambiental {
@@ -151,20 +155,22 @@ model logro {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model movimiento_creditos {
-  id_movimiento      Int     @id @default(autoincrement())
+  id_movimiento      Int      @id @default(autoincrement())
   id_usuario         Int
   id_tipo_movimiento Int
   id_tipo_referencia Int
   cantidad           BigInt
-  descripcion        String? @db.VarChar(255)
+  descripcion        String?  @db.VarChar(255)
   saldo_anterior     BigInt
   saldo_posterior    BigInt
   id_referencia      Int?
+  creado_en          DateTime @default(now()) @db.DateTime(0)
 
   @@index([id_tipo_movimiento], map: "fk_mov_tipomov")
   @@index([id_movimiento], map: "ix_mov_creado")
   @@index([id_tipo_referencia], map: "ix_mov_tiporef")
   @@index([id_usuario, id_movimiento], map: "ix_mov_usuario")
+  @@index([creado_en], map: "ix_mov_creado_en")
 }
 
 model paquete_creditos {
@@ -239,11 +245,13 @@ model publicacion {
   descripcion         String              @db.Text
   valor_creditos      BigInt
   imagen_url          String?             @db.VarChar(500)
+  creado_en           DateTime            @default(now()) @db.DateTime(0)
 
   @@index([id_tipo_publicacion], map: "fk_publicacion_tipopub")
   @@index([id_ubicacion], map: "fk_publicacion_ubicacion")
   @@index([id_categoria, estado], map: "ix_pub_categoria_estado")
   @@index([id_usuario, estado], map: "ix_pub_usuario_estado")
+  @@index([creado_en], map: "ix_pub_creado_en")
   @@fulltext([titulo, descripcion], map: "ft_pub_titulo_desc")
 }
 
@@ -279,8 +287,6 @@ model publicidad {
   fecha_inicio   DateTime           @db.DateTime(0)
   fecha_fin      DateTime           @db.DateTime(0)
   costo_creditos BigInt
-  clicks         BigInt?            @default(0)
-  impresiones    BigInt?            @default(0)
 
   @@index([id_ubicacion], map: "fk_publicidad_ubipub")
   @@index([id_usuario], map: "fk_publicidad_usuario")
@@ -402,11 +408,13 @@ model transaccion {
   id_publicacion    Int
   cantidad_creditos BigInt
   estado            transaccion_estado? @default(SOLICITADA)
+  creado_en         DateTime            @default(now()) @db.DateTime(0)
 
   @@index([estado], map: "ix_trans_estado")
   @@index([id_comprador], map: "ix_tx_comprador")
   @@index([id_publicacion], map: "ix_tx_publicacion")
   @@index([id_vendedor], map: "ix_tx_vendedor")
+  @@index([creado_en], map: "ix_tx_creado_en")
 }
 
 model ubicacion {
@@ -438,7 +446,7 @@ model usuario {
   nombre        String         @db.VarChar(100)
   apellido      String?        @db.VarChar(100)
   correo        String         @unique(map: "correo") @db.VarChar(255)
-  password_hash String?        @db.VarChar(255)
+  password_hash String         @default("") @db.VarChar(255)
   telefono      String?        @db.VarChar(25)
   url_perfil    String?        @unique(map: "url_perfil") @db.VarChar(120)
 

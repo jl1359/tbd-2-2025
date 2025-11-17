@@ -1,3 +1,9 @@
+// src/server.js
 import app from './app.js'
-const port = process.env.PORT || 4000
-app.listen(port, () => console.log(`API on http://localhost:${port}`))
+import { env } from './config/env.js'
+
+const PORT = env.PORT
+
+app.listen(PORT, () => {
+    console.log(`🚀 API running on http://localhost:${PORT}`)
+})

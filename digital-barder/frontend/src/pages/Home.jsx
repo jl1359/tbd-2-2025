@@ -1,59 +1,86 @@
-import { useEffect, useState } from "react";
-import AdminLayout from "../components/AdminLayout";
-import { getSaldo } from "../services/wallet";
-import { getFeed, search } from "../services/publicaciones";
+import React, { useEffect, useState } from "react";
+import { getHealth } from "../services/api.js";
 
 export default function Home() {
-  const [saldo, setSaldo] = useState(null);
-  const [items, setItems] = useState([]);
-  const [q, setQ] = useState("");
-  const idUsuarioDemo = 1; // TODO: tomar del JWT
+  const [health, setHealth] = useState(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    getSaldo(idUsuarioDemo).then(r => setSaldo(r.saldo_creditos)).catch(()=>setSaldo(null));
-    getFeed().then(setItems).catch(()=>setItems([]));
+    let isMounted = true;
+
+    getHealth()
+      .then((data) => {
+        if (isMounted) setHealth(data);
+      })
+      .catch((err) => {
+        if (isMounted) setError(err.message || "Error consultando API");
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  useEffect(() => {
-    const t = setTimeout(() => {
-      if (!q) return;
-      search(q).then(setItems).catch(()=>{});
-    }, 350);
-    return () => clearTimeout(t);
-  }, [q]);
-
   return (
-    <AdminLayout>
-      <div className="flex items-center justify-between mb-4">
-        <input
-          className="border rounded px-3 py-2 w-full max-w-xl"
-          placeholder="¿Qué quieres comprar?"
-          value={q}
-          onChange={(e)=>setQ(e.target.value)}
-        />
-        <div className="ml-4 rounded border px-3 py-2 bg-white">
-          <span className="text-xs text-gray-500">GRC</span>{" "}
-          <b>{saldo ?? "—"}</b>
+    <div className="space-y-4">
+      <section className="flex flex-col sm:flex-row justify-between gap-3 items-start sm:items-center">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">
+            Bienvenido al panel
+          </h2>
+          <p className="text-sm text-gray-500">
+            Aquí irán las tarjetas de saldo, publicaciones, estadísticas, etc.
+          </p>
         </div>
-      </div>
+      </section>
 
-      {!items?.length ? (
-        <div className="text-sm text-gray-600">Sin resultados.</div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {items.map((card) => (
-            <article key={card.id_publicacion} className="bg-white rounded-2xl border p-3 shadow-sm hover:shadow-md transition">
-              {card.imagen_url && (
-                <img src={card.imagen_url} alt={card.titulo} className="rounded mb-2 w-full object-cover max-h-52"/>
+      <section className="grid gap-4 md:grid-cols-3">
+        <div className="card">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+            Estado de la API
+          </p>
+          {error && (
+            <p className="text-sm text-red-600">
+              Error: <span className="font-medium">{error}</span>
+            </p>
+          )}
+          {!error && !health && (
+            <p className="text-sm text-gray-500">Verificando API…</p>
+          )}
+          {health && (
+            <div className="space-y-1 text-sm">
+              <p>
+                <span className="font-medium">ok:</span>{" "}
+                {String(health.ok ?? health.status ?? "desconocido")}
+              </p>
+              {health.env && (
+                <p>
+                  <span className="font-medium">Entorno:</span> {health.env}
+                </p>
               )}
-              <div className="text-xs text-gray-500">{card.categoria || "—"} · {card.ciudad || "—"}</div>
-              <h3 className="font-semibold">{card.titulo}</h3>
-              <div className="mt-1 text-sm">{card.valor_creditos} Green Credits</div>
-              <a className="mt-2 inline-block text-sm" href={`/detalle/${card.id_publicacion}`}>Ver Detalle</a>
-            </article>
-          ))}
+            </div>
+          )}
         </div>
-      )}
-    </AdminLayout>
+
+        <div className="card">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+            Créditos
+          </p>
+          <p className="text-sm text-gray-500">
+            Aquí puedes mostrar el saldo de créditos de la billetera del
+            usuario.
+          </p>
+        </div>
+
+        <div className="card">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+            Actividad reciente
+          </p>
+          <p className="text-sm text-gray-500">
+            Listado de últimas publicaciones, intercambios, etc.
+          </p>
+        </div>
+      </section>
+    </div>
   );
 }

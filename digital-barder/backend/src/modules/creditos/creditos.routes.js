@@ -1,5 +1,13 @@
+// src/modules/creditos/creditos.routes.js
 import { Router } from 'express'
-import { comprarPaquete } from './creditos.controller.js'
-const r = Router()
-r.post('/comprar', comprarPaquete)
-export default r
+import {
+    listarPaquetesCreditos,
+    comprarPaqueteCreditos,
+} from './creditos.controller.js'
+
+const router = Router()
+
+router.get('/paquetes', listarPaquetesCreditos)
+router.post('/comprar', comprarPaqueteCreditos)
+
+export default router

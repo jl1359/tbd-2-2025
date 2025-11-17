@@ -1,5 +1,9 @@
+// src/modules/intercambios/intercambios.routes.js
 import { Router } from 'express'
-import { intercambiar } from './intercambios.controller.js'
-const r = Router()
-r.post('/', intercambiar)
-export default r
+import { realizarIntercambio } from './intercambios.controller.js'
+
+const router = Router()
+
+router.post('/', realizarIntercambio)
+
+export default router

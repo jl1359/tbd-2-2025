@@ -1,12 +1,27 @@
+// src/modules/intercambios/intercambios.controller.js
 import { prisma } from '../../config/prisma.js'
-export async function intercambiar(req, res, next) {
+
+export async function realizarIntercambio(req, res, next) {
     try {
         const { id_comprador, id_publicacion, creditos } = req.body || {}
-        if (!id_comprador || !id_publicacion || !creditos) return res.status(400).json({ ok:false, message:'Campos requeridos' })
-        // SP realiza validaciones de saldo, inserciones y bitácora
-        await prisma.$executeRawUnsafe(`
-        CALL sp_realizar_intercambio(${Number(id_comprador)}, ${Number(id_publicacion)}, ${Number(creditos)})
-        `) /* usa tu SP */ // :contentReference[oaicite:3]{index=3}
-        res.json({ ok:true })
-    } catch (e) { next(e) }
+
+        if (!id_comprador || !id_publicacion || !creditos) {
+        return res.status(400).json({
+            ok: false,
+            message: 'id_comprador, id_publicacion y creditos son requeridos',
+        })
+        }
+
+        await prisma.$executeRaw`
+        CALL sp_realizar_intercambio(
+            ${Number(id_comprador)},
+            ${Number(id_publicacion)},
+            ${Number(creditos)}
+        )
+        `
+
+        res.json({ ok: true, message: 'Intercambio realizado' })
+    } catch (err) {
+        next(err)
+    }
 }

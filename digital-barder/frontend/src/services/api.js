@@ -1,44 +1,68 @@
+// frontend/src/services/api.js
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000/api";
 
 function authHeaders() {
   const token = localStorage.getItem("token");
   if (!token) return {};
   return {
-    Authorization: `Bearer ${token}`
+    Authorization: `Bearer ${token}`,
   };
 }
 
 export async function api(path, { method = "GET", body, headers = {} } = {}) {
-  const isJson = body && !(body instanceof FormData);
+  const isJsonBody = body && !(body instanceof FormData);
 
   const res = await fetch(`${API_URL}${path}`, {
     method,
     headers: {
-      ...(isJson ? { "Content-Type": "application/json" } : {}),
+      ...(isJsonBody ? { "Content-Type": "application/json" } : {}),
       ...authHeaders(),
-      ...headers
+      ...headers,
     },
-    body: isJson ? JSON.stringify(body) : body
+    body: isJsonBody ? JSON.stringify(body) : body,
   });
 
-  const contentType = res.headers.get("content-type") || "";
-  const isJsonResp = contentType.includes("application/json");
-  const data = isJsonResp ? await res.json() : await res.text();
+  // 👇 LEER SIEMPRE COMO TEXTO PARA EVITAR "Unexpected end of JSON input"
+  const text = await res.text();
 
   if (!res.ok) {
-    const message =
-      (isJsonResp && data && data.message) ||
-      (typeof data === "string" ? data : "Error en la solicitud");
+    let message =
+      res.statusText || `Error HTTP ${res.status}` || "Error en la solicitud";
+
+    if (text) {
+      // Intentar extraer message de un JSON de error del backend
+      try {
+        const parsed = JSON.parse(text);
+        if (parsed && parsed.message) {
+          message = parsed.message;
+        }
+      } catch {
+        // Si no es JSON, usamos el texto tal cual
+        message = text;
+      }
+    }
+
     throw new Error(message);
   }
 
-  return data;
+  // 204 No Content o body vacío ⇒ devolvemos null sin parsear JSON
+  if (!text) {
+    return null;
+  }
+
+  // Intentar parsear JSON; si no es JSON válido, devolver el texto crudo
+  try {
+    return JSON.parse(text);
+  } catch {
+    console.warn("Respuesta no JSON para", path, "=>", text);
+    return text;
+  }
 }
 
 export async function login({ correo, password }) {
   const data = await api("/auth/login", {
     method: "POST",
-    body: { correo, password }
+    body: { correo, password },
   });
 
   if (data?.token) {
@@ -67,6 +91,8 @@ function buildRangeQuery(desde, hasta) {
   const qs = params.toString();
   return qs ? `?${qs}` : "";
 }
+
+// ---------- REPORTES ----------
 
 export function getReporteUsuariosActivos({ desde, hasta } = {}) {
   return api(`/reportes/usuarios-activos${buildRangeQuery(desde, hasta)}`);

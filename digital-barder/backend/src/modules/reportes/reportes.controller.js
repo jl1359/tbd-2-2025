@@ -2,18 +2,47 @@
 import { prisma } from '../../config/prisma.js'
 
 /* ---------------------------------------------
-   Helper: BigInt -> Number
+   Helper: BigInt / Date / Decimal -> valor plano
 --------------------------------------------- */
 function toPlain(value) {
-  if (Array.isArray(value)) return value.map(toPlain)
-  if (value && typeof value === 'object') {
-    const out = {}
-    for (const [k, v] of Object.entries(value)) {
-      out[k] = toPlain(v)
-    }
-    return out
+  // BigInt primitivo
+  if (typeof value === 'bigint') {
+    return Number(value);
   }
-  return typeof value === 'bigint' ? Number(value) : value
+
+  // Date -> string "YYYY-MM-DD HH:MM:SS"
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 19).replace('T', ' ');
+  }
+
+  // Objetos tipo Decimal u otros wrappers con valueOf()/toNumber()
+  if (value && typeof value === 'object') {
+    // Si tiene toNumber (ej. Prisma.Decimal)
+    if (typeof value.toNumber === 'function') {
+      return value.toNumber();
+    }
+
+    // valueOf devuelve un primitivo (número, string, etc.)
+    const prim = value.valueOf?.();
+    if (prim != null && typeof prim !== 'object') {
+      return prim;
+    }
+
+    // Si es un array, procesamos recursivo
+    if (Array.isArray(value)) {
+      return value.map(toPlain);
+    }
+
+    // Objeto plano: iterar sus propiedades enumerables
+    const out = {};
+    for (const [k, v] of Object.entries(value)) {
+      out[k] = toPlain(v);
+    }
+    return out;
+  }
+
+  // number, string, null, undefined, boolean
+  return value;
 }
 
 /* ---------------------------------------------

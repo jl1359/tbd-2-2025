@@ -785,6 +785,7 @@ SELECT '✅ Sistema listo para generar reportes y análisis' as mensaje;
 
 
 
+
 -- ============================================
 -- SCRIPT DE REPORTES - CRÉDITOS_VERDES
 -- Consultas SQL para indicadores y reportes requeridos
@@ -821,9 +822,9 @@ SELECT
     'ACTIVOS' as tipo,
     COUNT(DISTINCT id_usuario) as cantidad
 FROM (
-    SELECT id_comprador as id_usuario FROM TRANSACCION WHERE estado = 'COMPLETADA' AND fecha >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+    SELECT id_comprador as id_usuario FROM TRANSACCION WHERE estado = 'COMPLETADA' AND fecha_creacion >= DATE_SUB(NOW(), INTERVAL 30 DAY)
     UNION 
-    SELECT id_vendedor as id_usuario FROM TRANSACCION WHERE estado = 'COMPLETADA' AND fecha >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+    SELECT id_vendedor as id_usuario FROM TRANSACCION WHERE estado = 'COMPLETADA' AND fecha_creacion >= DATE_SUB(NOW(), INTERVAL 30 DAY)
 ) usuarios_activos
 
 UNION ALL
@@ -832,9 +833,9 @@ SELECT
     'INACTIVOS' as tipo,
     (SELECT COUNT(*) FROM USUARIO WHERE estado = 'ACTIVO') - 
     (SELECT COUNT(DISTINCT id_usuario) FROM (
-        SELECT id_comprador as id_usuario FROM TRANSACCION WHERE estado = 'COMPLETADA' AND fecha >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        SELECT id_comprador as id_usuario FROM TRANSACCION WHERE estado = 'COMPLETADA' AND fecha_creacion >= DATE_SUB(NOW(), INTERVAL 30 DAY)
         UNION 
-        SELECT id_vendedor as id_usuario FROM TRANSACCION WHERE estado = 'COMPLETADA' AND fecha >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        SELECT id_vendedor as id_usuario FROM TRANSACCION WHERE estado = 'COMPLETADA' AND fecha_creacion >= DATE_SUB(NOW(), INTERVAL 30 DAY)
     ) activos) as cantidad;
 
 -- 1.3 DISTRIBUCIÓN DE USUARIOS POR ROL Y ESTADO
@@ -1038,15 +1039,15 @@ GROUP BY u.id_usuario, u.nombre, u.apellido, r.nombre
 ORDER BY co2_total_ahorrado DESC
 LIMIT 10;
 
--- 5.3 ACTIVIDADES SOSTENIBLES POR TIPO Y RECOMPENSAS
+-- 5.3 ACTIVIDADES SOSTENIBLES POR TIPO Y RECOMPENSAS (CORREGIDO)
 SELECT 
     ta.nombre as tipo_actividad,
     COUNT(*) as actividades_realizadas,
-    SUM(as.creditos_otorgados) as creditos_otorgados,
-    ROUND(AVG(as.creditos_otorgados), 2) as creditos_promedio,
-    COUNT(DISTINCT as.id_usuario) as usuarios_participantes
-FROM ACTIVIDAD_SOSTENIBLE as
-JOIN TIPO_ACTIVIDAD ta ON as.id_tipo_actividad = ta.id_tipo_actividad
+    SUM(act.creditos_otorgados) as creditos_otorgados,
+    ROUND(AVG(act.creditos_otorgados), 2) as creditos_promedio,
+    COUNT(DISTINCT act.id_usuario) as usuarios_participantes
+FROM ACTIVIDAD_SOSTENIBLE act
+JOIN TIPO_ACTIVIDAD ta ON act.id_tipo_actividad = ta.id_tipo_actividad
 GROUP BY ta.nombre
 ORDER BY actividades_realizadas DESC;
 
@@ -1135,24 +1136,24 @@ GROUP BY DATE_FORMAT(t.fecha_creacion, '%Y-%m')
 ORDER BY mes DESC;
 
 -- ============================================
--- 7. CONSULTAS AVANZADAS PARA ANÁLISIS
+-- 7. CONSULTAS AVANZADAS PARA ANÁLISIS (CORREGIDAS)
 -- ============================================
 
--- 7.1 CORRELACIÓN ENTRE ACTIVIDAD Y RECOMPENSAS
+-- 7.1 CORRELACIÓN ENTRE ACTIVIDAD Y RECOMPENSAS (CORREGIDO)
 SELECT 
     u.nombre,
     u.apellido,
     COUNT(DISTINCT t.id_transaccion) as transacciones,
-    COUNT(DISTINCT as.id_actividad) as actividades_sostenibles,
-    SUM(as.creditos_otorgados) as creditos_por_actividades,
+    COUNT(DISTINCT act.id_actividad) as actividades_sostenibles,
+    SUM(act.creditos_otorgados) as creditos_por_actividades,
     b.saldo_creditos as saldo_actual,
     ROUND(SUM(ia.co2_ahorrado), 2) as impacto_ecologico
 FROM USUARIO u
 LEFT JOIN TRANSACCION t ON u.id_usuario = t.id_comprador OR u.id_usuario = t.id_vendedor
-LEFT JOIN ACTIVIDAD_SOSTENIBLE as ON u.id_usuario = as.id_usuario
+LEFT JOIN ACTIVIDAD_SOSTENIBLE act ON u.id_usuario = act.id_usuario
 LEFT JOIN BILLETERA b ON u.id_usuario = b.id_usuario
 LEFT JOIN IMPACTO_AMBIENTAL ia ON u.id_usuario = ia.id_usuario
-WHERE t.estado = 'COMPLETADA' OR as.id_actividad IS NOT NULL
+WHERE t.estado = 'COMPLETADA' OR act.id_actividad IS NOT NULL
 GROUP BY u.id_usuario, u.nombre, u.apellido, b.saldo_creditos
 HAVING transacciones > 0 OR actividades_sostenibles > 0
 ORDER BY impacto_ecologico DESC;

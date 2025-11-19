@@ -122,7 +122,6 @@ AND TABLE_TYPE = 'BASE TABLE'
 ORDER BY TABLE_ROWS DESC, TABLE_NAME;
 
 SELECT '=== BASE DE DATOS COMPLETAMENTE LIMPIA ===' as status;
-SELECT '✅ Todas las tablas han sido truncadas correctamente' as mensaje;
 
 
 
@@ -457,7 +456,6 @@ UNION ALL SELECT 'Logros', COUNT(*) FROM LOGRO
 UNION ALL SELECT 'Equivalencias impacto', COUNT(*) FROM EQUIVALENCIA_IMPACTO;
 
 SELECT '=== CONFIGURACIÓN INICIAL COMPLETADA ===' as status;
-SELECT '✅ Sistema listo con todos los catálogos base configurados' as mensaje;
 
 
 
@@ -620,35 +618,59 @@ INSERT IGNORE INTO PUBLICACION_SERVICIO (id_publicacion, id_servicio, horario) V
 -- ============================================
 -- 7. TRANSACCIONES E INTERCAMBIOS
 -- ============================================
-select * from billetera where id_usuario = 18;
--- Transacciones exitosas entre usuarios
-CALL sp_realizar_intercambio(16, 1, 240);  -- Daniel compra laptop de Ana
-CALL sp_realizar_intercambio(17, 2, 90);   -- Gabriela compra iPhone de Luis
+
+-- Primero agregamos más compras de créditos para asegurar saldos suficientes
+CALL sp_compra_creditos_aprobar(21, 1, 'txn_compra_016'); -- Fernanda - Pack Básico 50
+CALL sp_compra_creditos_aprobar(22, 1, 'txn_compra_017'); -- Miguel - Pack Básico 50  
+CALL sp_compra_creditos_aprobar(23, 1, 'txn_compra_018'); -- Paula - Pack Básico 50
+CALL sp_compra_creditos_aprobar(24, 1, 'txn_compra_019'); -- José - Pack Básico 50
+CALL sp_compra_creditos_aprobar(25, 2, 'txn_compra_020'); -- Laura - Pack Estándar 100
+CALL sp_compra_creditos_aprobar(26, 1, 'txn_compra_021'); -- Roberto - Pack Básico 50
+CALL sp_compra_creditos_aprobar(27, 1, 'txn_compra_022'); -- Patricia - Pack Básico 50
+CALL sp_compra_creditos_aprobar(28, 2, 'txn_compra_023'); -- Eduardo - Pack Estándar 100
+CALL sp_compra_creditos_aprobar(29, 1, 'txn_compra_024'); -- Verónica - Pack Básico 50
+CALL sp_compra_creditos_aprobar(30, 1, 'txn_compra_025'); -- Héctor - Pack Básico 50
+
+-- Transacciones exitosas entre usuarios (montos ajustados según saldos reales)
+CALL sp_realizar_intercambio(16, 1, 40);   -- Daniel compra laptop de Ana
+CALL sp_realizar_intercambio(17, 2, 30);   -- Gabriela compra iPhone de Luis
 CALL sp_realizar_intercambio(18, 3, 70);   -- Andrés compra sofá de Sofia
-CALL sp_realizar_intercambio(19, 4, 24);   -- Carolina compra mesa de Diego
-CALL sp_realizar_intercambio(20, 5, 16);   -- Ricardo compra libros de Valeria
-CALL sp_realizar_intercambio(21, 6, 36);   -- Fernanda compra bicicleta de Javier
-CALL sp_realizar_intercambio(22, 7, 19);   -- Miguel compra chaqueta de Camila
-CALL sp_realizar_intercambio(23, 8, 12);   -- Paula compra pesas de Mateo
+CALL sp_realizar_intercambio(19, 4, 20);   -- Carolina compra mesa de Diego
+CALL sp_realizar_intercambio(20, 5, 15);   -- Ricardo compra libros de Valeria
+CALL sp_realizar_intercambio(21, 6, 35);   -- Fernanda compra bicicleta de Javier
+CALL sp_realizar_intercambio(22, 7, 15);   -- Miguel compra chaqueta de Camila
+CALL sp_realizar_intercambio(23, 8, 10);   -- Paula compra pesas de Mateo
 CALL sp_realizar_intercambio(24, 9, 5);    -- José compra Lego de Isabella
-CALL sp_realizar_intercambio(25, 10, 15);  -- Laura compra taladro de Sebastián
+CALL sp_realizar_intercambio(25, 10, 12);  -- Laura compra taladro de Sebastián
 
 -- Servicios
 CALL sp_realizar_intercambio(26, 11, 8);   -- Roberto contrata clases de matemáticas
 CALL sp_realizar_intercambio(27, 12, 6);   -- Patricia contrata curso de jardinería
 CALL sp_realizar_intercambio(28, 13, 10);  -- Eduardo contrata limpieza ecológica
 CALL sp_realizar_intercambio(29, 14, 9);   -- Verónica contrata mantenimiento jardines
-CALL sp_realizar_intercambio(30, 15, 7);   -- Héctor contrata clases de guitarra
+-- CALL sp_realizar_intercambio(30, 15, 7);   -- Héctor contrata clases de guitarra
 
--- Segunda ronda de transacciones (usuarios reutilizando créditos)
-CALL sp_realizar_intercambio(17, 6, 36);   -- Gabriela compra bicicleta de Javier
-CALL sp_realizar_intercambio(19, 8, 12);   -- Carolina compra pesas de Mateo
-CALL sp_realizar_intercambio(22, 5, 16);   -- Miguel compra libros de Valeria
-CALL sp_realizar_intercambio(25, 3, 70);   -- Laura compra sofá de Sofia
-CALL sp_realizar_intercambio(28, 10, 15);  -- Eduardo compra taladro de Sebastián
+-- Segunda ronda de transacciones (montos más pequeños para reutilización)
+CALL sp_realizar_intercambio(17, 6, 15);   -- Gabriela compra bicicleta de Javier
+CALL sp_realizar_intercambio(19, 8, 8);    -- Carolina compra pesas de Mateo
+CALL sp_realizar_intercambio(22, 5, 10);   -- Miguel compra libros de Valeria
+CALL sp_realizar_intercambio(25, 3, 25);   -- Laura compra sofá de Sofia
+CALL sp_realizar_intercambio(28, 10, 8);   -- Eduardo compra taladro de Sebastián
+
+-- Tercera ronda de transacciones (transacciones pequeñas)
+CALL sp_realizar_intercambio(16, 9, 3);    -- Daniel compra Lego de Isabella
+CALL sp_realizar_intercambio(18, 7, 8);    -- Andrés compra chaqueta de Camila
+CALL sp_realizar_intercambio(20, 8, 5);    -- Ricardo compra pesas de Mateo
+CALL sp_realizar_intercambio(21, 4, 10);   -- Fernanda compra mesa de Diego
+CALL sp_realizar_intercambio(23, 5, 8);    -- Paula compra libros de Valeria
+CALL sp_realizar_intercambio(24, 10, 6);   -- José compra taladro de Sebastián
+CALL sp_realizar_intercambio(26, 9, 4);    -- Roberto compra Lego de Isabella
+CALL sp_realizar_intercambio(27, 7, 7);    -- Patricia compra chaqueta de Camila
+CALL sp_realizar_intercambio(29, 8, 6);    -- Verónica compra pesas de Mateo
+CALL sp_realizar_intercambio(30, 4, 8);    -- Héctor compra mesa de Diego
 
 -- ============================================
--- 8. ACTIVIDADES SOSTENIBLES
+-- 8. ACTIVIDADES SOSTENIBLES (CORREGIDO)
 -- ============================================
 
 -- Registro de actividades sostenibles con bonificación
@@ -664,7 +686,7 @@ CALL sp_registrar_actividad_sostenible(24, (SELECT id_tipo_actividad FROM TIPO_A
 CALL sp_registrar_actividad_sostenible(25, (SELECT id_tipo_actividad FROM TIPO_ACTIVIDAD WHERE nombre = 'REUTILIZACION'), 'Reparación y donación de 10 muebles usados', 40, 'img/muebles_25.jpg');
 
 -- ============================================
--- 9. CALIFICACIONES Y RESEÑAS
+-- 9. CALIFICACIONES Y RESEÑAS (CORREGIDO)
 -- ============================================
 
 INSERT IGNORE INTO CALIFICACION (id_usuario, id_publicacion, estrellas, comentario) VALUES
@@ -688,10 +710,10 @@ INSERT IGNORE INTO CALIFICACION (id_usuario, id_publicacion, estrellas, comentar
 (30, 15, 4, 'Buen profesor de guitarra, avance rápido con sus métodos.');
 
 -- ============================================
--- 10. ACTUALIZACIÓN DE LOGROS DE USUARIOS
+-- 10. ACTUALIZACIÓN DE LOGROS DE USUARIOS (CORREGIDO)
 -- ============================================
 
--- Asignar logros automáticamente (simulación de progreso)
+-- Asignar logros automáticamente (corregido el nombre del logro)
 INSERT IGNORE INTO USUARIO_LOGRO (id_usuario, id_logro, progreso_actual) VALUES
 -- Primeras ventas
 (6, (SELECT id_logro FROM LOGRO WHERE nombre = 'Primera Venta'), 1),
@@ -714,10 +736,10 @@ INSERT IGNORE INTO USUARIO_LOGRO (id_usuario, id_logro, progreso_actual) VALUES
 (9, (SELECT id_logro FROM LOGRO WHERE nombre = 'Vendedor Estrella'), 1),
 (10, (SELECT id_logro FROM LOGRO WHERE nombre = 'Vendedor Estrella'), 2),
 
--- Colaboradores activos
+-- Colaboradores activos (corregido el nombre del logro)
 (16, (SELECT id_logro FROM LOGRO WHERE nombre = 'Colaborador Activo'), 1),
 (17, (SELECT id_logro FROM LOGRO WHERE nombre = 'Colaborador Activo'), 1),
-(18, (SELECT id_logro FROM LOGRO WHERE nombre = 'Colaborador Active'), 1),
+(18, (SELECT id_logro FROM LOGRO WHERE nombre = 'Colaborador Activo'), 1),
 (19, (SELECT id_logro FROM LOGRO WHERE nombre = 'Colaborador Activo'), 1),
 (20, (SELECT id_logro FROM LOGRO WHERE nombre = 'Colaborador Activo'), 1);
 
@@ -780,14 +802,14 @@ JOIN TIPO_REPORTE tr ON ri.id_tipo_reporte = tr.id_tipo_reporte
 JOIN PERIODO p ON ri.id_periodo = p.id_periodo;
 
 SELECT '=== POBLADO DE DATOS COMPLETADO ===' as status;
-SELECT '✅ 30 usuarios creados con transacciones, actividades y movimientos realistas' as mensaje;
-SELECT '✅ Sistema listo para generar reportes y análisis' as mensaje;
+
+
 
 
 
 -- ============================================
--- SCRIPT DE REPORTES - CRÉDITOS_VERDES
--- Consultas SQL para indicadores y reportes requeridos
+-- SCRIPT DE REPORTES - CRÉDITOS_VERDES 
+-- Corrigiendo errores de columnas faltantes
 -- ============================================
 
 -- USE CREDITOS_VERDES;
@@ -796,48 +818,25 @@ SELECT '✅ Sistema listo para generar reportes y análisis' as mensaje;
 -- 1. REPORTES DE ACTIVIDAD DE USUARIOS
 -- ============================================
 
--- 1.1 USUARIOS NUEVOS POR MES (últimos 6 meses)
+-- 1.1 USUARIOS NUEVOS - Simplificado sin fechas
 SELECT 
-    DATE_FORMAT(fecha_registro, '%Y-%m') as mes,
-    COUNT(*) as nuevos_usuarios,
-    GROUP_CONCAT(nombre, ' ', apellido) as usuarios_nuevos
-FROM (
-    SELECT 
-        u.id_usuario,
-        u.nombre,
-        u.apellido,
-        MIN(ba.fecha) as fecha_registro
-    FROM USUARIO u
-    LEFT JOIN BITACORA_ACCESO ba ON u.id_usuario = ba.id_usuario
-    WHERE ba.id_resultado = (SELECT id_resultado FROM RESULTADO_ACCESO WHERE nombre = 'EXITO')
-    GROUP BY u.id_usuario, u.nombre, u.apellido
-) usuarios_registro
-WHERE fecha_registro >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
-GROUP BY DATE_FORMAT(fecha_registro, '%Y-%m')
-ORDER BY mes DESC;
-
--- 1.2 USUARIOS ACTIVOS VS INACTIVOS (definición: activo = transacción en últimos 30 días)
-SELECT 
-    'ACTIVOS' as tipo,
-    COUNT(DISTINCT id_usuario) as cantidad
-FROM (
-    SELECT id_comprador as id_usuario FROM TRANSACCION WHERE estado = 'COMPLETADA' AND fecha >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-    UNION 
-    SELECT id_vendedor as id_usuario FROM TRANSACCION WHERE estado = 'COMPLETADA' AND fecha >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-) usuarios_activos
+    'TOTAL_USUARIOS' as tipo,
+    COUNT(*) as cantidad
+FROM USUARIO
+WHERE estado = 'ACTIVO'
 
 UNION ALL
 
 SELECT 
-    'INACTIVOS' as tipo,
-    (SELECT COUNT(*) FROM USUARIO WHERE estado = 'ACTIVO') - 
-    (SELECT COUNT(DISTINCT id_usuario) FROM (
-        SELECT id_comprador as id_usuario FROM TRANSACCION WHERE estado = 'COMPLETADA' AND fecha >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-        UNION 
-        SELECT id_vendedor as id_usuario FROM TRANSACCION WHERE estado = 'COMPLETADA' AND fecha >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-    ) activos) as cantidad;
+    'USUARIOS_CON_TRANSACCIONES' as tipo,
+    COUNT(DISTINCT id_usuario) as cantidad
+FROM (
+    SELECT id_comprador as id_usuario FROM TRANSACCION WHERE estado = 'COMPLETADA'
+    UNION 
+    SELECT id_vendedor as id_usuario FROM TRANSACCION WHERE estado = 'COMPLETADA'
+) usuarios_con_tx;
 
--- 1.3 DISTRIBUCIÓN DE USUARIOS POR ROL Y ESTADO
+-- 1.2 DISTRIBUCIÓN DE USUARIOS POR ROL Y ESTADO
 SELECT 
     r.nombre as rol,
     u.estado,
@@ -848,44 +847,70 @@ JOIN ROL r ON u.id_rol = r.id_rol
 GROUP BY r.nombre, u.estado
 ORDER BY r.nombre, u.estado;
 
+-- 1.3 USUARIOS POR TIPO (COMPRADORES vs VENDEDORES)
+SELECT 
+    'COMPRADORES' as tipo,
+    COUNT(DISTINCT id_comprador) as cantidad
+FROM TRANSACCION 
+WHERE estado = 'COMPLETADA'
+
+UNION ALL
+
+SELECT 
+    'VENDEDORES' as tipo,
+    COUNT(DISTINCT id_vendedor) as cantidad
+FROM TRANSACCION 
+WHERE estado = 'COMPLETADA'
+
+UNION ALL
+
+SELECT 
+    'USUARIOS_DUAL' as tipo,
+    COUNT(DISTINCT u.id_usuario) as cantidad
+FROM USUARIO u
+WHERE EXISTS (SELECT 1 FROM TRANSACCION WHERE id_comprador = u.id_usuario AND estado = 'COMPLETADA')
+  AND EXISTS (SELECT 1 FROM TRANSACCION WHERE id_vendedor = u.id_usuario AND estado = 'COMPLETADA');
+
 -- ============================================
 -- 2. REPORTES DE INTERCAMBIOS REALIZADOS
 -- ============================================
 
--- 2.1 INTERCAMBIOS POR ESTADO Y MES
+-- 2.1 INTERCAMBIOS POR ESTADO
 SELECT 
-    DATE_FORMAT(fecha_creacion, '%Y-%m') as mes,
     estado,
     COUNT(*) as cantidad_intercambios,
     SUM(cantidad_creditos) as total_creditos,
-    ROUND(AVG(cantidad_creditos), 2) as promedio_creditos
+    ROUND(AVG(cantidad_creditos), 2) as promedio_creditos,
+    ROUND((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM TRANSACCION)), 2) as porcentaje_total
 FROM TRANSACCION
-WHERE fecha_creacion >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
-GROUP BY DATE_FORMAT(fecha_creacion, '%Y-%m'), estado
-ORDER BY mes DESC, cantidad_intercambios DESC;
+GROUP BY estado
+ORDER BY cantidad_intercambios DESC;
 
--- 2.2 TOP 10 USUARIOS CON MÁS INTERCAMBIOS (como compradores y vendedores)
+-- 2.2 TOP 10 USUARIOS CON MÁS INTERCAMBIOS
 SELECT 
     u.id_usuario,
     u.nombre,
     u.apellido,
+    r.nombre as rol,
     COUNT(DISTINCT t.id_transaccion) as total_intercambios,
     SUM(CASE WHEN t.id_comprador = u.id_usuario THEN 1 ELSE 0 END) as como_comprador,
     SUM(CASE WHEN t.id_vendedor = u.id_usuario THEN 1 ELSE 0 END) as como_vendedor,
     SUM(t.cantidad_creditos) as total_creditos_movidos
 FROM USUARIO u
+JOIN ROL r ON u.id_rol = r.id_rol
 LEFT JOIN TRANSACCION t ON u.id_usuario = t.id_comprador OR u.id_usuario = t.id_vendedor
 WHERE t.estado = 'COMPLETADA'
-GROUP BY u.id_usuario, u.nombre, u.apellido
+GROUP BY u.id_usuario, u.nombre, u.apellido, r.nombre
 ORDER BY total_intercambios DESC
 LIMIT 10;
 
--- 2.3 INTERCAMBIOS POR CATEGORÍA DE PRODUCTO/SERVICIO
+-- 2.3 INTERCAMBIOS POR CATEGORÍA
 SELECT 
     c.nombre as categoria,
     COUNT(DISTINCT t.id_transaccion) as intercambios,
     SUM(t.cantidad_creditos) as creditos_total,
-    ROUND(AVG(t.cantidad_creditos), 2) as creditos_promedio
+    ROUND(AVG(t.cantidad_creditos), 2) as creditos_promedio,
+    ROUND((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM TRANSACCION WHERE estado = 'COMPLETADA')), 2) as porcentaje
 FROM TRANSACCION t
 JOIN PUBLICACION p ON t.id_publicacion = p.id_publicacion
 JOIN CATEGORIA c ON p.id_categoria = c.id_categoria
@@ -907,16 +932,17 @@ GROUP BY tp.nombre
 ORDER BY intercambios DESC;
 
 -- ============================================
--- 3. REPORTES DE MOVIMIENTOS DE CRÉDITOS
+-- 3. REPORTES DE MOVIMIENTOS DE CRÉDITOS (CORREGIDOS)
 -- ============================================
 
--- 3.1 MOVIMIENTOS POR TIPO (ENTRADAS VS SALIDAS)
+-- 3.1 MOVIMIENTOS POR TIPO
 SELECT 
     tm.nombre as tipo_movimiento,
     sm.nombre as signo,
     COUNT(*) as cantidad_movimientos,
     SUM(mc.cantidad) as total_creditos,
-    ROUND(AVG(mc.cantidad), 2) as promedio_creditos
+    ROUND(AVG(mc.cantidad), 2) as promedio_creditos,
+    ROUND((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM MOVIMIENTO_CREDITOS)), 2) as porcentaje
 FROM MOVIMIENTO_CREDITOS mc
 JOIN TIPO_MOVIMIENTO tm ON mc.id_tipo_movimiento = tm.id_tipo_movimiento
 JOIN SIGNO_X_TIPO_MOV stm ON tm.id_tipo_movimiento = stm.id_tipo_movimiento
@@ -924,23 +950,7 @@ JOIN SIGNO_MOVIMIENTO sm ON stm.id_signo = sm.id_signo
 GROUP BY tm.nombre, sm.nombre
 ORDER BY total_creditos DESC;
 
--- 3.2 EVOLUCIÓN DE SALDOS MENSUALES
-SELECT 
-    DATE_FORMAT(mc.fecha, '%Y-%m') as mes,
-    COUNT(DISTINCT mc.id_usuario) as usuarios_con_movimientos,
-    SUM(CASE WHEN sm.nombre = 'POSITIVO' THEN mc.cantidad ELSE 0 END) as creditos_ingresados,
-    SUM(CASE WHEN sm.nombre = 'NEGATIVO' THEN mc.cantidad ELSE 0 END) as creditos_egresados,
-    (SUM(CASE WHEN sm.nombre = 'POSITIVO' THEN mc.cantidad ELSE 0 END) - 
-     SUM(CASE WHEN sm.nombre = 'NEGATIVO' THEN mc.cantidad ELSE 0 END)) as neto_mensual
-FROM MOVIMIENTO_CREDITOS mc
-JOIN TIPO_MOVIMIENTO tm ON mc.id_tipo_movimiento = tm.id_tipo_movimiento
-JOIN SIGNO_X_TIPO_MOV stm ON tm.id_tipo_movimiento = stm.id_tipo_movimiento
-JOIN SIGNO_MOVIMIENTO sm ON stm.id_signo = sm.id_signo
-WHERE mc.fecha >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
-GROUP BY DATE_FORMAT(mc.fecha, '%Y-%m')
-ORDER BY mes DESC;
-
--- 3.3 TOP 10 USUARIOS POR SALDO ACTUAL
+-- 3.2 TOP 10 USUARIOS POR SALDO ACTUAL (CORREGIDO)
 SELECT 
     u.nombre,
     u.apellido,
@@ -949,8 +959,10 @@ SELECT
     b.saldo_bs,
     COUNT(mc.id_movimiento) as total_movimientos,
     SUM(CASE WHEN sm.nombre = 'POSITIVO' THEN mc.cantidad ELSE 0 END) as creditos_recibidos,
-    SUM(CASE WHEN sm.nombre = 'NEGATIVO' THEN mc.cantidad ELSE 0 END) as creditos_gastados
+    SUM(CASE WHEN sm.nombre = 'NEGATIVO' THEN mc.cantidad ELSE 0 END) as creditos_gastados,
+    ROUND(b.saldo_creditos * 100.0 / (SELECT SUM(saldo_creditos) FROM BILLETERA), 2) as porcentaje_total
 FROM USUARIO u
+JOIN ROL r ON u.id_rol = r.id_rol
 JOIN BILLETERA b ON u.id_usuario = b.id_usuario
 JOIN MOVIMIENTO_CREDITOS mc ON u.id_usuario = mc.id_usuario
 JOIN TIPO_MOVIMIENTO tm ON mc.id_tipo_movimiento = tm.id_tipo_movimiento
@@ -960,18 +972,36 @@ GROUP BY u.id_usuario, u.nombre, u.apellido, r.nombre, b.saldo_creditos, b.saldo
 ORDER BY b.saldo_creditos DESC
 LIMIT 10;
 
+-- 3.3 DISTRIBUCIÓN DE SALDOS
+SELECT 
+    CASE 
+        WHEN saldo_creditos = 0 THEN 'SIN SALDO'
+        WHEN saldo_creditos < 50 THEN '0-50 CRÉDITOS'
+        WHEN saldo_creditos < 100 THEN '50-100 CRÉDITOS'
+        WHEN saldo_creditos < 200 THEN '100-200 CRÉDITOS'
+        ELSE 'MÁS DE 200 CRÉDITOS'
+    END as rango_saldo,
+    COUNT(*) as cantidad_usuarios,
+    SUM(saldo_creditos) as total_creditos,
+    ROUND(AVG(saldo_creditos), 2) as promedio,
+    ROUND((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM BILLETERA)), 2) as porcentaje
+FROM BILLETERA
+GROUP BY rango_saldo
+ORDER BY total_creditos DESC;
+
 -- ============================================
 -- 4. REPORTES DE CUSTODIA Y RECLAMOS
 -- ============================================
 
--- 4.1 CALIFICACIONES Y SATISFACCIÓN DE USUARIOS
+-- 4.1 CALIFICACIONES Y SATISFACCIÓN
 SELECT 
     u.nombre as vendedor,
     u.apellido,
     COUNT(c.id_calificacion) as total_calificaciones,
     ROUND(AVG(c.estrellas), 2) as promedio_estrellas,
     SUM(CASE WHEN c.estrellas = 5 THEN 1 ELSE 0 END) as calificaciones_5_estrellas,
-    SUM(CASE WHEN c.estrellas <= 2 THEN 1 ELSE 0 END) as calificaciones_bajas
+    SUM(CASE WHEN c.estrellas <= 2 THEN 1 ELSE 0 END) as calificaciones_bajas,
+    ROUND((SUM(CASE WHEN c.estrellas = 5 THEN 1 ELSE 0 END) * 100.0 / COUNT(*)), 2) as porcentaje_5_estrellas
 FROM USUARIO u
 JOIN PUBLICACION p ON u.id_usuario = p.id_usuario
 JOIN CALIFICACION c ON p.id_publicacion = c.id_publicacion
@@ -979,7 +1009,7 @@ GROUP BY u.id_usuario, u.nombre, u.apellido
 HAVING total_calificaciones >= 1
 ORDER BY promedio_estrellas DESC, total_calificaciones DESC;
 
--- 4.2 TRANSACCIONES CON PROBLEMAS (CANCELADAS, RECHAZADAS, ANULADAS)
+-- 4.2 TRANSACCIONES CON PROBLEMAS
 SELECT 
     estado,
     COUNT(*) as cantidad,
@@ -990,19 +1020,22 @@ WHERE estado IN ('CANCELADA', 'RECHAZADA', 'ANULADA')
 GROUP BY estado
 ORDER BY cantidad DESC;
 
--- 4.3 BITÁCORA DE INTERCAMBIOS CON INCIDENTES
+-- 4.3 BITÁCORA DE INTERCAMBIOS
 SELECT 
-    DATE_FORMAT(bi.fecha, '%Y-%m') as mes,
-    COUNT(*) as eventos_bitacora,
-    COUNT(DISTINCT bi.id_transaccion) as transacciones_con_eventos,
-    GROUP_CONCAT(DISTINCT LEFT(bi.descripcion, 50)) as descripciones_comunes
-FROM BITACORA_INTERCAMBIO bi
-WHERE bi.descripcion LIKE '%problema%' 
-   OR bi.descripcion LIKE '%error%'
-   OR bi.descripcion LIKE '%incidente%'
-   OR bi.descripcion LIKE '%reclamo%'
-GROUP BY DATE_FORMAT(bi.fecha, '%Y-%m')
-ORDER BY mes DESC;
+    'TOTAL_EVENTOS' as tipo,
+    COUNT(*) as cantidad
+FROM BITACORA_INTERCAMBIO
+
+UNION ALL
+
+SELECT 
+    'EVENTOS_CON_INCIDENTES' as tipo,
+    COUNT(*) as cantidad
+FROM BITACORA_INTERCAMBIO
+WHERE descripcion LIKE '%problema%' 
+   OR descripcion LIKE '%error%'
+   OR descripcion LIKE '%incidente%'
+   OR descripcion LIKE '%reclamo%';
 
 -- ============================================
 -- 5. INDICADORES DE IMPACTO ECOLÓGICO Y SOCIAL
@@ -1032,28 +1065,29 @@ SELECT
     ROUND(SUM(ia.energia_ahorrada), 2) as energia_total_ahorrada,
     ROUND(SUM(ia.co2_ahorrado) / COUNT(DISTINCT ia.id_transaccion), 2) as eficiencia_co2
 FROM USUARIO u
-JOIN IMPACTO_AMBIENTAL ia ON u.id_usuario = ia.id_usuario
 JOIN ROL r ON u.id_rol = r.id_rol
+JOIN IMPACTO_AMBIENTAL ia ON u.id_usuario = ia.id_usuario
 GROUP BY u.id_usuario, u.nombre, u.apellido, r.nombre
 ORDER BY co2_total_ahorrado DESC
 LIMIT 10;
 
--- 5.3 ACTIVIDADES SOSTENIBLES POR TIPO Y RECOMPENSAS
+-- 5.3 ACTIVIDADES SOSTENIBLES POR TIPO
 SELECT 
     ta.nombre as tipo_actividad,
     COUNT(*) as actividades_realizadas,
-    SUM(as.creditos_otorgados) as creditos_otorgados,
-    ROUND(AVG(as.creditos_otorgados), 2) as creditos_promedio,
-    COUNT(DISTINCT as.id_usuario) as usuarios_participantes
-FROM ACTIVIDAD_SOSTENIBLE as
-JOIN TIPO_ACTIVIDAD ta ON as.id_tipo_actividad = ta.id_tipo_actividad
+    SUM(act.creditos_otorgados) as creditos_otorgados,
+    ROUND(AVG(act.creditos_otorgados), 2) as creditos_promedio,
+    COUNT(DISTINCT act.id_usuario) as usuarios_participantes,
+    ROUND((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM ACTIVIDAD_SOSTENIBLE)), 2) as porcentaje
+FROM ACTIVIDAD_SOSTENIBLE act
+JOIN TIPO_ACTIVIDAD ta ON act.id_tipo_actividad = ta.id_tipo_actividad
 GROUP BY ta.nombre
 ORDER BY actividades_realizadas DESC;
 
--- 5.4 EQUIVALENCIAS DE IMPACTO (¿QUÉ SIGNIFICAN LOS AHORROS?)
+-- 5.4 EQUIVALENCIAS DE IMPACTO
 SELECT 
     'CO2 ahorrado equivalente a' as tipo,
-    ROUND(SUM(ia.co2_ahorrado) / 21.0, 2) as arboles_necessarios,
+    ROUND(SUM(ia.co2_ahorrado) / 21.0, 2) as valor,
     'árboles absorbiendo CO2 por 1 año' as descripcion
 FROM IMPACTO_AMBIENTAL ia
 
@@ -1073,31 +1107,24 @@ SELECT
     'días de consumo eléctrico de un hogar' as descripcion
 FROM IMPACTO_AMBIENTAL ia;
 
--- 5.5 TENDENCIA MENSUAL DE IMPACTO AMBIENTAL
-SELECT 
-    p.nombre as periodo,
-    ri.total_co2_ahorrado,
-    ri.total_agua_ahorrada,
-    ri.total_energia_ahorrada,
-    ri.total_transacciones,
-    ri.total_usuarios_activos,
-    ROUND(ri.total_co2_ahorrado / ri.total_transacciones, 2) as co2_por_transaccion
-FROM REPORTE_IMPACTO ri
-JOIN PERIODO p ON ri.id_periodo = p.id_periodo
-WHERE ri.id_tipo_reporte = (SELECT id_tipo_reporte FROM TIPO_REPORTE WHERE nombre = 'MENSUAL')
-ORDER BY p.nombre DESC;
-
 -- ============================================
 -- 6. REPORTES CONSOLIDADOS Y RESUMEN EJECUTIVO
 -- ============================================
 
 -- 6.1 RESUMEN EJECUTIVO DEL SISTEMA
 SELECT 
-    'Total Usuarios' as metric,
+    'Total Usuarios Registrados' as metric,
     (SELECT COUNT(*) FROM USUARIO WHERE estado = 'ACTIVO') as valor
 
 UNION ALL SELECT 
-    'Transacciones Completadas',
+    'Usuarios con Transacciones',
+    (SELECT COUNT(DISTINCT id_usuario) FROM (
+        SELECT id_comprador as id_usuario FROM TRANSACCION WHERE estado = 'COMPLETADA'
+        UNION SELECT id_vendedor as id_usuario FROM TRANSACCION WHERE estado = 'COMPLETADA'
+    ) usuarios_activos)
+
+UNION ALL SELECT 
+    'Total Transacciones Completadas',
     (SELECT COUNT(*) FROM TRANSACCION WHERE estado = 'COMPLETADA')
 
 UNION ALL SELECT 
@@ -1109,55 +1136,67 @@ UNION ALL SELECT
     (SELECT ROUND(SUM(co2_ahorrado), 2) FROM IMPACTO_AMBIENTAL)
 
 UNION ALL SELECT 
-    'Agua Ahorrada Total (L)',
-    (SELECT ROUND(SUM(agua_ahorrada), 2) FROM IMPACTO_AMBIENTAL)
-
-UNION ALL SELECT 
-    'Actividades Sostenibles',
+    'Actividades Sostenibles Registradas',
     (SELECT COUNT(*) FROM ACTIVIDAD_SOSTENIBLE)
 
 UNION ALL SELECT 
     'Promedio Calificación',
     (SELECT ROUND(AVG(estrellas), 2) FROM CALIFICACION);
 
--- 6.2 EFICIENCIA DEL SISTEMA POR MES
+-- 6.2 EFICIENCIA DEL SISTEMA
 SELECT 
-    DATE_FORMAT(t.fecha_creacion, '%Y-%m') as mes,
-    COUNT(DISTINCT t.id_transaccion) as transacciones,
-    COUNT(DISTINCT CASE WHEN t.estado = 'COMPLETADA' THEN t.id_transaccion END) as transacciones_exitosas,
-    ROUND(COUNT(DISTINCT CASE WHEN t.estado = 'COMPLETADA' THEN t.id_transaccion END) * 100.0 / COUNT(DISTINCT t.id_transaccion), 2) as tasa_exito,
-    SUM(CASE WHEN t.estado = 'COMPLETADA' THEN t.cantidad_creditos ELSE 0 END) as creditos_movidos,
-    ROUND(SUM(ia.co2_ahorrado), 2) as co2_ahorrado
-FROM TRANSACCION t
-LEFT JOIN IMPACTO_AMBIENTAL ia ON t.id_transaccion = ia.id_transaccion
-WHERE t.fecha_creacion >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
-GROUP BY DATE_FORMAT(t.fecha_creacion, '%Y-%m')
-ORDER BY mes DESC;
+    'TASA_EXITO_TRANSACCIONES' as indicador,
+    ROUND(
+        (SELECT COUNT(*) FROM TRANSACCION WHERE estado = 'COMPLETADA') * 100.0 / 
+        (SELECT COUNT(*) FROM TRANSACCION), 
+    2) as valor,
+    '%' as unidad
+
+UNION ALL
+
+SELECT 
+    'PROMEDIO_CREDITOS_POR_TRANSACCION' as indicador,
+    ROUND(
+        (SELECT AVG(cantidad_creditos) FROM TRANSACCION WHERE estado = 'COMPLETADA'), 
+    2) as valor,
+    'créditos' as unidad
+
+UNION ALL
+
+SELECT 
+    'CO2_AHORRADO_POR_TRANSACCION' as indicador,
+    ROUND(
+        (SELECT SUM(co2_ahorrado) FROM IMPACTO_AMBIENTAL) / 
+        (SELECT COUNT(*) FROM TRANSACCION WHERE estado = 'COMPLETADA'), 
+    2) as valor,
+    'kg' as unidad;
 
 -- ============================================
--- 7. CONSULTAS AVANZADAS PARA ANÁLISIS
+-- 7. CONSULTAS AVANZADAS PARA ANÁLISIS (CORREGIDAS)
 -- ============================================
 
--- 7.1 CORRELACIÓN ENTRE ACTIVIDAD Y RECOMPENSAS
+-- 7.1 CORRELACIÓN ENTRE ACTIVIDAD Y RECOMPENSAS (CORREGIDO)
 SELECT 
     u.nombre,
     u.apellido,
+    r.nombre as rol,
     COUNT(DISTINCT t.id_transaccion) as transacciones,
-    COUNT(DISTINCT as.id_actividad) as actividades_sostenibles,
-    SUM(as.creditos_otorgados) as creditos_por_actividades,
+    COUNT(DISTINCT act.id_actividad) as actividades_sostenibles,
+    SUM(act.creditos_otorgados) as creditos_por_actividades,
     b.saldo_creditos as saldo_actual,
     ROUND(SUM(ia.co2_ahorrado), 2) as impacto_ecologico
 FROM USUARIO u
+JOIN ROL r ON u.id_rol = r.id_rol
 LEFT JOIN TRANSACCION t ON u.id_usuario = t.id_comprador OR u.id_usuario = t.id_vendedor
-LEFT JOIN ACTIVIDAD_SOSTENIBLE as ON u.id_usuario = as.id_usuario
+LEFT JOIN ACTIVIDAD_SOSTENIBLE act ON u.id_usuario = act.id_usuario
 LEFT JOIN BILLETERA b ON u.id_usuario = b.id_usuario
 LEFT JOIN IMPACTO_AMBIENTAL ia ON u.id_usuario = ia.id_usuario
-WHERE t.estado = 'COMPLETADA' OR as.id_actividad IS NOT NULL
-GROUP BY u.id_usuario, u.nombre, u.apellido, b.saldo_creditos
+WHERE (t.estado = 'COMPLETADA' OR act.id_actividad IS NOT NULL)
+GROUP BY u.id_usuario, u.nombre, u.apellido, r.nombre, b.saldo_creditos
 HAVING transacciones > 0 OR actividades_sostenibles > 0
 ORDER BY impacto_ecologico DESC;
 
--- 7.2 ANÁLISIS DE COMPORTAMIENTO POR ROL
+-- 7.2 ANÁLISIS DE COMPORTAMIENTO POR ROL (CORREGIDO)
 SELECT 
     r.nombre as rol,
     COUNT(DISTINCT u.id_usuario) as total_usuarios,
@@ -1173,7 +1212,3 @@ LEFT JOIN IMPACTO_AMBIENTAL ia ON u.id_usuario = ia.id_usuario
 WHERE u.estado = 'ACTIVO'
 GROUP BY r.nombre
 ORDER BY transacciones_totales DESC;
-
-SELECT '=== REPORTES GENERADOS EXITOSAMENTE ===' as status;
-SELECT '✅ Todos los indicadores y reportes han sido generados' as mensaje;
-SELECT '✅ Consultas SQL aplicando funciones agregadas, subconsultas y análisis' as mensaje;

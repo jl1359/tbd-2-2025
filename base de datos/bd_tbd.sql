@@ -1421,26 +1421,23 @@ CREATE PROCEDURE sp_rep_usuarios_abandonados(
   IN p_hasta DATETIME
 )
 BEGIN
-  -- Usuarios activos en el rango
-  CREATE TEMPORARY TABLE tmp_usuarios_activos
-  SELECT DISTINCT id_usuario
-  FROM vw_usuario_actividad
-  WHERE fecha_actividad BETWEEN p_desde AND p_hasta;
-
-  -- Usuarios que NO están en la tabla temporal
-  SELECT u.id_usuario,
-         u.nombre,
-         u.correo,
-         u.estado
+  SELECT
+    u.id_usuario,
+    u.nombre,
+    u.correo,
+    u.estado
   FROM USUARIO u
-  LEFT JOIN tmp_usuarios_activos ta
-    ON ta.id_usuario = u.id_usuario
-  WHERE ta.id_usuario IS NULL
+  LEFT JOIN (
+    SELECT DISTINCT id_usuario
+    FROM vw_usuario_actividad
+    WHERE fecha_actividad BETWEEN p_desde AND p_hasta
+  ) ua
+    ON ua.id_usuario = u.id_usuario
+  WHERE ua.id_usuario IS NULL   -- no tuvo actividad en el rango
     AND u.estado = 'ACTIVO';
-
-  DROP TEMPORARY TABLE IF EXISTS tmp_usuarios_activos;
 END$$
 DELIMITER ;
+
 -- ============================================
 -- C3) Ingresos por venta de créditos
 -- ============================================
@@ -1464,23 +1461,7 @@ BEGIN
   ORDER BY fecha;
 END$$
 DELIMITER ;
--- ============================================
--- C4) Créditos generados vs consumidos
--- ============================================
-DROP PROCEDURE IF EXISTS sp_rep_creditos_generados_vs_consumidos;
-DELIMITER $$
-CREATE PROCEDURE sp_rep_creditos_generados_vs_consumidos(
-  IN p_desde DATETIME,
-  IN p_hasta DATETIME
-)
-BEGIN
-  SELECT
-    SUM(CASE WHEN signo_mov = 'POSITIVO' THEN cantidad ELSE 0 END) AS creditos_generados,
-    SUM(CASE WHEN signo_mov = 'NEGATIVO' THEN cantidad ELSE 0 END) AS creditos_consumidos
-  FROM vw_mov_creditos_signo
-  WHERE creado_en BETWEEN p_desde AND p_hasta;
-END$$
-DELIMITER ;
+
 -- ============================================
 -- C5) Intercambios por categoría
 -- ============================================
@@ -1503,7 +1484,6 @@ DELIMITER ;
 -- ============================================
 -- C6) Publicaciones vs intercambios por categoría
 -- ============================================
--- Publicaciones vs intercambios por categoría (versión MySQL-friendly)
 DROP PROCEDURE IF EXISTS sp_rep_publicaciones_vs_intercambios;
 DELIMITER $$
 CREATE PROCEDURE sp_rep_publicaciones_vs_intercambios(
@@ -1511,50 +1491,60 @@ CREATE PROCEDURE sp_rep_publicaciones_vs_intercambios(
   IN p_hasta DATETIME
 )
 BEGIN
-  CREATE TEMPORARY TABLE tmp_pub_cat AS
-  SELECT c.nombre AS categoria,
-         COUNT(p.id_publicacion) AS publicaciones
-  FROM PUBLICACION p
-  JOIN CATEGORIA c ON c.id_categoria = p.id_categoria
-  WHERE p.creado_en BETWEEN p_desde AND p_hasta
-  GROUP BY c.nombre;
-
-  CREATE TEMPORARY TABLE tmp_tx_cat AS
-  SELECT categoria,
-         COUNT(id_transaccion) AS intercambios
-  FROM vw_transacciones_categoria
-  WHERE creado_en BETWEEN p_desde AND p_hasta
-    AND estado IN ('ACEPTADA','COMPLETADA')
-  GROUP BY categoria;
-
-  -- LEFT JOIN (todas las categorías con publicaciones)
+  -- Publicaciones por categoría en el rango
   SELECT
-    p.categoria,
-    p.publicaciones,
-    COALESCE(t.intercambios, 0) AS intercambios,
+    pub.categoria,
+    pub.publicaciones,
+    COALESCE(tx.intercambios, 0) AS intercambios,
     CASE
-      WHEN p.publicaciones = 0 THEN NULL
-      ELSE COALESCE(t.intercambios, 0) / p.publicaciones
+      WHEN pub.publicaciones = 0 THEN NULL
+      ELSE COALESCE(tx.intercambios, 0) / pub.publicaciones
     END AS ratio_intercambio
-  FROM tmp_pub_cat p
-  LEFT JOIN tmp_tx_cat t
-    ON p.categoria = t.categoria
+  FROM (
+    SELECT
+      c.nombre AS categoria,
+      COUNT(p.id_publicacion) AS publicaciones
+    FROM PUBLICACION p
+    JOIN CATEGORIA c ON c.id_categoria = p.id_categoria
+    WHERE p.creado_en BETWEEN p_desde AND p_hasta
+    GROUP BY c.nombre
+  ) AS pub
+  LEFT JOIN (
+    SELECT
+      categoria,
+      COUNT(id_transaccion) AS intercambios
+    FROM vw_transacciones_categoria
+    WHERE creado_en BETWEEN p_desde AND p_hasta
+      AND estado IN ('ACEPTADA','COMPLETADA')
+    GROUP BY categoria
+  ) AS tx
+    ON tx.categoria = pub.categoria
 
   UNION ALL
 
-  -- Categorías que solo tienen intercambios, sin publicaciones en el rango
+  -- Categorías con intercambios pero sin publicaciones en el rango
   SELECT
-    t.categoria,
+    tx_only.categoria,
     0 AS publicaciones,
-    t.intercambios,
+    tx_only.intercambios,
     NULL AS ratio_intercambio
-  FROM tmp_tx_cat t
-  LEFT JOIN tmp_pub_cat p
-    ON p.categoria = t.categoria
-  WHERE p.categoria IS NULL;
-
-  DROP TEMPORARY TABLE IF EXISTS tmp_pub_cat;
-  DROP TEMPORARY TABLE IF EXISTS tmp_tx_cat;
+  FROM (
+    SELECT
+      categoria,
+      COUNT(id_transaccion) AS intercambios
+    FROM vw_transacciones_categoria
+    WHERE creado_en BETWEEN p_desde AND p_hasta
+      AND estado IN ('ACEPTADA','COMPLETADA')
+    GROUP BY categoria
+  ) AS tx_only
+  LEFT JOIN (
+    SELECT DISTINCT c.nombre AS categoria
+    FROM PUBLICACION p
+    JOIN CATEGORIA c ON c.id_categoria = p.id_categoria
+    WHERE p.creado_en BETWEEN p_desde AND p_hasta
+  ) AS pub_exist
+    ON pub_exist.categoria = tx_only.categoria
+  WHERE pub_exist.categoria IS NULL;
 END$$
 DELIMITER ;
 
@@ -1585,3 +1575,34 @@ DELIMITER ;
 ALTER TABLE USUARIO
   ADD COLUMN password_hash VARCHAR(255) NOT NULL DEFAULT ''
   AFTER correo;
+  
+  ALTER TABLE BITACORA_ACCESO
+  MODIFY fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+USE CREDITOS_VERDES2;
+
+DROP PROCEDURE IF EXISTS sp_rep_creditos_generados_vs_consumidos;
+
+DELIMITER $$
+CREATE PROCEDURE sp_rep_creditos_generados_vs_consumidos(
+  IN p_desde DATETIME,
+  IN p_hasta DATETIME
+)
+BEGIN
+  SELECT
+    SUM(
+      CASE
+        WHEN signo_mov = 'POSITIVO' THEN cantidad
+        ELSE 0
+      END
+    ) AS creditos_generados,
+    SUM(
+      CASE
+        WHEN signo_mov = 'NEGATIVO' THEN cantidad
+        ELSE 0
+      END
+    ) AS creditos_consumidos
+  FROM vw_mov_creditos_signo
+  WHERE creado_en BETWEEN p_desde AND p_hasta;
+END$$
+DELIMITER ;

@@ -6,6 +6,7 @@ import Login from "./pages/Login.jsx";
 import Home from "./pages/Home.jsx";
 import NotFound from "./pages/NotFound.jsx";
 import Reportes from "./pages/Reportes.jsx";
+import ReportesDashboard from "./pages/ReportesDashboard.jsx";
 
 export default function AppRouter() {
   return (
@@ -27,6 +28,8 @@ export default function AppRouter() {
           </ProtectedRoute>
         }
       />
+
+      {/* Reportes en tablas */}
       <Route
         path="/reportes"
         element={
@@ -38,9 +41,20 @@ export default function AppRouter() {
         }
       />
 
+      {/* NUEVO: Dashboard con gráficos de reportes */}
+      <Route
+        path="/reportes-dashboard"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ReportesDashboard />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
       {/* 404 */}
       <Route path="*" element={<NotFound />} />
     </Routes>
-    
   );
 }

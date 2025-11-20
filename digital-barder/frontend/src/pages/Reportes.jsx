@@ -9,6 +9,7 @@ import {
   getReporteImpactoAcumulado,
 } from "../services/api";
 
+/* Utilidades */
 function hoyISO() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -19,6 +20,7 @@ function hace30DiasISO() {
 }
 
 export default function Reportes() {
+  /* Estados */
   const [desde, setDesde] = useState(hace30DiasISO());
   const [hasta, setHasta] = useState(hoyISO());
 
@@ -30,13 +32,17 @@ export default function Reportes() {
   const [credResumen, setCredResumen] = useState(null);
 
   const [impacto, setImpacto] = useState([]);
-  const [tipoReporte, setTipoReporte] = useState("2"); // 1=diario,2=mensual,3=anual
-  const [idPeriodo, setIdPeriodo] = useState("1"); // periodo de prueba
+  // Según tu BD: 1 = MENSUAL, 2 = DIARIO, 3 = ANUAL
+  const [tipoReporte, setTipoReporte] = useState("1");
+  const [idPeriodo, setIdPeriodo] = useState("1");
 
   const [loading, setLoading] = useState(false);
   const [loadingImpacto, setLoadingImpacto] = useState(false);
   const [error, setError] = useState("");
 
+  /* ----------------------------------------------------
+     Cargar los reportes principales
+     ---------------------------------------------------- */
   async function cargarReportes() {
     try {
       setLoading(true);
@@ -51,26 +57,16 @@ export default function Reportes() {
         getReportePublicacionesVsIntercambios({ desde, hasta }),
       ]);
 
-      // Siempre aseguramos arrays
       setUsuariosActivos(Array.isArray(activos) ? activos : []);
       setUsuariosAbandonados(Array.isArray(aband) ? aband : []);
       setIngresos(Array.isArray(ing) ? ing : []);
       setIntercambiosCat(Array.isArray(interc) ? interc : []);
       setPubVsInt(Array.isArray(pubInt) ? pubInt : []);
 
-      // Resumen de créditos generados vs consumidos
-      const resumen =
-        Array.isArray(cgvc) && cgvc.length > 0
-          ? cgvc[0]
-          : cgvc && !Array.isArray(cgvc)
-          ? cgvc
-          : null;
-
-      setCredResumen(resumen);
+      setCredResumen(cgvc || null);
     } catch (e) {
       console.error(e);
-      setError(e.message || "Error cargando reportes");
-      // En caso de error, dejamos todo en estado seguro
+      setError("Error cargando reportes");
       setUsuariosActivos([]);
       setUsuariosAbandonados([]);
       setIngresos([]);
@@ -82,6 +78,9 @@ export default function Reportes() {
     }
   }
 
+  /* ----------------------------------------------------
+     Cargar impacto acumulado
+     ---------------------------------------------------- */
   async function cargarImpacto() {
     try {
       setLoadingImpacto(true);
@@ -95,7 +94,7 @@ export default function Reportes() {
       setImpacto(Array.isArray(datos) ? datos : []);
     } catch (e) {
       console.error(e);
-      setError(e.message || "Error cargando impacto acumulado");
+      setError("Error cargando impacto acumulado");
       setImpacto([]);
     } finally {
       setLoadingImpacto(false);
@@ -113,6 +112,9 @@ export default function Reportes() {
 
   return (
     <div className="p-4 space-y-8">
+      {/* ---------------------------------------------
+          HEADER
+         --------------------------------------------- */}
       <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Reportes</h1>
@@ -134,6 +136,7 @@ export default function Reportes() {
               className="border rounded px-2 py-1 text-sm"
             />
           </div>
+
           <div className="flex flex-col text-sm">
             <label className="mb-1 font-medium">Hasta</label>
             <input
@@ -143,11 +146,12 @@ export default function Reportes() {
               className="border rounded px-2 py-1 text-sm"
             />
           </div>
+
           <button
             type="submit"
-            className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700"
+            className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm"
           >
-            {loading ? "Cargando..." : "Actualizar"}
+            {loading ? "Cargando…" : "Actualizar"}
           </button>
         </form>
       </header>
@@ -158,42 +162,52 @@ export default function Reportes() {
         </div>
       )}
 
-      {/* 1) Usuarios activos vs abandonados */}
+      {/* ---------------------------------------------
+          1) USUARIOS ACTIVOS Y ABANDONADOS
+         --------------------------------------------- */}
       <section className="space-y-2">
         <h2 className="font-semibold">Usuarios activos y abandonados</h2>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Activos */}
+          {/* USUARIOS ACTIVOS */}
           <div className="border rounded p-3 text-sm">
             <h3 className="font-medium mb-2">
               Usuarios activos ({usuariosActivos.length})
             </h3>
+
             <div className="overflow-x-auto">
               <table className="min-w-full text-xs">
                 <thead className="bg-gray-100">
                   <tr>
                     <th className="px-2 py-1 text-left">Usuario</th>
                     <th className="px-2 py-1 text-left">Correo</th>
-                    <th className="px-2 py-1 text-right">Último login</th>
-                    <th className="px-2 py-1 text-right">Créditos</th>
-                    <th className="px-2 py-1 text-right">Intercambios</th>
+                    <th className="px-2 py-1 text-right">
+                      Primera actividad
+                    </th>
+                    <th className="px-2 py-1 text-right">
+                      Última actividad
+                    </th>
+                    <th className="px-2 py-1 text-right">Total acciones</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {usuariosActivos.map((u, i) => (
                     <tr key={i} className="border-t">
                       <td className="px-2 py-1">{u.nombre}</td>
                       <td className="px-2 py-1">{u.correo}</td>
                       <td className="px-2 py-1 text-right">
-                        {u.ultimo_login || "-"}
+                        {u.primera_actividad || "-"}
                       </td>
                       <td className="px-2 py-1 text-right">
-                        {u.creditos_disponibles}
+                        {u.ultima_actividad || "-"}
                       </td>
                       <td className="px-2 py-1 text-right">
-                        {u.total_intercambios}
+                        {u.total_acciones}
                       </td>
                     </tr>
                   ))}
+
                   {usuariosActivos.length === 0 && (
                     <tr>
                       <td
@@ -209,39 +223,36 @@ export default function Reportes() {
             </div>
           </div>
 
-          {/* Abandonados */}
+          {/* USUARIOS ABANDONADOS */}
           <div className="border rounded p-3 text-sm">
             <h3 className="font-medium mb-2">
               Usuarios abandonados ({usuariosAbandonados.length})
             </h3>
+
             <div className="overflow-x-auto">
               <table className="min-w-full text-xs">
                 <thead className="bg-gray-100">
                   <tr>
                     <th className="px-2 py-1 text-left">Usuario</th>
                     <th className="px-2 py-1 text-left">Correo</th>
-                    <th className="px-2 py-1 text-right">Última actividad</th>
-                    <th className="px-2 py-1 text-right">Créditos</th>
+                    <th className="px-2 py-1 text-right">Estado</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {usuariosAbandonados.map((u, i) => (
                     <tr key={i} className="border-t">
                       <td className="px-2 py-1">{u.nombre}</td>
                       <td className="px-2 py-1">{u.correo}</td>
-                      <td className="px-2 py-1 text-right">
-                        {u.ultima_actividad || "-"}
-                      </td>
-                      <td className="px-2 py-1 text-right">
-                        {u.creditos_disponibles}
-                      </td>
+                      <td className="px-2 py-1 text-right">{u.estado}</td>
                     </tr>
                   ))}
+
                   {usuariosAbandonados.length === 0 && (
                     <tr>
                       <td
                         className="px-2 py-2 text-center text-gray-400"
-                        colSpan={4}
+                        colSpan={3}
                       >
                         Sin datos para el rango seleccionado.
                       </td>
@@ -254,9 +265,12 @@ export default function Reportes() {
         </div>
       </section>
 
-      {/* 3) Ingresos por venta de créditos */}
+      {/* ---------------------------------------------
+          2) INGRESOS POR VENTA DE CRÉDITOS
+         --------------------------------------------- */}
       <section className="space-y-2">
         <h2 className="font-semibold">Ingresos por venta de créditos</h2>
+
         <div className="overflow-x-auto border rounded">
           <table className="min-w-full text-sm">
             <thead className="bg-gray-100">
@@ -266,18 +280,16 @@ export default function Reportes() {
                 <th className="px-2 py-1 text-right">Monto (Bs)</th>
               </tr>
             </thead>
+
             <tbody>
               {ingresos.map((r, i) => (
                 <tr key={i} className="border-t">
                   <td className="px-2 py-1">{r.fecha}</td>
-                  <td className="px-2 py-1 text-right">
-                    {r.total_creditos}
-                  </td>
-                  <td className="px-2 py-1 text-right">
-                    {r.total_bs}
-                  </td>
+                  <td className="px-2 py-1 text-right">{r.total_creditos}</td>
+                  <td className="px-2 py-1 text-right">{r.total_bs}</td>
                 </tr>
               ))}
+
               {ingresos.length === 0 && (
                 <tr>
                   <td
@@ -293,9 +305,12 @@ export default function Reportes() {
         </div>
       </section>
 
-      {/* 4) Créditos generados vs consumidos */}
+      {/* ---------------------------------------------
+          3) CRÉDITOS GENERADOS VS CONSUMIDOS
+         --------------------------------------------- */}
       <section className="space-y-2">
         <h2 className="font-semibold">Créditos generados vs consumidos</h2>
+
         <div className="border rounded p-3 text-sm">
           {credResumen ? (
             <ul className="space-y-1">
@@ -303,10 +318,12 @@ export default function Reportes() {
                 <span className="font-semibold">Créditos generados:</span>{" "}
                 {credResumen.creditos_generados}
               </li>
+
               <li>
                 <span className="font-semibold">Créditos consumidos:</span>{" "}
                 {credResumen.creditos_consumidos}
               </li>
+
               <li>
                 <span className="font-semibold">Saldo neto:</span>{" "}
                 {credResumen.saldo_neto}
@@ -320,9 +337,12 @@ export default function Reportes() {
         </div>
       </section>
 
-      {/* 5) Intercambios por categoría */}
+      {/* ---------------------------------------------
+          4) INTERCAMBIOS POR CATEGORÍA
+         --------------------------------------------- */}
       <section className="space-y-2">
         <h2 className="font-semibold">Intercambios por categoría</h2>
+
         <div className="overflow-x-auto border rounded">
           <table className="min-w-full text-sm">
             <thead className="bg-gray-100">
@@ -331,6 +351,7 @@ export default function Reportes() {
                 <th className="px-2 py-1 text-right">Intercambios</th>
               </tr>
             </thead>
+
             <tbody>
               {intercambiosCat.map((c, i) => (
                 <tr key={i} className="border-t">
@@ -340,6 +361,7 @@ export default function Reportes() {
                   </td>
                 </tr>
               ))}
+
               {intercambiosCat.length === 0 && (
                 <tr>
                   <td
@@ -355,9 +377,12 @@ export default function Reportes() {
         </div>
       </section>
 
-      {/* 6) Publicaciones vs intercambios */}
+      {/* ---------------------------------------------
+          5) PUBLICACIONES VS INTERCAMBIOS
+         --------------------------------------------- */}
       <section className="space-y-2">
         <h2 className="font-semibold">Publicaciones vs intercambios</h2>
+
         <div className="overflow-x-auto border rounded">
           <table className="min-w-full text-sm">
             <thead className="bg-gray-100">
@@ -365,24 +390,22 @@ export default function Reportes() {
                 <th className="px-2 py-1 text-left">Categoría</th>
                 <th className="px-2 py-1 text-right">Publicaciones</th>
                 <th className="px-2 py-1 text-right">Intercambios</th>
-                <th className="px-2 py-1 text-right">Ratio de intercambio</th>
+                <th className="px-2 py-1 text-right">Ratio</th>
               </tr>
             </thead>
+
             <tbody>
-              {pubVsInt.map((r, i) => (
+              {pubVsInt.map((p, i) => (
                 <tr key={i} className="border-t">
-                  <td className="px-2 py-1">{r.categoria}</td>
+                  <td className="px-2 py-1">{p.categoria}</td>
+                  <td className="px-2 py-1 text-right">{p.publicaciones}</td>
+                  <td className="px-2 py-1 text-right">{p.intercambios}</td>
                   <td className="px-2 py-1 text-right">
-                    {r.publicaciones}
-                  </td>
-                  <td className="px-2 py-1 text-right">
-                    {r.intercambios}
-                  </td>
-                  <td className="px-2 py-1 text-right">
-                    {r.ratio_intercambio ?? "-"}
+                    {p.ratio_intercambio ?? "-"}
                   </td>
                 </tr>
               ))}
+
               {pubVsInt.length === 0 && (
                 <tr>
                   <td
@@ -398,27 +421,25 @@ export default function Reportes() {
         </div>
       </section>
 
-      {/* 7) Impacto ambiental acumulado */}
+      {/* ---------------------------------------------
+          6) IMPACTO AMBIENTAL ACUMULADO
+         --------------------------------------------- */}
       <section className="space-y-2">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
           <div>
             <h2 className="font-semibold">Impacto ambiental acumulado</h2>
-            <p className="text-xs text-gray-500">
-              Usa la tabla REPORTE_IMPACTO generada por el SP
-              <code className="ml-1">sp_generar_reporte_impacto</code>.
-            </p>
           </div>
 
           <div className="flex flex-wrap gap-2 items-end text-sm">
             <div className="flex flex-col">
-              <label className="mb-1 font-medium">Tipo de reporte</label>
+              <label className="mb-1 font-medium">Tipo</label>
               <select
                 value={tipoReporte}
                 onChange={(e) => setTipoReporte(e.target.value)}
                 className="border rounded px-2 py-1 text-sm"
               >
-                <option value="1">Diario</option>
-                <option value="2">Mensual</option>
+                <option value="1">Mensual</option>
+                <option value="2">Diario</option>
                 <option value="3">Anual</option>
               </select>
             </div>
@@ -437,9 +458,9 @@ export default function Reportes() {
             <button
               type="button"
               onClick={cargarImpacto}
-              className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700"
+              className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm"
             >
-              {loadingImpacto ? "Cargando..." : "Actualizar impacto"}
+              {loadingImpacto ? "Cargando…" : "Actualizar"}
             </button>
           </div>
         </div>
@@ -449,27 +470,18 @@ export default function Reportes() {
             <thead className="bg-gray-100">
               <tr>
                 <th className="px-2 py-1 text-left">Usuario (ID)</th>
-                <th className="px-2 py-1 text-right">
-                  CO₂ ahorrado (kg)
-                </th>
-                <th className="px-2 py-1 text-right">
-                  Agua ahorrada (L)
-                </th>
-                <th className="px-2 py-1 text-right">
-                  Energía ahorrada (kWh)
-                </th>
+                <th className="px-2 py-1 text-right">CO₂ (kg)</th>
+                <th className="px-2 py-1 text-right">Agua (L)</th>
+                <th className="px-2 py-1 text-right">Energía (kWh)</th>
                 <th className="px-2 py-1 text-right">Transacciones</th>
-                <th className="px-2 py-1 text-right">
-                  Usuarios activos
-                </th>
+                <th className="px-2 py-1 text-right">Usuarios activos</th>
               </tr>
             </thead>
+
             <tbody>
               {impacto.map((r, i) => (
                 <tr key={i} className="border-t">
-                  <td className="px-2 py-1">
-                    {r.id_usuario ?? "GLOBAL"}
-                  </td>
+                  <td className="px-2 py-1">{r.id_usuario ?? "GLOBAL"}</td>
                   <td className="px-2 py-1 text-right">
                     {r.total_co2_ahorrado}
                   </td>
@@ -487,18 +499,14 @@ export default function Reportes() {
                   </td>
                 </tr>
               ))}
+
               {impacto.length === 0 && (
                 <tr>
                   <td
                     className="px-2 py-2 text-center text-gray-400"
                     colSpan={6}
                   >
-                    Sin datos en REPORTE_IMPACTO para ese tipo/periodo.
-                    Asegúrate de haber ejecutado
-                    {" "}
-                    <code>sp_generar_reporte_impacto</code>
-                    {" "}
-                    en la BD.
+                    Sin datos en REPORTE_IMPACTO para ese período.
                   </td>
                 </tr>
               )}
@@ -509,3 +517,4 @@ export default function Reportes() {
     </div>
   );
 }
+

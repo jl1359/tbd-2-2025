@@ -7,62 +7,57 @@ import { prisma } from '../../config/prisma.js'
 function toPlain(value) {
   // BigInt primitivo
   if (typeof value === 'bigint') {
-    return Number(value);
+    return Number(value)
   }
 
   // Date -> string "YYYY-MM-DD HH:MM:SS"
   if (value instanceof Date) {
-    return value.toISOString().slice(0, 19).replace('T', ' ');
+    return value.toISOString().slice(0, 19).replace('T', ' ')
   }
 
   // Objetos tipo Decimal u otros wrappers con valueOf()/toNumber()
   if (value && typeof value === 'object') {
     // Si tiene toNumber (ej. Prisma.Decimal)
     if (typeof value.toNumber === 'function') {
-      return value.toNumber();
+      return value.toNumber()
     }
 
-    // valueOf devuelve un primitivo (número, string, etc.)
-    const prim = value.valueOf?.();
+    // valueOf devuelve primitivo (número, string, etc.)
+    const prim = value.valueOf?.()
     if (prim != null && typeof prim !== 'object') {
-      return prim;
+      return prim
     }
 
-    // Si es un array, procesamos recursivo
+    // Array -> recursivo
     if (Array.isArray(value)) {
-      return value.map(toPlain);
+      return value.map(toPlain)
     }
 
-    // Objeto plano: iterar sus propiedades enumerables
-    const out = {};
+    // Objeto plano: iterar propiedades
+    const out = {}
     for (const [k, v] of Object.entries(value)) {
-      out[k] = toPlain(v);
+      out[k] = toPlain(v)
     }
-    return out;
+    return out
   }
 
   // number, string, null, undefined, boolean
-  return value;
+  return value
 }
 
 /* ---------------------------------------------
    Normaliza el resultado de CALL:
-   - Puede venir como [ [rows] ] o como [rows] o como objeto suelto
+   - Puede venir como [ [rows] ] o [rows] u objeto
 --------------------------------------------- */
 function normalizeResult(raw) {
   if (!raw) return []
 
   if (Array.isArray(raw)) {
-    // Caso CALL MySQL clásico: [ [rows], [meta] ]
     if (raw.length > 0 && Array.isArray(raw[0])) return raw[0]
-    // Ya es array de filas
     return raw
   }
 
-  if (typeof raw === 'object') {
-    // Objeto suelto -> lo envolvemos en array
-    return [raw]
-  }
+  if (typeof raw === 'object') return [raw]
 
   return []
 }
@@ -90,30 +85,35 @@ function getRangoFechas(req) {
 }
 
 /* ---------------------------------------------
-   Helpers de mapeo: convierten f0, f1, ... a nombres
+   Mapeos de columnas f0, f1... -> nombres reales
 --------------------------------------------- */
 
+// sp_rep_usuarios_activos:
+// id_usuario, nombre, correo, primera_actividad, ultima_actividad, total_acciones
 function mapUsuarioActivo(r) {
   return {
     id_usuario: r.id_usuario ?? r.f0 ?? null,
     nombre: r.nombre ?? r.f1 ?? null,
     correo: r.correo ?? r.f2 ?? null,
-    ultimo_login: r.ultimo_login ?? r.f3 ?? null,
-    creditos_disponibles: r.creditos_disponibles ?? r.f4 ?? null,
-    total_intercambios: r.total_intercambios ?? r.f5 ?? null,
+    primera_actividad: r.primera_actividad ?? r.f3 ?? null,
+    ultima_actividad: r.ultima_actividad ?? r.f4 ?? null,
+    total_acciones: r.total_acciones ?? r.f5 ?? null,
   }
 }
 
+// sp_rep_usuarios_abandonados:
+// id_usuario, nombre, correo, estado
 function mapUsuarioAbandonado(r) {
   return {
     id_usuario: r.id_usuario ?? r.f0 ?? null,
     nombre: r.nombre ?? r.f1 ?? null,
     correo: r.correo ?? r.f2 ?? null,
-    ultima_actividad: r.ultima_actividad ?? r.f3 ?? null,
-    creditos_disponibles: r.creditos_disponibles ?? r.f4 ?? null,
+    estado: r.estado ?? r.f3 ?? null,
   }
 }
 
+// sp_rep_ingresos_creditos:
+// fecha, total_creditos, total_bs
 function mapIngresoCreditos(r) {
   return {
     fecha: r.fecha ?? r.f0 ?? null,
@@ -122,6 +122,8 @@ function mapIngresoCreditos(r) {
   }
 }
 
+// sp_rep_intercambios_por_categoria:
+// categoria, total_intercambios
 function mapIntercambiosCategoria(r) {
   return {
     categoria: r.categoria ?? r.f0 ?? null,
@@ -129,6 +131,8 @@ function mapIntercambiosCategoria(r) {
   }
 }
 
+// sp_rep_publicaciones_vs_intercambios:
+// categoria, publicaciones, intercambios, ratio_intercambio
 function mapPublicacionesVsIntercambios(r) {
   return {
     categoria: r.categoria ?? r.f0 ?? null,
@@ -138,6 +142,9 @@ function mapPublicacionesVsIntercambios(r) {
   }
 }
 
+// sp_rep_impacto_acumulado:
+// id_usuario, total_co2_ahorrado, total_agua_ahorrada,
+// total_energia_ahorrada, total_transacciones, total_usuarios_activos
 function mapImpacto(r) {
   return {
     id_usuario: r.id_usuario ?? r.f0 ?? null,
@@ -214,10 +221,8 @@ export async function getCreditosGeneradosVsConsumidos(req, res, next) {
     const rows = normalizeResult(raw)
     const base = rows[0] || {}
 
-    const creditos_generados =
-      base.creditos_generados ?? base.f0 ?? 0
-    const creditos_consumidos =
-      base.creditos_consumidos ?? base.f1 ?? 0
+    const creditos_generados = base.creditos_generados ?? base.f0 ?? 0
+    const creditos_consumidos = base.creditos_consumidos ?? base.f1 ?? 0
 
     const resumen = {
       creditos_generados: Number(creditos_generados ?? 0),

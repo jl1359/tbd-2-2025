@@ -49,9 +49,9 @@ export default function ReportesDashboard() {
   const [loadingImpacto, setLoadingImpacto] = useState(false);
   const [error, setError] = useState("");
 
-  /* ============================
+  /* ====
      Carga de datos
-     ============================ */
+     ==== */
 
   async function cargarDatosBasicos() {
     try {
@@ -113,9 +113,9 @@ export default function ReportesDashboard() {
     cargarDatosBasicos();
   }, []);
 
-  /* ============================
+  /* ====
      Datos preparados para gráficos
-     ============================ */
+     ==== */
 
   // Ingresos por día
   const ingresosChartData = useMemo(

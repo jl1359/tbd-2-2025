@@ -1,7 +1,3 @@
-/* ============================================================
-   CREDITOS_VERDES2 — ESQUEMA + TRIGGERS + SEED + PRUEBA
-   Requisitos: MySQL 8.0.16+ (CHECK y FULLTEXT en InnoDB)
-   ============================================================ */
 DROP DATABASE IF EXISTS CREDITOS_VERDES2;
 CREATE DATABASE CREDITOS_VERDES2
   CHARACTER SET utf8mb4
@@ -534,7 +530,8 @@ CREATE INDEX ix_compra_estado  ON COMPRA_CREDITOS (estado);
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- 9) FUNCIONES
-
+-- Busca el id_tipo_movimiento dado su nombre (RECARGA, INTERCAMBIO_IN, etc.).
+-- Se usa en varios SP y triggers para no quemar IDs a mano.
 DROP FUNCTION IF EXISTS fn_get_tipo_mov;
 DELIMITER $$
 CREATE FUNCTION fn_get_tipo_mov(p_nombre VARCHAR(50))
@@ -550,6 +547,8 @@ BEGIN
 END$$
 DELIMITER ;
 
+-- Devuelve 1 si el usuario tiene saldo_creditos ≥ monto, si no, 0.
+-- Se usa para validar que el usuario pueda pagar/intercambiar.
 DROP FUNCTION IF EXISTS fn_verificar_saldo;
 DELIMITER $$
 CREATE FUNCTION fn_verificar_saldo(p_id_usuario INT, p_monto BIGINT)
@@ -563,9 +562,14 @@ BEGIN
 END$$
 DELIMITER ;
 
--- ============================================
 -- 10) PROCEDIMIENTOS
--- ============================================
+/*Flujo completo de aprobación de compra de créditos:
+Valida usuario y paquete.
+Verifica que el id_transaccion_pago no esté repetido.
+Inserta la billetera si no existe.
+Inserta la compra como APROBADO con el precio del paquete.
+Obtiene el tipo de movimiento RECARGA.
+Inserta un MOVIMIENTO_CREDITOS por la cantidad de créditos del paquete.*/
 DROP PROCEDURE IF EXISTS sp_compra_creditos_aprobar;
 DELIMITER $$
 CREATE PROCEDURE sp_compra_creditos_aprobar(
@@ -621,7 +625,13 @@ BEGIN
   COMMIT;
 END$$
 DELIMITER ;
-
+/*Flujo completo de aprobación de compra de créditos:
+Valida usuario y paquete.
+Verifica que el id_transaccion_pago no esté repetido.
+Inserta la billetera si no existe.
+Inserta la compra como APROBADO con el precio del paquete.
+Obtiene el tipo de movimiento RECARGA.
+Inserta un MOVIMIENTO_CREDITOS por la cantidad de créditos del paquete.*/
 DROP PROCEDURE IF EXISTS sp_realizar_intercambio;
 DELIMITER $$
 CREATE PROCEDURE sp_realizar_intercambio(
@@ -694,7 +704,11 @@ BEGIN
   COMMIT;
 END$$
 DELIMITER ;
-
+/*Genera un reporte agregado en la tabla REPORTE_IMPACTO:
+Suma CO₂, agua, energía, número de transacciones y usuarios activos,
+para un período y opcionalmente un usuario.
+Borra el reporte previo del mismo período/tipo/usuario.
+Inserta el nuevo resumen.*/
 DROP PROCEDURE IF EXISTS sp_generar_reporte_impacto;
 DELIMITER $$
 CREATE PROCEDURE sp_generar_reporte_impacto(
@@ -744,7 +758,11 @@ BEGIN
      v_total_co2, v_total_ag, v_total_en, v_total_tx, v_total_users);
 END$$
 DELIMITER ;
-
+/*Registra una actividad sostenible y otorga un bono de créditos:
+Inserta la actividad en ACTIVIDAD_SOSTENIBLE.
+Se asegura de que el usuario tenga billetera.
+Obtiene tipo de movimiento BONO_ACTIVIDAD.
+Inserta un MOVIMIENTO_CREDITOS positivo (créditos_otorgados).*/
 DROP PROCEDURE IF EXISTS sp_registrar_actividad_sostenible;
 DELIMITER $$
 CREATE PROCEDURE sp_registrar_actividad_sostenible(
@@ -776,7 +794,11 @@ BEGIN
      p_creditos_otorgados, 'Bono por actividad sostenible', 0, 0, LAST_INSERT_ID());
 END$$
 DELIMITER ;
-
+/*sp_obtener_historial_usuario
+Devuelve un historial mixto de:
+Movimientos de créditos
+Transacciones del usuario (como comprador o vendedor)
+En una sola consulta (con UNION ALL).*/
 DROP PROCEDURE IF EXISTS sp_obtener_historial_usuario;
 DELIMITER $$
 CREATE PROCEDURE sp_obtener_historial_usuario(IN p_id_usuario INT)
@@ -798,7 +820,14 @@ BEGIN
   WHERE t.id_comprador = p_id_usuario OR t.id_vendedor = p_id_usuario;
 END$$
 DELIMITER ;
-
+/*Calcula y guarda el impacto ambiental de una transacción:
+Obtiene comprador, vendedor, publicación y créditos usados.
+Lee categoría y valor_creditos de la publicación.
+Calcula cuántas “unidades” representa la transacción (créditos / valor_pub).
+Busca equivalencias de impacto en EQUIVALENCIA_IMPACTO.
+Multiplica por las unidades para obtener CO₂, agua, energía.
+Toma el último PERIODO.
+Inserta el registro en IMPACTO_AMBIENTAL para el comprador.*/
 DROP PROCEDURE IF EXISTS sp_calcular_e_insertar_impacto;
 DELIMITER $$
 CREATE PROCEDURE sp_calcular_e_insertar_impacto(IN p_id_transaccion INT)
@@ -854,9 +883,13 @@ BEGIN
 END$$
 DELIMITER ;
 
--- ============================================
 -- 11) TRIGGERS
--- ============================================
+/*Antes de insertar un MOVIMIENTO_CREDITOS:
+Garantiza que el usuario tenga billetera.
+Obtiene su saldo actual.
+Obtiene si el movimiento es POSITIVO o NEGATIVO.
+Calcula saldo_anterior y saldo_posterior.
+Si es NEGATIVO y no alcanza el saldo, lanza error.*/
 DROP TRIGGER IF EXISTS trg_movcred_before_ins;
 DELIMITER $$
 CREATE TRIGGER trg_movcred_before_ins
@@ -894,7 +927,8 @@ BEGIN
   END IF;
 END$$
 DELIMITER ;
-
+/*Después de insertar el movimiento:
+Actualiza la BILLETERA con el nuevo saldo_posterior.*/
 DROP TRIGGER IF EXISTS trg_movcred_after_ins;
 DELIMITER $$
 CREATE TRIGGER trg_movcred_after_ins
@@ -906,7 +940,9 @@ BEGIN
   WHERE id_usuario = NEW.id_usuario;
 END$$
 DELIMITER ;
-
+/*Antes de insertar una TRANSACCION:
+Llama a fn_verificar_saldo para revisar si el comprador tiene créditos suficientes.
+Si no, lanza error.*/
 DROP TRIGGER IF EXISTS trg_trans_before_ins;
 DELIMITER $$
 CREATE TRIGGER trg_trans_before_ins
@@ -918,7 +954,8 @@ BEGIN
   END IF;
 END$$
 DELIMITER ;
-
+/*Después de insertar una TRANSACCION:
+Inserta un registro en BITACORA_INTERCAMBIO (“Transacción creada”).*/
 DROP TRIGGER IF EXISTS trg_trans_after_ins;
 DELIMITER $$
 CREATE TRIGGER trg_trans_after_ins
@@ -929,7 +966,8 @@ BEGIN
   VALUES (NEW.id_transaccion, NEW.id_comprador, NEW.id_vendedor, NEW.cantidad_creditos, 'Transacción creada');
 END$$
 DELIMITER ;
-
+/*Después de actualizar una TRANSACCION:
+Si cambió de estado, inserta en BITACORA_INTERCAMBIO un historial del cambio*/
 DROP TRIGGER IF EXISTS trg_trans_after_upd;
 DELIMITER $$
 CREATE TRIGGER trg_trans_after_upd
@@ -943,7 +981,12 @@ BEGIN
   END IF;
 END$$
 DELIMITER ;
-
+/*Cuando se crea una PUBLICACION:
+Suma los créditos de promociones ACTIVAS asociadas a esa publicación.
+Si hay bono:
+crea billetera si no existe
+obtiene tipo BONO_PUBLICACION
+inserta MOVIMIENTO_CREDITOS positivo con el bono.*/
 DROP TRIGGER IF EXISTS trg_publicacion_after_ins_bono;
 DELIMITER $$
 CREATE TRIGGER trg_publicacion_after_ins_bono
@@ -1028,15 +1071,12 @@ trg: BEGIN
 END trg$$
 DELIMITER ;
 
--- ============================================
 -- 12) FULLTEXT (buscador)
--- ============================================
+
 ALTER TABLE PUBLICACION
   ADD FULLTEXT ft_pub_titulo_desc (titulo, descripcion);
 
--- ============================================
 -- 13) SEED FUNCIONAL (deja datos de demo listos)
--- ============================================
 -- Roles, permisos mínimos (permiso útil para admin si lo usas)
 INSERT IGNORE INTO ROL (nombre, descripcion) VALUES
   ('ADMIN','Administrador'),('COMPRADOR','Comprador'),('VENDEDOR','Vendedor'),('ONG','Organización');
@@ -1180,9 +1220,7 @@ INSERT IGNORE INTO PAQUETE_CREDITOS (nombre, cantidad_creditos, precio_bs, activ
 VALUES ('Pack 100', 100, 50.00, TRUE),
        ('Pack 500', 500, 240.00, TRUE);
 
--- ============================================
 -- 14) PRUEBA REAL (deja datos consistentes para demo)
--- ============================================
 
 -- 14.1 Compra de créditos (Ana RECARGA 500)
 CALL sp_compra_creditos_aprobar(
@@ -1220,9 +1258,8 @@ CALL sp_generar_reporte_impacto(
   NULL
 );
 
--- ============================================================
--- FIX: Crear sp_obtener_ranking_usuarios (faltaba en el script)
--- ============================================================
+-- Crear sp_obtener_ranking_usuarios (faltaba en el script)
+
 DROP PROCEDURE IF EXISTS sp_obtener_ranking_usuarios;
 DELIMITER $$
 CREATE PROCEDURE sp_obtener_ranking_usuarios(
@@ -1282,14 +1319,10 @@ SELECT u.correo, b.saldo_creditos
 FROM USUARIO u LEFT JOIN BILLETERA b ON b.id_usuario = u.id_usuario
 WHERE u.correo IN ('ana@demo.com','luis@demo.com');
 
--- ============================================
--- FIN
--- ============================================
 SELECT '✔ Esquema + triggers + seed + prueba listos.' AS status;
 
--- ============================================
 -- A) CAMPOS DE FECHA MÍNIMOS PARA REPORTES
--- ============================================
+
 
 ALTER TABLE PUBLICACION
   ADD COLUMN creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;
@@ -1313,10 +1346,10 @@ CREATE INDEX ix_compra_creado_en    ON COMPRA_CREDITOS(creado_en);
 CREATE INDEX ix_mov_creado_en       ON MOVIMIENTO_CREDITOS(creado_en);
 CREATE INDEX ix_tx_creado_en        ON TRANSACCION(creado_en);
 CREATE INDEX ix_actsost_creado_en   ON ACTIVIDAD_SOSTENIBLE(creado_en);
--- ============================================
+
 -- B1) vw_usuario_actividad
 --    - Todas las acciones que consideramos "actividad"
--- ============================================
+
 DROP VIEW IF EXISTS vw_usuario_actividad;
 CREATE VIEW vw_usuario_actividad AS
 SELECT u.id_usuario,
@@ -1356,10 +1389,10 @@ SELECT u.id_usuario,
        'TX_VENDEDOR' AS tipo_actividad
 FROM USUARIO u
 JOIN TRANSACCION t ON t.id_vendedor = u.id_usuario;
--- ============================================
+
 -- B2) vw_mov_creditos_signo
 --    - Movimiento + signo POSITIVO/NEGATIVO ya resuelto
--- ============================================
+
 DROP VIEW IF EXISTS vw_mov_creditos_signo;
 CREATE VIEW vw_mov_creditos_signo AS
 SELECT m.*,
@@ -1369,10 +1402,10 @@ JOIN SIGNO_TIPO_MOV sx
   ON sx.id_tipo_movimiento = m.id_tipo_movimiento
 JOIN SIGNO_MOVIMIENTO sm
   ON sm.id_signo = sx.id_signo;
--- ============================================
+
 -- B3) vw_transacciones_categoria
 --    - Transacción + categoría de la publicación
--- ============================================
+
 DROP VIEW IF EXISTS vw_transacciones_categoria;
 CREATE VIEW vw_transacciones_categoria AS
 SELECT t.id_transaccion,
@@ -1389,9 +1422,9 @@ JOIN PUBLICACION p
   ON p.id_publicacion = t.id_publicacion
 JOIN CATEGORIA c
   ON c.id_categoria = p.id_categoria;
--- ============================================
+
 -- C1) Usuarios activos entre p_desde y p_hasta
--- ============================================
+
 DROP PROCEDURE IF EXISTS sp_rep_usuarios_activos;
 DELIMITER $$
 CREATE PROCEDURE sp_rep_usuarios_activos(
@@ -1411,9 +1444,9 @@ BEGIN
   ORDER BY ultima_actividad DESC;
 END$$
 DELIMITER ;
--- ============================================
+
 -- C2) Usuarios abandonados (sin actividad en rango)
--- ============================================
+
 DROP PROCEDURE IF EXISTS sp_rep_usuarios_abandonados;
 DELIMITER $$
 CREATE PROCEDURE sp_rep_usuarios_abandonados(
@@ -1438,9 +1471,8 @@ BEGIN
 END$$
 DELIMITER ;
 
--- ============================================
 -- C3) Ingresos por venta de créditos
--- ============================================
+
 DROP PROCEDURE IF EXISTS sp_rep_ingresos_creditos;
 DELIMITER $$
 CREATE PROCEDURE sp_rep_ingresos_creditos(
@@ -1462,9 +1494,8 @@ BEGIN
 END$$
 DELIMITER ;
 
--- ============================================
 -- C5) Intercambios por categoría
--- ============================================
+
 DROP PROCEDURE IF EXISTS sp_rep_intercambios_por_categoria;
 DELIMITER $$
 CREATE PROCEDURE sp_rep_intercambios_por_categoria(
@@ -1481,9 +1512,9 @@ BEGIN
   ORDER BY total_intercambios DESC;
 END$$
 DELIMITER ;
--- ============================================
+
 -- C6) Publicaciones vs intercambios por categoría
--- ============================================
+
 DROP PROCEDURE IF EXISTS sp_rep_publicaciones_vs_intercambios;
 DELIMITER $$
 CREATE PROCEDURE sp_rep_publicaciones_vs_intercambios(
@@ -1548,10 +1579,10 @@ BEGIN
 END$$
 DELIMITER ;
 
--- ============================================
+
 -- C7) Impacto acumulado por período (lectura directa)
 --     Asume que ya corriste sp_generar_reporte_impacto antes
--- ============================================
+
 DROP PROCEDURE IF EXISTS sp_rep_impacto_acumulado;
 DELIMITER $$
 CREATE PROCEDURE sp_rep_impacto_acumulado(

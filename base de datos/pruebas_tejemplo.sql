@@ -1,705 +1,1098 @@
-/* ============================================================
-   PRUEBAS INTEGRALES — CREDITOS_VERDES2 (IDEMPOTENTE y SIN 1242)
-   
-   ============================================================ */
-
 USE CREDITOS_VERDES2;
 
-SET @now = NOW();
-SET @period_name = '2025-11';
-
-START TRANSACTION;
-
-/* ------------------------------------------------------------
-   0) CATÁLOGOS MÍNIMOS (idempotentes)
-   ------------------------------------------------------------ */
-INSERT IGNORE INTO ROL (nombre, descripcion) VALUES
- ('ADMIN','Admin'),('COMPRADOR','Comprador'),('VENDEDOR','Vendedor'),('ONG','Org. Social');
-
-INSERT IGNORE INTO PERMISO (nombre, descripcion) VALUES
- ('GESTION_USUARIOS','CRUD usuarios'),
- ('VER_REPORTES','Acceso a reportes');
-
--- Bridge rol/permiso (idempotente)
-INSERT IGNORE INTO ROL_PERMISO (id_rol, id_permiso)
-SELECT (SELECT id_rol FROM ROL WHERE nombre='ADMIN' LIMIT 1), p.id_permiso
-FROM PERMISO p
-WHERE p.nombre IN ('GESTION_USUARIOS','VER_REPORTES');
-
-INSERT IGNORE INTO RESULTADO_ACCESO (nombre, descripcion) VALUES
- ('OK','Acceso correcto'),('FAIL','Credenciales inválidas');
-
-INSERT IGNORE INTO CATEGORIA (nombre, descripcion) VALUES
- ('Bicicletas','Movilidad'),
- ('Tecnología','Electrónica'),
- ('Muebles','Hogar'),
- ('Libros','Cultura'),
- ('Ropa','Vestimenta');
-
-INSERT IGNORE INTO UNIDAD_MEDIDA (nombre, simbolo) VALUES
- ('Unidad','u'),('Kilogramo','kg'),('Litro','L'),('kWh','kWh'),('Paquete','paq');
-
-INSERT IGNORE INTO UBICACION (direccion, ciudad, provincia, latitud, longitud) VALUES
- ('Av. Central 123','La Paz','La Paz',-16.5,-68.15),
- ('Calle 9 #456','Cochabamba','Cochabamba',-17.392,-66.159),
- ('Zona Sur 100','La Paz','La Paz',-16.55,-68.08);
-
-INSERT IGNORE INTO TIPO_PUBLICACION (nombre, descripcion) VALUES
- ('PRODUCTO','Publicación de producto'),
- ('SERVICIO','Publicación de servicio');
-
-INSERT IGNORE INTO TIPO_REFERENCIA (nombre) VALUES ('COMPRA'),('TRANSACCION'),('AJUSTE');
-
-INSERT IGNORE INTO TIPO_MOVIMIENTO (nombre, descripcion) VALUES
- ('RECARGA','Ingreso por compra de créditos'),
- ('INTERCAMBIO_IN','Ingreso por intercambio'),
- ('INTERCAMBIO_OUT','Egreso por intercambio'),
- ('BONO_PUBLICACION','Bono por promo/publicación'),
- ('BONO_ACTIVIDAD','Bono por actividad sostenible');
-
-INSERT IGNORE INTO SIGNO_MOVIMIENTO (nombre) VALUES ('POSITIVO'),('NEGATIVO');
-
--- Bridge signos/tipos (idempotente)
-INSERT IGNORE INTO SIGNO_TIPO_MOV (id_tipo_movimiento, id_signo, creado_en)
-SELECT tm.id_tipo_movimiento, sm.id_signo, @now
-FROM TIPO_MOVIMIENTO tm
-JOIN SIGNO_MOVIMIENTO sm
-  ON ((tm.nombre IN ('RECARGA','INTERCAMBIO_IN','BONO_PUBLICACION','BONO_ACTIVIDAD') AND sm.nombre='POSITIVO')
-   OR (tm.nombre='INTERCAMBIO_OUT' AND sm.nombre='NEGATIVO'));
-
-INSERT IGNORE INTO TIPO_PROMOCION (nombre, descripcion) VALUES
- ('LANZAMIENTO','Promoción de lanzamiento'),
- ('TEMPORADA','Promoción de temporada');
-
-INSERT IGNORE INTO TIPO_LOGRO (nombre, descripcion) VALUES
- ('PRIMERA_VENTA','Primer intercambio exitoso'),
- ('ECO_HERO','Alto impacto ambiental');
-
-INSERT IGNORE INTO TIPO_ACTIVIDAD (nombre, descripcion) VALUES
- ('RECICLAJE','Reciclaje domiciliario'),
- ('REFORESTACION','Plantación de árboles');
-
-INSERT IGNORE INTO UBICACION_PUBLICIDAD (nombre, descripcion, precio_base) VALUES
- ('HOME_TOP','Banner cabecera', 150.00),
- ('SIDEBAR','Lateral', 60.00);
-
-INSERT IGNORE INTO TIPO_REPORTE (nombre, descripcion) VALUES
- ('MENSUAL','KPIs mensuales'), ('TRIMESTRAL','KPIs trimestrales');
-
--- Período actual
-INSERT IGNORE INTO PERIODO (nombre, descripcion, fecha_inicio, fecha_fin)
-VALUES (@period_name,'Noviembre 2025','2025-11-01','2025-11-30');
-
--- Dimensiones ambientales
-INSERT IGNORE INTO DIMENSION_AMBIENTAL (codigo, nombre, unidad_base, descripcion) VALUES
- ('CO2','Dióxido de carbono','kg','CO2 evitado'),
- ('AGUA','Agua ahorrada','L','Litros ahorrados'),
- ('ENERGIA','Energía','kWh','Energía ahorrada');
-
-/* ------------------------------------------------------------
-   1) USUARIOS y BILLETERAS
-   ------------------------------------------------------------ */
-INSERT IGNORE INTO USUARIO (id_rol, estado, nombre, apellido, correo, telefono, url_perfil) VALUES
- ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR' LIMIT 1),'ACTIVO','Ana','Rojas','ana@demo.com','70000001','/p/ana'),
- ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR' LIMIT 1),'ACTIVO','Bruno','Salazar','bruno@demo.com','70000002','/p/bruno'),
- ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR' LIMIT 1),'ACTIVO','Carla','Mamani','carla@demo.com','70000003','/p/carla'),
- ((SELECT id_rol FROM ROL WHERE nombre='VENDEDOR'  LIMIT 1),'ACTIVO','Luis','Quispe','luis@demo.com','70000004','/p/luis'),
- ((SELECT id_rol FROM ROL WHERE nombre='VENDEDOR'  LIMIT 1),'ACTIVO','Marta','Suárez','marta@demo.com','70000005','/p/marta'),
- ((SELECT id_rol FROM ROL WHERE nombre='VENDEDOR'  LIMIT 1),'ACTIVO','Nico','Torres','nico@demo.com','70000006','/p/nico'),
- ((SELECT id_rol FROM ROL WHERE nombre='ONG'       LIMIT 1),'ACTIVO','ONG','Verde','ong@demo.com','70000007','/p/ong'),
- ((SELECT id_rol FROM ROL WHERE nombre='ADMIN'     LIMIT 1),'ACTIVO','Root','Admin','admin@demo.com','70000000','/p/admin');
-
--- Billeteras (idempotente)
-INSERT IGNORE INTO BILLETERA (id_usuario, estado, saldo_creditos, saldo_bs, cuenta_bancaria)
-SELECT u.id_usuario, 'ACTIVA', 0, 0.00, NULL
-FROM USUARIO u;
-
-/* ------------------------------------------------------------
-   2) PRODUCTOS / SERVICIOS
-   ------------------------------------------------------------ */
-INSERT IGNORE INTO PRODUCTO (id_categoria, nombre, descripcion, precio, peso) VALUES
- ((SELECT id_categoria FROM CATEGORIA WHERE nombre='Bicicletas' LIMIT 1),'Bici Urbana','Aluminio 21v', 1200.00, 14.5),
- ((SELECT id_categoria FROM CATEGORIA WHERE nombre='Bicicletas' LIMIT 1),'Bici Montaña','Acero 18v', 900.00, 16.8),
- ((SELECT id_categoria FROM CATEGORIA WHERE nombre='Tecnología' LIMIT 1),'Laptop 14"','i5 16GB', 4500.00, 1.4),
- ((SELECT id_categoria FROM CATEGORIA WHERE nombre='Tecnología' LIMIT 1),'Monitor 24"','1080p 75Hz', 950.00, 3.2),
- ((SELECT id_categoria FROM CATEGORIA WHERE nombre='Muebles'    LIMIT 1),'Silla Gamer','Reclinable', 750.00, 9.0);
-
-INSERT IGNORE INTO SERVICIO (id_categoria, estado, nombre, descripcion, precio, duracion_min) VALUES
- ((SELECT id_categoria FROM CATEGORIA WHERE nombre='Tecnología' LIMIT 1),'ACTIVO','Mantenimiento PC','Limpieza y optimización', 90.00, 60),
- ((SELECT id_categoria FROM CATEGORIA WHERE nombre='Tecnología' LIMIT 1),'ACTIVO','Instalación SO','Formateo e instalación', 120.00, 90),
- ((SELECT id_categoria FROM CATEGORIA WHERE nombre='Libros'     LIMIT 1),'ACTIVO','Encuadernación','Arreglo de libros', 50.00, 45),
- ((SELECT id_categoria FROM CATEGORIA WHERE nombre='Ropa'       LIMIT 1),'ACTIVO','Ajuste de prendas','Sastrería básica', 35.00, 30),
- ((SELECT id_categoria FROM CATEGORIA WHERE nombre='Muebles'    LIMIT 1),'ACTIVO','Armado de muebles','Armado a domicilio', 80.00, 60);
-
-/* ------------------------------------------------------------
-   3) PUBLICACIONES (robusto con filtros + LIMIT 1)
-   ------------------------------------------------------------ */
--- IDs útiles
-SET @id_u_luis   = (SELECT id_usuario FROM USUARIO WHERE correo='luis@demo.com'  LIMIT 1);
-SET @id_u_marta  = (SELECT id_usuario FROM USUARIO WHERE correo='marta@demo.com' LIMIT 1);
-SET @id_u_nico   = (SELECT id_usuario FROM USUARIO WHERE correo='nico@demo.com'  LIMIT 1);
-
-SET @id_cat_bici = (SELECT id_categoria FROM CATEGORIA WHERE nombre='Bicicletas' LIMIT 1);
-SET @id_cat_tec  = (SELECT id_categoria FROM CATEGORIA WHERE nombre='Tecnología' LIMIT 1);
-SET @id_cat_mue  = (SELECT id_categoria FROM CATEGORIA WHERE nombre='Muebles'    LIMIT 1);
-SET @id_cat_lib  = (SELECT id_categoria FROM CATEGORIA WHERE nombre='Libros'     LIMIT 1);
-
-SET @id_tp_prod  = (SELECT id_tipo_publicacion FROM TIPO_PUBLICACION WHERE nombre='PRODUCTO' LIMIT 1);
-SET @id_tp_serv  = (SELECT id_tipo_publicacion FROM TIPO_PUBLICACION WHERE nombre='SERVICIO' LIMIT 1);
-
-SET @id_ub_lpz   = (SELECT id_ubicacion FROM UBICACION WHERE ciudad='La Paz'        ORDER BY id_ubicacion ASC LIMIT 1);
-SET @id_ub_cbba  = (SELECT id_ubicacion FROM UBICACION WHERE ciudad='Cochabamba'    ORDER BY id_ubicacion ASC LIMIT 1);
-
--- Publicación PRODUCTO: Bici urbana (Luis, Bicicletas, La Paz)
-INSERT IGNORE INTO PUBLICACION
- (id_usuario, id_categoria, id_tipo_publicacion, estado, id_ubicacion, titulo, descripcion, valor_creditos, imagen_url)
-VALUES
- (@id_u_luis, @id_cat_bici, @id_tp_prod, 'PUBLICADA', @id_ub_lpz,
-  'Bicicleta urbana aluminio', 'Bici urbana ligera, 21 velocidades.', 300, 'https://img/bici1.jpg');
-
--- Vincular a PRODUCTO 'Bici Urbana' (resuelto con LIMIT 1 y filtro por categoría)
-SET @id_pub_bici_urb = (
-  SELECT id_publicacion
-  FROM PUBLICACION
-  WHERE titulo='Bicicleta urbana aluminio'
-    AND id_usuario=@id_u_luis
-    AND id_categoria=@id_cat_bici
-  ORDER BY id_publicacion ASC
-  LIMIT 1
-);
-
-SET @id_prod_bici_urb = (
-  SELECT p.id_producto
-  FROM PRODUCTO p
-  WHERE p.nombre='Bici Urbana'
-    AND p.id_categoria=@id_cat_bici
-  ORDER BY p.id_producto ASC
-  LIMIT 1
-);
-
-SET @id_um_u = (SELECT id_um FROM UNIDAD_MEDIDA WHERE simbolo='u' LIMIT 1);
-
-INSERT IGNORE INTO PUBLICACION_PRODUCTO (id_publicacion, id_producto, cantidad, id_um)
-VALUES (@id_pub_bici_urb, @id_prod_bici_urb, 1.0000, @id_um_u);
-
--- Publicación PRODUCTO: Bici montaña (Marta)
-INSERT IGNORE INTO PUBLICACION
- (id_usuario, id_categoria, id_tipo_publicacion, estado, id_ubicacion, titulo, descripcion, valor_creditos, imagen_url)
-VALUES
- (@id_u_marta, @id_cat_bici, @id_tp_prod, 'PUBLICADA', @id_ub_cbba,
-  'Bicicleta de montaña', 'Bici MTB 18v.', 220, 'https://img/mtb.jpg');
-
-SET @id_pub_bici_mtb = (
-  SELECT id_publicacion
-  FROM PUBLICACION
-  WHERE titulo='Bicicleta de montaña'
-    AND id_usuario=@id_u_marta
-    AND id_categoria=@id_cat_bici
-  ORDER BY id_publicacion ASC
-  LIMIT 1
-);
-
-SET @id_prod_bici_mtb = (
-  SELECT id_producto
-  FROM PRODUCTO
-  WHERE nombre='Bici Montaña'
-    AND id_categoria=@id_cat_bici
-  ORDER BY id_producto ASC
-  LIMIT 1
-);
-
-INSERT IGNORE INTO PUBLICACION_PRODUCTO (id_publicacion, id_producto, cantidad, id_um)
-VALUES (@id_pub_bici_mtb, @id_prod_bici_mtb, 1.0000, @id_um_u);
-
--- Publicación SERVICIO: Mantenimiento PC (Luis, Tecnología)
-INSERT IGNORE INTO PUBLICACION
- (id_usuario, id_categoria, id_tipo_publicacion, estado, id_ubicacion, titulo, descripcion, valor_creditos, imagen_url)
-VALUES
- (@id_u_luis, @id_cat_tec, @id_tp_serv, 'PUBLICADA', @id_ub_lpz,
-  'Mantenimiento y limpieza de PC', 'Servicio técnico completo', 120, 'https://img/serv1.jpg');
-
-SET @id_pub_serv_pc = (
-  SELECT id_publicacion
-  FROM PUBLICACION
-  WHERE titulo='Mantenimiento y limpieza de PC'
-    AND id_usuario=@id_u_luis
-    AND id_categoria=@id_cat_tec
-  ORDER BY id_publicacion ASC
-  LIMIT 1
-);
-
-SET @id_serv_mant_pc = (
-  SELECT id_servicio
-  FROM SERVICIO
-  WHERE nombre='Mantenimiento PC'
-    AND id_categoria=@id_cat_tec
-  ORDER BY id_servicio ASC
-  LIMIT 1
-);
-
-INSERT IGNORE INTO PUBLICACION_SERVICIO (id_publicacion, id_servicio, horario)
-VALUES (@id_pub_serv_pc, @id_serv_mant_pc, 'L-V 09:00-18:00');
-
--- Publicación SERVICIO: Formateo SO (Nico, Tecnología)
-INSERT IGNORE INTO PUBLICACION
- (id_usuario, id_categoria, id_tipo_publicacion, estado, id_ubicacion, titulo, descripcion, valor_creditos, imagen_url)
-VALUES
- (@id_u_nico, @id_cat_tec, @id_tp_serv, 'PUBLICADA', @id_ub_lpz,
-  'Formateo e instalación de SO', 'Instalación desde cero', 140, 'https://img/serv2.jpg');
-
-SET @id_pub_serv_so = (
-  SELECT id_publicacion
-  FROM PUBLICACION
-  WHERE titulo='Formateo e instalación de SO'
-    AND id_usuario=@id_u_nico
-    AND id_categoria=@id_cat_tec
-  ORDER BY id_publicacion ASC
-  LIMIT 1
-);
-
-SET @id_serv_inst_so = (
-  SELECT id_servicio
-  FROM SERVICIO
-  WHERE nombre='Instalación SO'
-    AND id_categoria=@id_cat_tec
-  ORDER BY id_servicio ASC
-  LIMIT 1
-);
-
-INSERT IGNORE INTO PUBLICACION_SERVICIO (id_publicacion, id_servicio, horario)
-VALUES (@id_pub_serv_so, @id_serv_inst_so, 'L-S 10:00-19:00');
-
--- Publicación SERVICIO: Armado de muebles (Marta, Muebles)
-INSERT IGNORE INTO PUBLICACION
- (id_usuario, id_categoria, id_tipo_publicacion, estado, id_ubicacion, titulo, descripcion, valor_creditos, imagen_url)
-VALUES
- (@id_u_marta, @id_cat_mue, @id_tp_serv, 'PUBLICADA', @id_ub_cbba,
-  'Armado de muebles a domicilio', 'Armado rápido y seguro', 80, 'https://img/armado.jpg');
-
-SET @id_pub_serv_arm = (
-  SELECT id_publicacion
-  FROM PUBLICACION
-  WHERE titulo='Armado de muebles a domicilio'
-    AND id_usuario=@id_u_marta
-    AND id_categoria=@id_cat_mue
-  ORDER BY id_publicacion ASC
-  LIMIT 1
-);
-
-SET @id_serv_arm_mue = (
-  SELECT id_servicio
-  FROM SERVICIO
-  WHERE nombre='Armado de muebles'
-    AND id_categoria=@id_cat_mue
-  ORDER BY id_servicio ASC
-  LIMIT 1
-);
-
-INSERT IGNORE INTO PUBLICACION_SERVICIO (id_publicacion, id_servicio, horario)
-VALUES (@id_pub_serv_arm, @id_serv_arm_mue, 'L-D 08:00-18:00');
-
--- Publicación SERVICIO: Encuadernación (Nico, Libros)
-INSERT IGNORE INTO PUBLICACION
- (id_usuario, id_categoria, id_tipo_publicacion, estado, id_ubicacion, titulo, descripcion, valor_creditos, imagen_url)
-VALUES
- (@id_u_nico, @id_cat_lib, @id_tp_serv, 'PUBLICADA', @id_ub_lpz,
-  'Encuadernación de libros', 'Refuerzo de tapas y lomo', 60, 'https://img/encu.jpg');
-
-SET @id_pub_serv_enc = (
-  SELECT id_publicacion
-  FROM PUBLICACION
-  WHERE titulo='Encuadernación de libros'
-    AND id_usuario=@id_u_nico
-    AND id_categoria=@id_cat_lib
-  ORDER BY id_publicacion ASC
-  LIMIT 1
-);
-
-SET @id_serv_enc = (
-  SELECT id_servicio
-  FROM SERVICIO
-  WHERE nombre='Encuadernación'
-    AND id_categoria=@id_cat_lib
-  ORDER BY id_servicio ASC
-  LIMIT 1
-);
-
-INSERT IGNORE INTO PUBLICACION_SERVICIO (id_publicacion, id_servicio, horario)
-VALUES (@id_pub_serv_enc, @id_serv_enc, 'L-V 09:00-17:00');
-
-/* ------------------------------------------------------------
-   4) EQUIVALENCIAS AMBIENTALES
-   ------------------------------------------------------------ */
+-- -------------------------------------------------------------------
+-- 0) Asegurar equivalencia de impacto para Tecnología (por si acaso)
+-- -------------------------------------------------------------------
 INSERT IGNORE INTO EQUIVALENCIA_IMPACTO (id_categoria, id_um, co2_por_unidad, agua_por_unidad, energia_por_unidad)
+SELECT
+  (SELECT id_categoria FROM CATEGORIA WHERE nombre = 'Tecnología' LIMIT 1),
+  (SELECT id_um FROM UNIDAD_MEDIDA WHERE simbolo = 'u' LIMIT 1),
+  8.000000,
+  30.000000,
+  3.500000;
+
+-- ===========================================================
+-- 1) Nuevos usuarios compradores + billeteras
+-- ===========================================================
+INSERT INTO USUARIO (id_rol, estado, nombre, apellido, correo, telefono, url_perfil)
 VALUES
- (@id_cat_bici, @id_um_u, 12.50, 45.00, 5.75),
- (@id_cat_tec,  @id_um_u,  2.10,  5.00, 1.50);
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Bruno','Rojas','bruno@demo.com','70000006','/p/bruno'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Elena','Suarez','elena@demo.com','70000007','/p/elena'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Fernando','Almeida','fernando@demo.com','70000008','/p/fernando'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Gaby','Flores','gaby@demo.com','70000009','/p/gaby'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Hugo','Vargas','hugo@demo.com','70000010','/p/hugo'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Irene','Paz','irene@demo.com','70000011','/p/irene'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Jorge','Campos','jorge@demo.com','70000012','/p/jorge');
 
-/* ------------------------------------------------------------
-   5) PROMOCIONES (disparan bono por trigger al vincular)
-   ------------------------------------------------------------ */
-INSERT IGNORE INTO PROMOCION (id_tipo_promocion, nombre, descripcion, creditos_otorgados, fecha_inicio, fecha_fin, estado)
-SELECT (SELECT id_tipo_promocion FROM TIPO_PROMOCION WHERE nombre='LANZAMIENTO' LIMIT 1),
-       'Promo Bicis','Bono bicis', 50, @now - INTERVAL 1 DAY, @now + INTERVAL 3 DAY, 'ACTIVA'
-UNION ALL
-SELECT (SELECT id_tipo_promocion FROM TIPO_PROMOCION WHERE nombre='TEMPORADA' LIMIT 1),
-       'Promo Tecno','Bono tecnología', 30, @now - INTERVAL 1 DAY, @now + INTERVAL 3 DAY, 'ACTIVA'
-ON DUPLICATE KEY UPDATE descripcion=VALUES(descripcion), creditos_otorgados=VALUES(creditos_otorgados),
-                        fecha_inicio=VALUES(fecha_inicio), fecha_fin=VALUES(fecha_fin), estado=VALUES(estado);
-
-SET @id_promo_bicis = (SELECT id_promocion FROM PROMOCION WHERE nombre='Promo Bicis'  ORDER BY id_promocion ASC LIMIT 1);
-SET @id_promo_tecno = (SELECT id_promocion FROM PROMOCION WHERE nombre='Promo Tecno'  ORDER BY id_promocion ASC LIMIT 1);
-
--- Vincular a publicaciones (usa IDS ya normalizados con LIMIT 1)
-INSERT IGNORE INTO PROMOCION_PUBLICACION (id_promocion, id_publicacion)
+-- Nuevos vendedores extra
+INSERT INTO USUARIO (id_rol, estado, nombre, apellido, correo, telefono, url_perfil)
 VALUES
- (@id_promo_bicis, @id_pub_bici_urb),
- (@id_promo_bicis, @id_pub_bici_mtb),
- (@id_promo_tecno, @id_pub_serv_pc);
+  ((SELECT id_rol FROM ROL WHERE nombre='VENDEDOR'),'ACTIVO','Eco','Store','eco1@demo.com','70000013','/p/eco1'),
+  ((SELECT id_rol FROM ROL WHERE nombre='VENDEDOR'),'ACTIVO','ReUse','Market','eco2@demo.com','70000014','/p/eco2');
 
-/* ------------------------------------------------------------
-   6) PAQUETES y COMPRAS (3 usuarios)
-   ------------------------------------------------------------ */
-INSERT IGNORE INTO PAQUETE_CREDITOS (nombre, cantidad_creditos, precio_bs, activo)
-VALUES ('Pack 100', 100, 50.00, TRUE),
-       ('Pack 300', 300,150.00, TRUE),
-       ('Pack 600', 600,270.00, TRUE);
+-- Crear billetera para TODOS los usuarios nuevos (si no tienen)
+INSERT INTO BILLETERA (id_usuario, estado, saldo_creditos, saldo_bs, cuenta_bancaria)
+SELECT u.id_usuario, 'ACTIVA', 0, 0.00, NULL
+FROM USUARIO u
+LEFT JOIN BILLETERA b ON b.id_usuario = u.id_usuario
+WHERE u.correo IN (
+  'bruno@demo.com','elena@demo.com','fernando@demo.com',
+  'gaby@demo.com','hugo@demo.com','irene@demo.com','jorge@demo.com',
+  'eco1@demo.com','eco2@demo.com'
+)
+AND b.id_billetera IS NULL;
 
-SET @id_pack_600 = (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 600' LIMIT 1);
-SET @id_pack_300 = (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 300' LIMIT 1);
-SET @id_pack_100 = (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 100' LIMIT 1);
+-- ===========================================================
+-- 2) Más productos / servicios / publicaciones
+-- ===========================================================
 
-SET @id_ana   = (SELECT id_usuario FROM USUARIO WHERE correo='ana@demo.com'   LIMIT 1);
-SET @id_bruno = (SELECT id_usuario FROM USUARIO WHERE correo='bruno@demo.com' LIMIT 1);
-SET @id_carla = (SELECT id_usuario FROM USUARIO WHERE correo='carla@demo.com' LIMIT 1);
+-- Productos Bicicletas (venden Marta y eco1)
+INSERT INTO PRODUCTO (id_categoria, nombre, descripcion, precio, peso)
+SELECT
+  (SELECT id_categoria FROM CATEGORIA WHERE nombre='Bicicletas'),
+  'Bici Urbana Eco',
+  'Bicicleta urbana reacondicionada con cuadro de aluminio.',
+  1500.00,
+  14.2;
 
--- Evita duplicar compras con id_transaccion_pago únicos
-CALL sp_compra_creditos_aprobar(@id_ana,   @id_pack_600, 'PAY-DEMO-ANA-001');
-CALL sp_compra_creditos_aprobar(@id_bruno, @id_pack_300, 'PAY-DEMO-BRU-001');
-CALL sp_compra_creditos_aprobar(@id_carla, @id_pack_100, 'PAY-DEMO-CAR-001');
+INSERT INTO PRODUCTO (id_categoria, nombre, descripcion, precio, peso)
+SELECT
+  (SELECT id_categoria FROM CATEGORIA WHERE nombre='Bicicletas'),
+  'Bici Plegable Ciudad',
+  'Bicicleta plegable ideal para transporte multimodal.',
+  1300.00,
+  13.0;
 
-/* ------------------------------------------------------------
-   7) INTERCAMBIOS (4 transacciones)
-   ------------------------------------------------------------ */
--- Ana compra bici urbana (300)
-CALL sp_realizar_intercambio(@id_ana, @id_pub_bici_urb, 300);
+-- Productos Tecnología (vende eco2)
+INSERT INTO PRODUCTO (id_categoria, nombre, descripcion, precio, peso)
+SELECT
+  (SELECT id_categoria FROM CATEGORIA WHERE nombre='Tecnología'),
+  'Laptop Reacondicionada i5',
+  'Laptop reacondicionada con SSD de 256GB y 8GB RAM.',
+  2200.00,
+  2.1;
 
--- Bruno compra MTB (220)
-CALL sp_realizar_intercambio(@id_bruno, @id_pub_bici_mtb, 220);
+INSERT INTO PRODUCTO (id_categoria, nombre, descripcion, precio, peso)
+SELECT
+  (SELECT id_categoria FROM CATEGORIA WHERE nombre='Tecnología'),
+  'Monitor 24 Reciclado',
+  'Monitor de 24" reacondicionado, ideal oficina.',
+  900.00,
+  3.2;
 
--- ids que ya usaste en el script
-SET @id_carla = (SELECT id_usuario FROM USUARIO WHERE correo='carla@demo.com' LIMIT 1);
-SET @id_pack_100 = (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 100' LIMIT 1);
+-- Publicaciones de esos productos
+INSERT INTO PUBLICACION
+  (id_usuario, id_categoria, id_tipo_publicacion, estado, id_ubicacion,
+   titulo, descripcion, valor_creditos, imagen_url)
+SELECT
+  (SELECT id_usuario FROM USUARIO WHERE correo='marta@demo.com'),
+  (SELECT id_categoria FROM CATEGORIA WHERE nombre='Bicicletas'),
+  (SELECT id_tipo_publicacion FROM TIPO_PUBLICACION WHERE nombre='PRODUCTO'),
+  'PUBLICADA',
+  (SELECT id_ubicacion FROM UBICACION WHERE ciudad='Cochabamba'),
+  'Bici Urbana Eco',
+  'Reacondicionada, frenos en V, lista para uso diario.',
+  320,
+  'https://img/bici_urbana_eco.jpg';
 
--- nueva compra (usa un id de pago único)
-CALL sp_compra_creditos_aprobar(@id_carla, @id_pack_100, 'PAY-DEMO-CAR-002');
+INSERT INTO PUBLICACION_PRODUCTO
+SELECT
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Bici Urbana Eco' LIMIT 1),
+  (SELECT id_producto   FROM PRODUCTO   WHERE nombre='Bici Urbana Eco' LIMIT 1),
+  1.0000,
+  (SELECT id_um FROM UNIDAD_MEDIDA WHERE simbolo='u');
 
--- ahora sí: paga 120
-CALL sp_realizar_intercambio(@id_carla, @id_pub_serv_pc, 120);
+INSERT INTO PUBLICACION
+  (id_usuario, id_categoria, id_tipo_publicacion, estado, id_ubicacion,
+   titulo, descripcion, valor_creditos, imagen_url)
+SELECT
+  (SELECT id_usuario FROM USUARIO WHERE correo='eco1@demo.com'),
+  (SELECT id_categoria FROM CATEGORIA WHERE nombre='Bicicletas'),
+  (SELECT id_tipo_publicacion FROM TIPO_PUBLICACION WHERE nombre='PRODUCTO'),
+  'PUBLICADA',
+  (SELECT id_ubicacion FROM UBICACION WHERE ciudad='La Paz'),
+  'Bici Plegable Ciudad',
+  'Fácil de transportar, incluye canastillo frontal.',
+  280,
+  'https://img/bici_plegable.jpg';
 
+INSERT INTO PUBLICACION_PRODUCTO
+SELECT
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Bici Plegable Ciudad' LIMIT 1),
+  (SELECT id_producto   FROM PRODUCTO   WHERE nombre='Bici Plegable Ciudad' LIMIT 1),
+  1.0000,
+  (SELECT id_um FROM UNIDAD_MEDIDA WHERE simbolo='u');
 
--- Ana paga servicio Formateo SO (140)
-CALL sp_realizar_intercambio(@id_ana, @id_pub_serv_so, 140);
+-- Publicaciones Tecnología (eco2)
+INSERT INTO PUBLICACION
+  (id_usuario, id_categoria, id_tipo_publicacion, estado, id_ubicacion,
+   titulo, descripcion, valor_creditos, imagen_url)
+SELECT
+  (SELECT id_usuario FROM USUARIO WHERE correo='eco2@demo.com'),
+  (SELECT id_categoria FROM CATEGORIA WHERE nombre='Tecnología'),
+  (SELECT id_tipo_publicacion FROM TIPO_PUBLICACION WHERE nombre='PRODUCTO'),
+  'PUBLICADA',
+  (SELECT id_ubicacion FROM UBICACION WHERE ciudad='Santa Cruz'),
+  'Laptop Reacondicionada i5',
+  'Ideal para teletrabajo y estudio.',
+  350,
+  'https://img/laptop_reuse.jpg';
 
--- Completar la última transacción creada (si el flujo lo requiere)
-SET @id_last_tx = (SELECT MAX(id_transaccion) FROM TRANSACCION);
-UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_last_tx;
+INSERT INTO PUBLICACION_PRODUCTO
+SELECT
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Laptop Reacondicionada i5' LIMIT 1),
+  (SELECT id_producto   FROM PRODUCTO   WHERE nombre='Laptop Reacondicionada i5' LIMIT 1),
+  1.0000,
+  (SELECT id_um FROM UNIDAD_MEDIDA WHERE simbolo='u');
 
-/* ------------------------------------------------------------
-   8) ACTIVIDADES SOSTENIBLES (bonos)
-   ------------------------------------------------------------ */
-SET @id_act_recic = (SELECT id_tipo_actividad FROM TIPO_ACTIVIDAD WHERE nombre='RECICLAJE' LIMIT 1);
-SET @id_act_refo  = (SELECT id_tipo_actividad FROM TIPO_ACTIVIDAD WHERE nombre='REFORESTACION' LIMIT 1);
+INSERT INTO PUBLICACION
+  (id_usuario, id_categoria, id_tipo_publicacion, estado, id_ubicacion,
+   titulo, descripcion, valor_creditos, imagen_url)
+SELECT
+  (SELECT id_usuario FROM USUARIO WHERE correo='eco2@demo.com'),
+  (SELECT id_categoria FROM CATEGORIA WHERE nombre='Tecnología'),
+  (SELECT id_tipo_publicacion FROM TIPO_PUBLICACION WHERE nombre='PRODUCTO'),
+  'PUBLICADA',
+  (SELECT id_ubicacion FROM UBICACION WHERE ciudad='Cochabamba'),
+  'Monitor 24 Reciclado',
+  'Pantalla 24" reacondicionada, 75Hz, entrada HDMI.',
+  220,
+  'https://img/monitor_reciclado.jpg';
 
-CALL sp_registrar_actividad_sostenible(@id_ana,   @id_act_recic, 'Entregó 6kg de plástico', 20, 'https://evid/reciclaje-ana.jpg');
-CALL sp_registrar_actividad_sostenible(@id_bruno, @id_act_refo,  'Plantó 3 árboles',        15, 'https://evid/reforest-bruno.jpg');
+INSERT INTO PUBLICACION_PRODUCTO
+SELECT
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Monitor 24 Reciclado' LIMIT 1),
+  (SELECT id_producto   FROM PRODUCTO   WHERE nombre='Monitor 24 Reciclado' LIMIT 1),
+  1.0000,
+  (SELECT id_um FROM UNIDAD_MEDIDA WHERE simbolo='u');
 
-/* ------------------------------------------------------------
-   9) EVENTOS AMBIENTALES manuales
-   ------------------------------------------------------------ */
-SET @id_dim_co2 = (SELECT id_dimension FROM DIMENSION_AMBIENTAL WHERE codigo='CO2'   LIMIT 1);
-SET @id_dim_h2o = (SELECT id_dimension FROM DIMENSION_AMBIENTAL WHERE codigo='AGUA'  LIMIT 1);
-SET @id_um_kg   = (SELECT id_um FROM UNIDAD_MEDIDA WHERE simbolo='kg' LIMIT 1);
--- antes: 
--- SET @id_per = (SELECT id_periodo FROM PERIODO WHERE nombre=@period_name LIMIT 1);
+-- Servicios de tecnología adicionales (los vende Marta)
+INSERT INTO SERVICIO (id_categoria, estado, nombre, descripcion, precio, duracion_min)
+SELECT
+  (SELECT id_categoria FROM CATEGORIA WHERE nombre='Tecnología'),
+  'ACTIVO',
+  'Mantenimiento laptop básico',
+  'Limpieza interna y cambio de pasta térmica.',
+  100.00,
+  60;
 
--- ahora:
-SET @id_per = (
-  SELECT id_periodo
-  FROM PERIODO
-  WHERE nombre COLLATE utf8mb4_unicode_ci
-        = CONVERT(@period_name USING utf8mb4) COLLATE utf8mb4_unicode_ci
-  LIMIT 1
+INSERT INTO PUBLICACION
+  (id_usuario, id_categoria, id_tipo_publicacion, estado, id_ubicacion,
+   titulo, descripcion, valor_creditos, imagen_url)
+SELECT
+  (SELECT id_usuario FROM USUARIO WHERE correo='marta@demo.com'),
+  (SELECT id_categoria FROM CATEGORIA WHERE nombre='Tecnología'),
+  (SELECT id_tipo_publicacion FROM TIPO_PUBLICACION WHERE nombre='SERVICIO'),
+  'PUBLICADA',
+  (SELECT id_ubicacion FROM UBICACION WHERE ciudad='Cochabamba'),
+  'Mantenimiento laptop básico',
+  'Incluye limpieza general y revisión de temperatura.',
+  110,
+  'https://img/serv_mant_laptop.jpg';
+
+INSERT INTO PUBLICACION_SERVICIO
+SELECT
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Mantenimiento laptop básico' LIMIT 1),
+  (SELECT id_servicio   FROM SERVICIO   WHERE nombre='Mantenimiento laptop básico' LIMIT 1),
+  'L-S 09:00-12:00';
+
+-- ===========================================================
+-- 3) Compras de créditos masivas (≈ 20 operaciones)
+--    Cada usuario compra varios paquetes
+-- ===========================================================
+
+-- Usuarios que van a comprar créditos
+SET @compradores := 'ana@demo.com,carla@demo.com,diego@demo.com,bruno@demo.com,elena@demo.com,fernando@demo.com,gaby@demo.com,hugo@demo.com,irene@demo.com,jorge@demo.com';
+
+-- Ana (2 recargas)
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='ana@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-ANA-002'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='ana@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 100'),
+  'PAY-ANA-003'
 );
 
-INSERT INTO EVENTO_AMBIENTAL (id_usuario, id_dimension, fuente, id_fuente, categoria, valor, id_um, contaminacion_reducida, descripcion)
+-- Carla
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='carla@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-CARLA-002'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='carla@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 100'),
+  'PAY-CARLA-003'
+);
+
+-- Diego
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='diego@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-DIEGO-002'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='diego@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 100'),
+  'PAY-DIEGO-003'
+);
+
+-- Bruno
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='bruno@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-BRUNO-001'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='bruno@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 100'),
+  'PAY-BRUNO-002'
+);
+
+-- Elena
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='elena@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-ELENA-001'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='elena@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 100'),
+  'PAY-ELENA-002'
+);
+
+-- Fernando
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='fernando@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-FERNANDO-001'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='fernando@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 100'),
+  'PAY-FERNANDO-002'
+);
+
+-- Gaby
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='gaby@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-GABY-001'
+);
+
+-- Hugo
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='hugo@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-HUGO-001'
+);
+
+-- Irene
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='irene@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-IRENE-001'
+);
+
+-- Jorge
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='jorge@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-JORGE-001'
+);
+
+-- ===========================================================
+-- 4) Intercambios masivos (≈ 20 operaciones)
+--    Cada comprador adquiere productos/servicios distintos
+-- ===========================================================
+
+-- Función auxiliar mental:
+-- Bici Urbana Eco        -> 320 créditos
+-- Bici Plegable Ciudad   -> 280 créditos
+-- Laptop Reacondicionada -> 350 créditos
+-- Monitor 24 Reciclado   -> 220 créditos
+-- Mantenimiento laptop   -> 110 créditos
+-- Mantenimiento y limpieza de PC (seed original) -> 120 créditos
+-- Bicicleta montaña Pro  -> 450 créditos
+
+-- 4.1 Ana compra Bici Urbana Eco y servicio de mantenimiento
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='ana@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Bici Urbana Eco' LIMIT 1),
+  320
+);
+SET @id_tx = (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='ana@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Mantenimiento laptop básico' LIMIT 1),
+  110
+);
+SET @id_tx = (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+-- 4.2 Carla compra servicio "Mantenimiento y limpieza de PC" y Monitor
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='carla@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Mantenimiento y limpieza de PC' LIMIT 1),
+  120
+);
+SET @id_tx = (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='carla@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Monitor 24 Reciclado' LIMIT 1),
+  220
+);
+SET @id_tx = (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+-- 4.3 Diego compra Bici Plegable Ciudad
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='diego@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Bici Plegable Ciudad' LIMIT 1),
+  280
+);
+SET @id_tx = (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+-- 4.4 Bruno compra Laptop Reacondicionada y servicio de mantenimiento
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='bruno@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Laptop Reacondicionada i5' LIMIT 1),
+  350
+);
+SET @id_tx = (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='bruno@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Mantenimiento laptop básico' LIMIT 1),
+  110
+);
+SET @id_tx = (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+-- 4.5 Elena compra Monitor y servicio
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='elena@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Monitor 24 Reciclado' LIMIT 1),
+  220
+);
+SET @id_tx = (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='elena@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Formateo e instalación de Windows' LIMIT 1),
+  90
+);
+SET @id_tx = (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+-- 4.6 Fernando compra Bici Urbana Eco
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='fernando@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Bici Urbana Eco' LIMIT 1),
+  320
+);
+SET @id_tx = (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+-- 4.7 Gaby compra servicio "Formateo e instalación de Windows"
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='gaby@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Formateo e instalación de Windows' LIMIT 1),
+  90
+);
+SET @id_tx = (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+-- 4.8 Hugo compra "Mantenimiento y limpieza de PC"
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='hugo@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Mantenimiento y limpieza de PC' LIMIT 1),
+  120
+);
+SET @id_tx = (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+-- 4.9 Irene compra "Bicicleta montaña Pro"
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='irene@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Bicicleta montaña Pro' LIMIT 1),
+  450
+);
+SET @id_tx = (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+-- 4.10 Jorge compra "Bici Plegable Ciudad"
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='jorge@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Bici Plegable Ciudad' LIMIT 1),
+  280
+);
+SET @id_tx = (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+-- ===========================================================
+-- 5) Actividades sostenibles masivas (≈ 10 operaciones)
+-- ===========================================================
+
+CALL sp_registrar_actividad_sostenible(
+  (SELECT id_usuario FROM USUARIO WHERE correo='ana@demo.com'),
+  (SELECT id_tipo_actividad FROM TIPO_ACTIVIDAD WHERE nombre='RECICLAJE'),
+  'Entregó 4kg de papel para reciclaje', 12,
+  'https://evidencias/reciclaje_ana.jpg'
+);
+
+CALL sp_registrar_actividad_sostenible(
+  (SELECT id_usuario FROM USUARIO WHERE correo='bruno@demo.com'),
+  (SELECT id_tipo_actividad FROM TIPO_ACTIVIDAD WHERE nombre='RECICLAJE'),
+  'Entregó 6kg de plástico para reciclaje', 18,
+  'https://evidencias/reciclaje_bruno.jpg'
+);
+
+CALL sp_registrar_actividad_sostenible(
+  (SELECT id_usuario FROM USUARIO WHERE correo='elena@demo.com'),
+  (SELECT id_tipo_actividad FROM TIPO_ACTIVIDAD WHERE nombre='RECICLAJE'),
+  'Entregó 10kg de cartón', 25,
+  'https://evidencias/reciclaje_elena.jpg'
+);
+
+CALL sp_registrar_actividad_sostenible(
+  (SELECT id_usuario FROM USUARIO WHERE correo='fernando@demo.com'),
+  (SELECT id_tipo_actividad FROM TIPO_ACTIVIDAD WHERE nombre='RECICLAJE'),
+  'Donó componentes electrónicos para reciclaje', 20,
+  'https://evidencias/reciclaje_fernando.jpg'
+);
+
+CALL sp_registrar_actividad_sostenible(
+  (SELECT id_usuario FROM USUARIO WHERE correo='gaby@demo.com'),
+  (SELECT id_tipo_actividad FROM TIPO_ACTIVIDAD WHERE nombre='RECICLAJE'),
+  'Recogió residuos en su barrio', 15,
+  'https://evidencias/reciclaje_gaby.jpg'
+);
+
+CALL sp_registrar_actividad_sostenible(
+  (SELECT id_usuario FROM USUARIO WHERE correo='hugo@demo.com'),
+  (SELECT id_tipo_actividad FROM TIPO_ACTIVIDAD WHERE nombre='RECICLAJE'),
+  'Separó vidrio y plástico en su hogar', 10,
+  'https://evidencias/reciclaje_hugo.jpg'
+);
+
+CALL sp_registrar_actividad_sostenible(
+  (SELECT id_usuario FROM USUARIO WHERE correo='irene@demo.com'),
+  (SELECT id_tipo_actividad FROM TIPO_ACTIVIDAD WHERE nombre='RECICLAJE'),
+  'Participó en campaña de recolección de e-waste', 22,
+  'https://evidencias/reciclaje_irene.jpg'
+);
+
+CALL sp_registrar_actividad_sostenible(
+  (SELECT id_usuario FROM USUARIO WHERE correo='jorge@demo.com'),
+  (SELECT id_tipo_actividad FROM TIPO_ACTIVIDAD WHERE nombre='RECICLAJE'),
+  'Entregó pilas usadas para disposición adecuada', 8,
+  'https://evidencias/reciclaje_jorge.jpg'
+);
+
+
+/*Desde de aqui ya se implementaron pruebas grandes*/
+INSERT IGNORE INTO EQUIVALENCIA_IMPACTO (id_categoria, id_um, co2_por_unidad, agua_por_unidad, energia_por_unidad)
+SELECT
+  (SELECT id_categoria FROM CATEGORIA WHERE nombre = 'Tecnología' LIMIT 1),
+  (SELECT id_um FROM UNIDAD_MEDIDA WHERE simbolo = 'u' LIMIT 1),
+  8.000000,
+  30.000000,
+  3.500000;
+
+/* ===========================================================
+   1) Nuevos USUARIOS (≈ 24 compradores + 8 vendedores)
+   =========================================================== */
+
+-- 1.1 Compradores NUEVOS
+INSERT INTO USUARIO (id_rol, estado, nombre, apellido, correo, telefono, url_perfil)
 VALUES
- (@id_ana,   @id_dim_co2, 'TRANSACCION', (SELECT MAX(id_transaccion) FROM TRANSACCION), 'Compensación','2.500000', @id_um_kg, NULL,'Eco-compensación'),
- (@id_bruno, @id_dim_h2o, 'PUBLICACION', @id_pub_bici_mtb,                               'Ahorro',      '10.000000',(SELECT id_um FROM UNIDAD_MEDIDA WHERE simbolo='L' LIMIT 1), NULL,'Educación hídrica');
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Camila','Rios','camila@demo.com','71000001','/p/camila'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Daniel','Torres','daniel@demo.com','71000002','/p/daniel'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Sofia','Mendez','sofia@demo.com','71000003','/p/sofia'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Pablo','Lima','pablo@demo.com','71000004','/p/pablo'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Laura','Guzman','laura@demo.com','71000005','/p/laura'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Andres','Zeballos','andres@demo.com','71000006','/p/andres'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Valeria','Nuñez','valeria@demo.com','71000007','/p/valeria'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Roberto','Aguilar','roberto@demo.com','71000008','/p/roberto'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Natalia','Cruz','natalia@demo.com','71000009','/p/natalia'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Sergio','Rojas','sergio@demo.com','71000010','/p/sergio'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Patricia','Salas','patricia@demo.com','71000011','/p/patricia'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Marcos','Quiroga','marcos@demo.com','71000012','/p/marcos'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Lucia','Delgado','lucia@demo.com','71000013','/p/lucia'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Ricardo','Vega','ricardo@demo.com','71000014','/p/ricardo'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Melissa','Campos','melissa@demo.com','71000015','/p/melissa'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Tomas','Herrera','tomas@demo.com','71000016','/p/tomas'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Cecilia','Paredes','cecilia@demo.com','71000017','/p/cecilia'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','German','Lara','german@demo.com','71000018','/p/german'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Roxana','Villaroel','roxana@demo.com','71000019','/p/roxana'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Kevin','Lopez','kevin@demo.com','71000020','/p/kevin'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Mauro','Ibañez','mauro@demo.com','71000021','/p/mauro'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Dana','Gomez','dana@demo.com','71000022','/p/dana'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Helena','Ramos','helena@demo.com','71000023','/p/helena'),
+  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Oscar','Medina','oscar@demo.com','71000024','/p/oscar');
 
-/* ------------------------------------------------------------
-   10) CALIFICACIONES (UNIQUE usuario-publicacion)
-   ------------------------------------------------------------ */
-INSERT INTO CALIFICACION (id_usuario, id_publicacion, estrellas, comentario)
+-- 1.2 Vendedores NUEVOS
+INSERT INTO USUARIO (id_rol, estado, nombre, apellido, correo, telefono, url_perfil)
 VALUES
- (@id_ana,   @id_pub_bici_urb, 5, 'Muy buena bici')
-ON DUPLICATE KEY UPDATE estrellas=VALUES(estrellas), comentario=VALUES(comentario);
+  ((SELECT id_rol FROM ROL WHERE nombre='VENDEDOR'),'ACTIVO','Green','Store','greenstore@demo.com','72000001','/p/greenstore'),
+  ((SELECT id_rol FROM ROL WHERE nombre='VENDEDOR'),'ACTIVO','Bici','Plus','biciplus@demo.com','72000002','/p/biciplus'),
+  ((SELECT id_rol FROM ROL WHERE nombre='VENDEDOR'),'ACTIVO','EcoTech','Solutions','ecotech@demo.com','72000003','/p/ecotech'),
+  ((SELECT id_rol FROM ROL WHERE nombre='VENDEDOR'),'ACTIVO','Zero','Waste','zerowaste@demo.com','72000004','/p/zerowaste'),
+  ((SELECT id_rol FROM ROL WHERE nombre='VENDEDOR'),'ACTIVO','Repara','PC','reparapc@demo.com','72000005','/p/reparapc'),
+  ((SELECT id_rol FROM ROL WHERE nombre='VENDEDOR'),'ACTIVO','Recicla','YA','reciclaya@demo.com','72000006','/p/reciclaya'),
+  ((SELECT id_rol FROM ROL WHERE nombre='VENDEDOR'),'ACTIVO','Eco','Market3','ecomarket3@demo.com','72000007','/p/ecomarket3'),
+  ((SELECT id_rol FROM ROL WHERE nombre='VENDEDOR'),'ACTIVO','Tech','Refurb','techrefurb@demo.com','72000008','/p/techrefurb');
 
-INSERT INTO CALIFICACION (id_usuario, id_publicacion, estrellas, comentario)
-VALUES
- (@id_bruno, @id_pub_bici_mtb, 4, 'Conforme')
-ON DUPLICATE KEY UPDATE estrellas=VALUES(estrellas), comentario=VALUES(comentario);
+-- 1.3 Crear BILLETERA para todos los nuevos (si no tienen)
+INSERT INTO BILLETERA (id_usuario, estado, saldo_creditos, saldo_bs, cuenta_bancaria)
+SELECT u.id_usuario, 'ACTIVA', 0, 0.00, NULL
+FROM USUARIO u
+LEFT JOIN BILLETERA b ON b.id_usuario = u.id_usuario
+WHERE u.correo IN (
+  'camila@demo.com','daniel@demo.com','sofia@demo.com','pablo@demo.com',
+  'laura@demo.com','andres@demo.com','valeria@demo.com','roberto@demo.com',
+  'natalia@demo.com','sergio@demo.com','patricia@demo.com','marcos@demo.com',
+  'lucia@demo.com','ricardo@demo.com','melissa@demo.com','tomas@demo.com',
+  'cecilia@demo.com','german@demo.com','roxana@demo.com','kevin@demo.com',
+  'mauro@demo.com','dana@demo.com','helena@demo.com','oscar@demo.com',
+  'greenstore@demo.com','biciplus@demo.com','ecotech@demo.com',
+  'zerowaste@demo.com','reparapc@demo.com','reciclaya@demo.com',
+  'ecomarket3@demo.com','techrefurb@demo.com'
+)
+AND b.id_billetera IS NULL;
 
-INSERT INTO CALIFICACION (id_usuario, id_publicacion, estrellas, comentario)
-VALUES
- (@id_carla, @id_pub_serv_pc,  5, 'Excelente servicio')
-ON DUPLICATE KEY UPDATE estrellas=VALUES(estrellas), comentario=VALUES(comentario);
+/* ===========================================================
+   2) Productos / servicios extra para nuevos vendedores
+   (reutilizan categorías Bicicletas y Tecnología)
+   =========================================================== */
 
-INSERT INTO CALIFICACION (id_usuario, id_publicacion, estrellas, comentario)
-VALUES
- (@id_ana,   @id_pub_serv_so,  4, 'Rápido')
-ON DUPLICATE KEY UPDATE estrellas=VALUES(estrellas), comentario=VALUES(comentario);
+-- 2.1 Productos de BiciPlus
+INSERT INTO PRODUCTO (id_categoria, nombre, descripcion, precio, peso)
+SELECT
+  (SELECT id_categoria FROM CATEGORIA WHERE nombre='Bicicletas'),
+  'Bici Urbana Basic',
+  'Bicicleta urbana básica reacondicionada.',
+  1100.00,
+  14.0;
 
-INSERT INTO CALIFICACION (id_usuario, id_publicacion, estrellas, comentario)
-VALUES
- (@id_carla, @id_pub_serv_enc, 5, 'Quedó como nuevo')
-ON DUPLICATE KEY UPDATE estrellas=VALUES(estrellas), comentario=VALUES(comentario);
+INSERT INTO PUBLICACION
+  (id_usuario, id_categoria, id_tipo_publicacion, estado, id_ubicacion,
+   titulo, descripcion, valor_creditos, imagen_url)
+SELECT
+  (SELECT id_usuario FROM USUARIO WHERE correo='biciplus@demo.com'),
+  (SELECT id_categoria FROM CATEGORIA WHERE nombre='Bicicletas'),
+  (SELECT id_tipo_publicacion FROM TIPO_PUBLICACION WHERE nombre='PRODUCTO'),
+  'PUBLICADA',
+  (SELECT id_ubicacion FROM UBICACION WHERE ciudad='Cochabamba'),
+  'Bici Urbana Basic',
+  'Ideal para uso diario en ciudad.',
+  250,
+  'https://img/bici_basic.jpg';
 
-/* ------------------------------------------------------------
-   11) PUBLICIDAD (2)
-   ------------------------------------------------------------ */
-SET @id_u_luis = (SELECT id_usuario FROM USUARIO WHERE correo='luis@demo.com'  LIMIT 1);
-SET @id_u_marta= (SELECT id_usuario FROM USUARIO WHERE correo='marta@demo.com' LIMIT 1);
-SET @id_ub_home= (SELECT id_ubicacion FROM UBICACION_PUBLICIDAD WHERE nombre='HOME_TOP' LIMIT 1);
-SET @id_ub_side= (SELECT id_ubicacion FROM UBICACION_PUBLICIDAD WHERE nombre='SIDEBAR'  LIMIT 1);
+INSERT INTO PUBLICACION_PRODUCTO
+SELECT
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Bici Urbana Basic' LIMIT 1),
+  (SELECT id_producto   FROM PRODUCTO   WHERE nombre='Bici Urbana Basic' LIMIT 1),
+  1.0000,
+  (SELECT id_um FROM UNIDAD_MEDIDA WHERE simbolo='u');
 
-INSERT IGNORE INTO PUBLICIDAD
- (id_usuario, id_ubicacion, estado, titulo, descripcion, url_destino, fecha_inicio, fecha_fin, costo_creditos, clicks, impresiones)
-VALUES
- (@id_u_luis,  @id_ub_home, 'ACTIVA','Promo Taller PC','Servicio express','https://vendedor/luis',  @now, @now + INTERVAL 10 DAY, 120, 5, 1500),
- (@id_u_marta, @id_ub_side, 'ACTIVA','Armado Rápido','Muebles armados en 24h','https://vendedora/marta', @now, @now + INTERVAL 7 DAY, 80, 2, 700);
+-- 2.2 Productos de GreenStore (Tecnología)
+INSERT INTO PRODUCTO (id_categoria, nombre, descripcion, precio, peso)
+SELECT
+  (SELECT id_categoria FROM CATEGORIA WHERE nombre='Tecnología'),
+  'PC Oficina Reacondicionada',
+  'CPU compacta para oficina, 8GB RAM, SSD 240GB.',
+  1800.00,
+  5.5;
 
-/* ------------------------------------------------------------
-   12) REPORTES + RANKING
-   ------------------------------------------------------------ */
+INSERT INTO PUBLICACION
+  (id_usuario, id_categoria, id_tipo_publicacion, estado, id_ubicacion,
+   titulo, descripcion, valor_creditos, imagen_url)
+SELECT
+  (SELECT id_usuario FROM USUARIO WHERE correo='greenstore@demo.com'),
+  (SELECT id_categoria FROM CATEGORIA WHERE nombre='Tecnología'),
+  (SELECT id_tipo_publicacion FROM TIPO_PUBLICACION WHERE nombre='PRODUCTO'),
+  'PUBLICADA',
+  (SELECT id_ubicacion FROM UBICACION WHERE ciudad='La Paz'),
+  'PC Oficina Reacondicionada',
+  'Equipo compacto, ideal para ofimática.',
+  300,
+  'https://img/pc_oficina.jpg';
+
+INSERT INTO PUBLICACION_PRODUCTO
+SELECT
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='PC Oficina Reacondicionada' LIMIT 1),
+  (SELECT id_producto   FROM PRODUCTO   WHERE nombre='PC Oficina Reacondicionada' LIMIT 1),
+  1.0000,
+  (SELECT id_um FROM UNIDAD_MEDIDA WHERE simbolo='u');
+
+-- 2.3 Servicios de ReparaPC
+INSERT INTO SERVICIO (id_categoria, estado, nombre, descripcion, precio, duracion_min)
+SELECT
+  (SELECT id_categoria FROM CATEGORIA WHERE nombre='Tecnología'),
+  'ACTIVO',
+  'Reparación avanzada de PC',
+  'Diagnóstico y reparación de fallas de hardware.',
+  150.00,
+  90;
+
+INSERT INTO PUBLICACION
+  (id_usuario, id_categoria, id_tipo_publicacion, estado, id_ubicacion,
+   titulo, descripcion, valor_creditos, imagen_url)
+SELECT
+  (SELECT id_usuario FROM USUARIO WHERE correo='reparapc@demo.com'),
+  (SELECT id_categoria FROM CATEGORIA WHERE nombre='Tecnología'),
+  (SELECT id_tipo_publicacion FROM TIPO_PUBLICACION WHERE nombre='SERVICIO'),
+  'PUBLICADA',
+  (SELECT id_ubicacion FROM UBICACION WHERE ciudad='Santa Cruz'),
+  'Reparación avanzada de PC',
+  'Incluye cambio de piezas y pruebas de estabilidad.',
+  140,
+  'https://img/serv_reparacion_pc.jpg';
+
+INSERT INTO PUBLICACION_SERVICIO
+SELECT
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Reparación avanzada de PC' LIMIT 1),
+  (SELECT id_servicio   FROM SERVICIO   WHERE nombre='Reparación avanzada de PC' LIMIT 1),
+  'L-S 15:00-19:00';
+
+/* ===========================================================
+   3) Compras de créditos extra (cada nuevo comprador recarga)
+   =========================================================== */
+
+-- Todos compran al menos un Pack 500
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='camila@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-CAMILA-001'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='daniel@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-DANIEL-001'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='sofia@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-SOFIA-001'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='pablo@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-PABLO-001'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='laura@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-LAURA-001'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='andres@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-ANDRES-001'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='valeria@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-VALERIA-001'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='roberto@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-ROBERTO-001'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='natalia@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-NATALIA-001'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='sergio@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-SERGIO-001'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='patricia@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-PATRICIA-001'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='marcos@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-MARCOS-001'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='lucia@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-LUCIA-001'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='ricardo@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-RICARDO-001'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='melissa@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-MELISSA-001'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='tomas@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-TOMAS-001'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='cecilia@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-CECILIA-001'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='german@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-GERMAN-001'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='roxana@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-ROXANA-001'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='kevin@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-KEVIN-001'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='mauro@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-MAURO-001'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='dana@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-DANA-001'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='helena@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-HELENA-001'
+);
+CALL sp_compra_creditos_aprobar(
+  (SELECT id_usuario FROM USUARIO WHERE correo='oscar@demo.com'),
+  (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 500'),
+  'PAY-OSCAR-001'
+);
+
+/* ===========================================================
+   4) Intercambios extra
+   (cada comprador hace al menos un intercambio)
+   =========================================================== */
+
+-- Notas de créditos:
+-- Bici Urbana Eco          320
+-- Bici Plegable Ciudad     280
+-- Bici Urbana Basic        250
+-- Laptop Reacondicionada   350
+-- Monitor 24 Reciclado     220
+-- Mantenimiento laptop     110
+-- Repr. avanzada PC        140
+-- Mantenimiento y limpieza PC 120
+-- Formateo e instalación Windows 90
+-- PC Oficina Reacondicionada 300
+
+-- 4.1 Algunos compran bicicletas
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='camila@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Bici Urbana Eco' LIMIT 1),
+  320
+); SET @id_tx := (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='daniel@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Bici Plegable Ciudad' LIMIT 1),
+  280
+); SET @id_tx := (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='sofia@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Bici Urbana Basic' LIMIT 1),
+  250
+); SET @id_tx := (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='pablo@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Bicicleta montaña Pro' LIMIT 1),
+  450
+); SET @id_tx := (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+-- 4.2 Otros compran productos de tecnología
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='laura@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Laptop Reacondicionada i5' LIMIT 1),
+  350
+); SET @id_tx := (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='andres@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Monitor 24 Reciclado' LIMIT 1),
+  220
+); SET @id_tx := (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='valeria@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='PC Oficina Reacondicionada' LIMIT 1),
+  300
+); SET @id_tx := (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='roberto@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Laptop Reacondicionada i5' LIMIT 1),
+  350
+); SET @id_tx := (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+-- 4.3 Otros compran servicios
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='natalia@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Mantenimiento laptop básico' LIMIT 1),
+  110
+); SET @id_tx := (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='sergio@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Reparación avanzada de PC' LIMIT 1),
+  140
+); SET @id_tx := (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='patricia@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Mantenimiento y limpieza de PC' LIMIT 1),
+  120
+); SET @id_tx := (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='marcos@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Formateo e instalación de Windows' LIMIT 1),
+  90
+); SET @id_tx := (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='lucia@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Mantenimiento laptop básico' LIMIT 1),
+  110
+); SET @id_tx := (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='ricardo@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Reparación avanzada de PC' LIMIT 1),
+  140
+); SET @id_tx := (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+-- 4.4 Algunos hacen 2 operaciones
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='melissa@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Bici Urbana Basic' LIMIT 1),
+  250
+); SET @id_tx := (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='melissa@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Mantenimiento laptop básico' LIMIT 1),
+  110
+); SET @id_tx := (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='tomas@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Laptop Reacondicionada i5' LIMIT 1),
+  350
+); SET @id_tx := (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='cecilia@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='PC Oficina Reacondicionada' LIMIT 1),
+  300
+); SET @id_tx := (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='german@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Monitor 24 Reciclado' LIMIT 1),
+  220
+); SET @id_tx := (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='roxana@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Bici Urbana Eco' LIMIT 1),
+  320
+); SET @id_tx := (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='kevin@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Mantenimiento y limpieza de PC' LIMIT 1),
+  120
+); SET @id_tx := (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='mauro@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Formateo e instalación de Windows' LIMIT 1),
+  90
+); SET @id_tx := (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='dana@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Mantenimiento laptop básico' LIMIT 1),
+  110
+); SET @id_tx := (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='helena@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='Bici Plegable Ciudad' LIMIT 1),
+  280
+); SET @id_tx := (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+CALL sp_realizar_intercambio(
+  (SELECT id_usuario FROM USUARIO WHERE correo='oscar@demo.com'),
+  (SELECT id_publicacion FROM PUBLICACION WHERE titulo='PC Oficina Reacondicionada' LIMIT 1),
+  300
+); SET @id_tx := (SELECT MAX(id_transaccion) FROM TRANSACCION);
+UPDATE TRANSACCION SET estado='COMPLETADA' WHERE id_transaccion=@id_tx;
+
+/* ===========================================================
+   5) Actividades sostenibles extra
+   =========================================================== */
+
+CALL sp_registrar_actividad_sostenible(
+  (SELECT id_usuario FROM USUARIO WHERE correo='camila@demo.com'),
+  (SELECT id_tipo_actividad FROM TIPO_ACTIVIDAD WHERE nombre='RECICLAJE'),
+  'Participó en jornada de reciclaje de plástico', 15,
+  'https://evidencias/reciclaje_camila.jpg'
+);
+
+CALL sp_registrar_actividad_sostenible(
+  (SELECT id_usuario FROM USUARIO WHERE correo='daniel@demo.com'),
+  (SELECT id_tipo_actividad FROM TIPO_ACTIVIDAD WHERE nombre='RECICLAJE'),
+  'Entregó 5kg de papel usado', 12,
+  'https://evidencias/reciclaje_daniel.jpg'
+);
+
+CALL sp_registrar_actividad_sostenible(
+  (SELECT id_usuario FROM USUARIO WHERE correo='sofia@demo.com'),
+  (SELECT id_tipo_actividad FROM TIPO_ACTIVIDAD WHERE nombre='RECICLAJE'),
+  'Recolectó botellas PET en su barrio', 18,
+  'https://evidencias/reciclaje_sofia.jpg'
+);
+
+CALL sp_registrar_actividad_sostenible(
+  (SELECT id_usuario FROM USUARIO WHERE correo='pablo@demo.com'),
+  (SELECT id_tipo_actividad FROM TIPO_ACTIVIDAD WHERE nombre='RECICLAJE'),
+  'Donó electrónicos viejos a reciclaje', 20,
+  'https://evidencias/reciclaje_pablo.jpg'
+);
+
+CALL sp_registrar_actividad_sostenible(
+  (SELECT id_usuario FROM USUARIO WHERE correo='laura@demo.com'),
+  (SELECT id_tipo_actividad FROM TIPO_ACTIVIDAD WHERE nombre='RECICLAJE'),
+  'Separó residuos en su oficina por todo el mes', 25,
+  'https://evidencias/reciclaje_laura.jpg'
+);
+
+CALL sp_registrar_actividad_sostenible(
+  (SELECT id_usuario FROM USUARIO WHERE correo='andres@demo.com'),
+  (SELECT id_tipo_actividad FROM TIPO_ACTIVIDAD WHERE nombre='RECICLAJE'),
+  'Apoyó campaña de recolección de vidrio', 16,
+  'https://evidencias/reciclaje_andres.jpg'
+);
+
+CALL sp_registrar_actividad_sostenible(
+  (SELECT id_usuario FROM USUARIO WHERE correo='valeria@demo.com'),
+  (SELECT id_tipo_actividad FROM TIPO_ACTIVIDAD WHERE nombre='RECICLAJE'),
+  'Entregó 3kg de latas de aluminio', 10,
+  'https://evidencias/reciclaje_valeria.jpg'
+);
+
+CALL sp_registrar_actividad_sostenible(
+  (SELECT id_usuario FROM USUARIO WHERE correo='roberto@demo.com'),
+  (SELECT id_tipo_actividad FROM TIPO_ACTIVIDAD WHERE nombre='RECICLAJE'),
+  'Organizó punto de acopio de pilas', 22,
+  'https://evidencias/reciclaje_roberto.jpg'
+);
+
+CALL sp_registrar_actividad_sostenible(
+  (SELECT id_usuario FROM USUARIO WHERE correo='natalia@demo.com'),
+  (SELECT id_tipo_actividad FROM TIPO_ACTIVIDAD WHERE nombre='RECICLAJE'),
+  'Participó en limpieza de río urbano', 30,
+  'https://evidencias/reciclaje_natalia.jpg'
+);
+
+CALL sp_registrar_actividad_sostenible(
+  (SELECT id_usuario FROM USUARIO WHERE correo='sergio@demo.com'),
+  (SELECT id_tipo_actividad FROM TIPO_ACTIVIDAD WHERE nombre='RECICLAJE'),
+  'Apoyó campaña de recuperación de e-waste', 18,
+  'https://evidencias/reciclaje_sergio.jpg'
+);
+
+/* ===========================================================
+   6) Regenerar reporte de impacto para 2025-11
+   =========================================================== */
+
 CALL sp_generar_reporte_impacto(
-  (SELECT id_tipo_reporte FROM TIPO_REPORTE WHERE nombre='MENSUAL' LIMIT 1),
-  @id_per,
-  NULL);
-
-CALL sp_obtener_ranking_usuarios(@id_per, 5);
-
-/* ------------------------------------------------------------
-   13) CONSULTAS DE VERIFICACIÓN (opcionales)
-   ------------------------------------------------------------ */
--- Saldos
-SELECT 'SALDOS' AS seccion, u.correo, b.saldo_creditos
-FROM USUARIO u JOIN BILLETERA b ON b.id_usuario=u.id_usuario
-WHERE u.correo IN ('ana@demo.com','bruno@demo.com','carla@demo.com','luis@demo.com','marta@demo.com','nico@demo.com')
-ORDER BY u.correo;
-
--- Bitácora reciente
-SELECT 'BITACORA' AS seccion, id_bitacora, id_transaccion, cantidad_creditos, descripcion
-FROM BITACORA_INTERCAMBIO
-ORDER BY id_bitacora DESC LIMIT 10;
-
--- Movimientos últimos 15
-SELECT 'MOVS' AS seccion, id_movimiento, id_usuario, id_tipo_movimiento, cantidad, saldo_anterior, saldo_posterior, id_referencia
-FROM MOVIMIENTO_CREDITOS
-ORDER BY id_movimiento DESC LIMIT 15;
-
--- Impacto ambiental por usuario en el período
-SELECT 'IMPACTO' AS seccion, ia.id_usuario, SUM(ia.co2_ahorrado) co2, SUM(ia.agua_ahorrada) agua, SUM(ia.energia_ahorrada) energia
-FROM IMPACTO_AMBIENTAL ia
-WHERE ia.id_periodo=@id_per
-GROUP BY ia.id_usuario
-ORDER BY co2 DESC;
-
--- Reporte mensual global
-SELECT 'REPORTE' AS seccion, r.*
-FROM REPORTE_IMPACTO r
-WHERE r.id_tipo_reporte=(SELECT id_tipo_reporte FROM TIPO_REPORTE WHERE nombre='MENSUAL' LIMIT 1)
-  AND r.id_periodo=@id_per
-  AND r.id_usuario IS NULL;
-
--- Historial de Ana
-CALL sp_obtener_historial_usuario(@id_ana);
-
--- FULLTEXT test (si existe índice)
-SELECT 'FT' AS seccion, id_publicacion, titulo
-FROM PUBLICACION
-WHERE MATCH(titulo, descripcion) AGAINST ('bici aluminio servicio' IN NATURAL LANGUAGE MODE)
-ORDER BY id_publicacion DESC;
-
-COMMIT;
-
--- Resumen
-SELECT 'RESUMEN' AS seccion,
- (SELECT COUNT(*) FROM USUARIO)               AS usuarios,
- (SELECT COUNT(*) FROM PUBLICACION)           AS publicaciones,
- (SELECT COUNT(*) FROM MOVIMIENTO_CREDITOS)   AS movimientos,
- (SELECT COUNT(*) FROM TRANSACCION)           AS transacciones,
- (SELECT COUNT(*) FROM IMPACTO_AMBIENTAL)     AS impactos,
- (SELECT COUNT(*) FROM PROMOCION_PUBLICACION) AS promos_vinculadas,
- (SELECT COUNT(*) FROM CALIFICACION)          AS calificaciones,
- (SELECT COUNT(*) FROM EVENTO_AMBIENTAL)      AS eventos_ambientales;
-
-/* ============================================================
-   PRUEBAS EXTENDIDAS (A–E) — SIN ERRORES
-   Añadir al final del script principal
-   ============================================================ */
-USE CREDITOS_VERDES2;
-SET @now_ext = NOW();
-
-START TRANSACTION;
-
-/* ---------------------------
-   IDs base y helpers
-   --------------------------- */
-SET @id_ana    = (SELECT id_usuario FROM USUARIO WHERE correo='ana@demo.com'   LIMIT 1);
-SET @id_bruno  = (SELECT id_usuario FROM USUARIO WHERE correo='bruno@demo.com' LIMIT 1);
-SET @id_carla  = (SELECT id_usuario FROM USUARIO WHERE correo='carla@demo.com' LIMIT 1);
-SET @id_luis   = (SELECT id_usuario FROM USUARIO WHERE correo='luis@demo.com'  LIMIT 1);
-SET @id_marta  = (SELECT id_usuario FROM USUARIO WHERE correo='marta@demo.com' LIMIT 1);
-SET @id_nico   = (SELECT id_usuario FROM USUARIO WHERE correo='nico@demo.com'  LIMIT 1);
-
-SET @id_per = (
-  SELECT id_periodo
-  FROM PERIODO
-  ORDER BY fecha_inicio DESC, id_periodo DESC
-  LIMIT 1
-);
-
--- Publicaciones clave (con filtros + LIMIT 1)
-SET @id_pub_bici_urb = (
-  SELECT id_publicacion
-  FROM PUBLICACION
-  WHERE titulo='Bicicleta urbana aluminio'
-    AND id_usuario=@id_luis
-  ORDER BY id_publicacion ASC
-  LIMIT 1
-);
-
-SET @id_pub_bici_mtb = (
-  SELECT id_publicacion
-  FROM PUBLICACION
-  WHERE titulo='Bicicleta de montaña'
-    AND id_usuario=@id_marta
-  ORDER BY id_publicacion ASC
-  LIMIT 1
-);
-
-SET @id_pub_serv_pc = (
-  SELECT id_publicacion
-  FROM PUBLICACION
-  WHERE titulo='Mantenimiento y limpieza de PC'
-    AND id_usuario=@id_luis
-  ORDER BY id_publicacion ASC
-  LIMIT 1
-);
-
-SET @id_pub_serv_so = (
-  SELECT id_publicacion
-  FROM PUBLICACION
-  WHERE titulo='Formateo e instalación de SO'
-    AND id_usuario=@id_nico
-  ORDER BY id_publicacion ASC
-  LIMIT 1
-);
-
--- Paquetes para recargas controladas
-SET @id_pack_100 = (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 100' LIMIT 1);
-SET @id_pack_300 = (SELECT id_paquete FROM PAQUETE_CREDITOS WHERE nombre='Pack 300' LIMIT 1);
-
-/* ============================================================
-   (A) INTERCAMBIO INVERSO — Luis compra servicio de Nico
-   (garantizamos saldo y ejecutamos)
-   ============================================================ */
--- Recarga segura para Luis (id de pago único para idempotencia)
-CALL sp_compra_creditos_aprobar(@id_luis, @id_pack_300, 'PAY-EXT-LUIS-001');
-
--- Compra: Formateo e instalación de SO (140 créditos)
-CALL sp_realizar_intercambio(@id_luis, @id_pub_serv_so, 140);
-
-/* ============================================================
-   (B) “SALDO INSUFICIENTE” VERIFICADO SIN ERROR
-   (No llamamos al SP; solo comprobamos la función)
-   ============================================================ */
-SELECT 'CHECK_SALDO_INSUFICIENTE' AS test,
-       fn_verificar_saldo(@id_bruno, 99999) AS puede_pagar_99999;  -- Esperado: 0
-
-/* ============================================================
-   (C) PROMOCIÓN EXPIRADA (NO debe otorgar bono)
-   ============================================================ */
-INSERT IGNORE INTO PROMOCION (id_tipo_promocion, nombre, descripcion, creditos_otorgados, fecha_inicio, fecha_fin, estado)
-SELECT (SELECT id_tipo_promocion FROM TIPO_PROMOCION WHERE nombre='LANZAMIENTO' LIMIT 1),
-       'Promo Vencida', 'No debe otorgar bono', 80,
-       @now_ext - INTERVAL 10 DAY, @now_ext - INTERVAL 5 DAY, 'FINALIZADA';
-
-SET @id_promo_venc = (SELECT id_promocion FROM PROMOCION WHERE nombre='Promo Vencida' ORDER BY id_promocion ASC LIMIT 1);
-
--- Vincular a la publicación de bici urbana (no debe crear movimiento de bono)
-INSERT IGNORE INTO PROMOCION_PUBLICACION (id_promocion, id_publicacion)
-VALUES (@id_promo_venc, @id_pub_bici_urb);
-
--- Verificación (solo muestra 0 si no hay bono por esa promo)
-SELECT 'PROMO_VENCIDA_BONO_MOVS' AS test,
-       COUNT(*) AS movimientos_bono_creados
-FROM MOVIMIENTO_CREDITOS
-WHERE descripcion LIKE '%Promo Vencida%';
-
-/* ============================================================
-   (D) LOGROS / PROGRESO USUARIO
-   ============================================================ */
-INSERT IGNORE INTO LOGRO (id_tipo_logro, nombre, descripcion, meta_requerida, creditos_recompensa)
-SELECT tl.id_tipo_logro, 'VENTAS_3X', 'Tres ventas realizadas', 3, 50
-FROM TIPO_LOGRO tl
-WHERE tl.nombre='PRIMERA_VENTA'
-LIMIT 1;
-
-SET @id_logro_3x = (SELECT id_logro FROM LOGRO WHERE nombre='VENTAS_3X' LIMIT 1);
-
--- Asignar progreso a Marta (idempotente)
-INSERT IGNORE INTO USUARIO_LOGRO (id_usuario, id_logro, progreso_actual)
-VALUES (@id_marta, @id_logro_3x, 3);
-
--- Verificación ligera
-SELECT 'LOGROS_MARTA' AS test, ul.id_usuario, ul.id_logro, ul.progreso_actual
-FROM USUARIO_LOGRO ul
-WHERE ul.id_usuario=@id_marta AND ul.id_logro=@id_logro_3x;
-
-/* ============================================================
-   (E) IMPACTO AMBIENTAL ACUMULADO + REPORTE
-   ============================================================ */
--- Asegurar saldo para Ana y hacer dos transacciones pequeñas
-CALL sp_compra_creditos_aprobar(@id_ana, @id_pack_100, 'PAY-EXT-ANA-001');
-
--- Pequeñas compras (no tiene que coincidir con valor_creditos exacto)
-CALL sp_realizar_intercambio(@id_ana, @id_pub_bici_urb, 50);
-CALL sp_realizar_intercambio(@id_ana, @id_pub_bici_mtb, 100);
-
--- Regenerar reporte mensual global
-CALL sp_generar_reporte_impacto(
-  (SELECT id_tipo_reporte FROM TIPO_REPORTE WHERE nombre='MENSUAL' LIMIT 1),
-  @id_per,
+  (SELECT id_tipo_reporte FROM TIPO_REPORTE WHERE nombre='MENSUAL'),
+  (SELECT id_periodo FROM PERIODO WHERE nombre='2025-11'),
   NULL
 );
 
--- Top 5 del ranking actualizado
-CALL sp_obtener_ranking_usuarios(@id_per, 5);
+/* ===========================================================
+   7) Chequeo rápido de saldos de algunos usuarios
+   =========================================================== */
 
-/* ---------------------------
-   Verificaciones finales
-   --------------------------- */
--- Saldos de actores de estas pruebas
-SELECT 'SALDOS_EXT' AS seccion, u.correo, b.saldo_creditos
-FROM USUARIO u JOIN BILLETERA b ON b.id_usuario=u.id_usuario
-WHERE u.correo IN ('ana@demo.com','bruno@demo.com','luis@demo.com','marta@demo.com','nico@demo.com')
+SELECT u.correo, b.saldo_creditos
+FROM USUARIO u
+LEFT JOIN BILLETERA b ON b.id_usuario = u.id_usuario
+WHERE u.correo IN (
+  'ana@demo.com','luis@demo.com','carla@demo.com','diego@demo.com','marta@demo.com',
+  'bruno@demo.com','elena@demo.com','fernando@demo.com','gaby@demo.com',
+  'camila@demo.com','daniel@demo.com','sofia@demo.com','pablo@demo.com','laura@demo.com',
+  'andres@demo.com','valeria@demo.com','roberto@demo.com','natalia@demo.com',
+  'sergio@demo.com','patricia@demo.com','marcos@demo.com','lucia@demo.com',
+  'ricardo@demo.com','melissa@demo.com','tomas@demo.com','cecilia@demo.com',
+  'german@demo.com','roxana@demo.com','kevin@demo.com','mauro@demo.com',
+  'dana@demo.com','helena@demo.com','oscar@demo.com'
+)
 ORDER BY u.correo;
 
--- Bitácora reciente
-SELECT 'BITACORA_EXT' AS seccion, id_bitacora, id_transaccion, cantidad_creditos, descripcion
-FROM BITACORA_INTERCAMBIO
-ORDER BY id_bitacora DESC LIMIT 10;
-
-COMMIT;
+SELECT *
+FROM REPORTE_IMPACTO
+WHERE id_periodo = 1
+  AND id_tipo_reporte = (SELECT id_tipo_reporte FROM TIPO_REPORTE WHERE nombre='MENSUAL');

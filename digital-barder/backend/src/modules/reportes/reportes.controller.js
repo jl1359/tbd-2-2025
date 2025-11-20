@@ -156,9 +156,9 @@ function mapImpacto(r) {
   }
 }
 
-/* =============================================
+/* =
    CONTROLADORES
-============================================= */
+= */
 
 /* C1) Usuarios activos en el rango */
 export async function getUsuariosActivos(req, res, next) {

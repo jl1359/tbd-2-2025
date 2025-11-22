@@ -1,4 +1,6 @@
+// frontend/src/pages/Home.jsx
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { getHealth } from "../services/api.js";
 
 export default function Home() {
@@ -23,6 +25,7 @@ export default function Home() {
 
   return (
     <div className="space-y-4">
+      {/* HEADER */}
       <section className="flex flex-col sm:flex-row justify-between gap-3 items-start sm:items-center">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">
@@ -34,7 +37,9 @@ export default function Home() {
         </div>
       </section>
 
+      {/* TARJETAS DEL HOME */}
       <section className="grid gap-4 md:grid-cols-3">
+        {/* TARJETA: ESTADO API */}
         <div className="card">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
             Estado de la API
@@ -62,6 +67,7 @@ export default function Home() {
           )}
         </div>
 
+        {/* TARJETA: CRÉDITOS */}
         <div className="card">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
             Créditos
@@ -72,6 +78,7 @@ export default function Home() {
           </p>
         </div>
 
+        {/* TARJETA: ACTIVIDAD RECIENTE */}
         <div className="card">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
             Actividad reciente
@@ -79,6 +86,27 @@ export default function Home() {
           <p className="text-sm text-gray-500">
             Listado de últimas publicaciones, intercambios, etc.
           </p>
+        </div>
+
+        {/* ⭐ NUEVA TARJETA: REPORTES ⭐ */}
+        <div className="card flex flex-col justify-between">
+          <div>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+              Reportes
+            </p>
+            <p className="text-sm text-gray-500">
+              Accede a reportes de actividad, créditos e impacto ambiental.
+            </p>
+          </div>
+
+          <div className="mt-3">
+            <Link
+              to="/reportes"
+              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+            >
+              Ver reportes →
+            </Link>
+          </div>
         </div>
       </section>
     </div>

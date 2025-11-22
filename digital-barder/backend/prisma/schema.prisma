@@ -463,6 +463,18 @@ model usuario_logro {
   @@index([id_logro], map: "fk_ulogro_logro")
 }
 
+model suscripcion_premium {
+  id_suscripcion Int                        @id @default(autoincrement())
+  id_usuario     Int
+  fecha_inicio   DateTime                   @default(now()) @db.DateTime(0)
+  fecha_fin      DateTime?                  @db.DateTime(0)
+  estado         suscripcion_premium_estado @default(ACTIVA)
+  monto_bs       Decimal                    @db.Decimal(12, 2)
+
+  @@index([fecha_inicio, fecha_fin], map: "ix_suscrip_fechas")
+  @@index([id_usuario, estado], map: "ix_suscrip_usuario_estado")
+}
+
 enum billetera_estado {
   ACTIVA
   BLOQUEADA
@@ -528,4 +540,10 @@ enum promocion_estado {
   PAUSADA
   FINALIZADA
   CANCELADA
+}
+
+enum suscripcion_premium_estado {
+  ACTIVA
+  CANCELADA
+  VENCIDA
 }

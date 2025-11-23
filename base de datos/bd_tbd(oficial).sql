@@ -1637,3 +1637,72 @@ BEGIN
   WHERE creado_en BETWEEN p_desde AND p_hasta;
 END$$
 DELIMITER ;
+USE CREDITOS_VERDES2;
+
+-- TABLA: SUSCRIPCION_PREMIUM
+CREATE TABLE IF NOT EXISTS SUSCRIPCION_PREMIUM (
+  id_suscripcion INT PRIMARY KEY AUTO_INCREMENT,
+  id_usuario INT NOT NULL,
+  fecha_inicio DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  fecha_fin DATETIME NULL,
+  estado ENUM('ACTIVA','CANCELADA','VENCIDA') NOT NULL DEFAULT 'ACTIVA',
+  monto_bs DECIMAL(12,2) NOT NULL,
+  CONSTRAINT fk_suscrip_usuario
+    FOREIGN KEY (id_usuario) REFERENCES USUARIO(id_usuario)
+    ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE INDEX ix_suscrip_usuario_estado
+  ON SUSCRIPCION_PREMIUM (id_usuario, estado);
+
+CREATE INDEX ix_suscrip_fechas
+  ON SUSCRIPCION_PREMIUM (fecha_inicio, fecha_fin);
+
+DROP PROCEDURE IF EXISTS sp_rep_usuarios_premium;
+DELIMITER $$
+CREATE PROCEDURE sp_rep_usuarios_premium(
+  IN p_desde DATETIME,
+  IN p_hasta DATETIME
+)
+BEGIN
+  DECLARE v_total_usuarios BIGINT DEFAULT 0;
+  DECLARE v_nuevos_premium BIGINT DEFAULT 0;
+  DECLARE v_premium_activos BIGINT DEFAULT 0;
+  DECLARE v_ingresos_bs DECIMAL(12,2) DEFAULT 0.00;
+
+  -- Total de usuarios activos en el sistema
+  SELECT COUNT(*) INTO v_total_usuarios
+  FROM USUARIO
+  WHERE estado = 'ACTIVO';
+
+  -- Usuarios que ADQUIRIERON la suscripción en el rango (alta)
+  SELECT COUNT(DISTINCT id_usuario) INTO v_nuevos_premium
+  FROM SUSCRIPCION_PREMIUM
+  WHERE fecha_inicio BETWEEN p_desde AND p_hasta;
+
+  -- Usuarios con suscripción ACTIVA en el rango
+  SELECT COUNT(DISTINCT id_usuario) INTO v_premium_activos
+  FROM SUSCRIPCION_PREMIUM
+  WHERE estado = 'ACTIVA'
+    AND fecha_inicio <= p_hasta
+    AND (fecha_fin IS NULL OR fecha_fin >= p_desde);
+
+  -- Ingresos por suscripción en el rango
+  SELECT IFNULL(SUM(monto_bs), 0.00) INTO v_ingresos_bs
+  FROM SUSCRIPCION_PREMIUM
+  WHERE fecha_inicio BETWEEN p_desde AND p_hasta;
+
+  -- Resultado del reporte
+  SELECT
+    p_desde AS desde,
+    p_hasta AS hasta,
+    v_total_usuarios        AS total_usuarios_activos,
+    v_nuevos_premium        AS usuarios_nuevos_premium,
+    v_premium_activos       AS usuarios_premium_activos,
+    v_ingresos_bs           AS ingresos_suscripcion_bs,
+    CASE
+      WHEN v_total_usuarios = 0 THEN NULL
+      ELSE ROUND(100 * v_premium_activos / v_total_usuarios, 2)
+    END AS porcentaje_adopcion_premium;
+END$$
+DELIMITER ;

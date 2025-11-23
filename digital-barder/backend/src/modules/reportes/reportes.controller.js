@@ -42,10 +42,6 @@ function toPlain(value) {
   return value
 }
 
-/* ---------------------------------------------
-   Normaliza el resultado de CALL:
-   - Puede venir como [ [rows] ] o [rows] u objeto
---------------------------------------------- */
 function normalizeResult(raw) {
   if (!raw) return []
 
@@ -59,9 +55,8 @@ function normalizeResult(raw) {
   return []
 }
 
-/* ---------------------------------------------
-   Rango de fechas por defecto: últimos 30 días
---------------------------------------------- */
+// Rango de fechas por defecto: últimos 30 días
+
 function getRangoFechas(req) {
   const { desde, hasta } = req.query
 
@@ -81,9 +76,8 @@ function getRangoFechas(req) {
   }
 }
 
-/* ---------------------------------------------
-   Mapeos de columnas f0, f1... -> nombres reales
---------------------------------------------- */
+//  Mapeos de columnas f0, f1... -> nombres reales
+
 
 // sp_rep_usuarios_activos:
 // id_usuario, nombre, correo, primera_actividad, ultima_actividad, total_acciones
@@ -227,9 +221,7 @@ function mapImpactoCategoria(r) {
   }
 }
 
-/* =
-   CONTROLADORES
-= */
+//   CONTROLADORES
 
 /* C1) Usuarios activos en el rango */
 export async function getUsuariosActivos(req, res, next) {

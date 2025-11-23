@@ -54,8 +54,6 @@ export async function api(path, { method = "GET", body, headers = {} } = {}) {
   }
 }
 
-// -------- AUTH --------
-
 export async function login({ correo, password }) {
   const data = await api("/auth/login", {
     method: "POST",
@@ -81,8 +79,6 @@ export async function getHealth() {
   return api("/health");
 }
 
-// -------- UTILS --------
-
 function buildRangeQuery(desde, hasta) {
   const params = new URLSearchParams();
   if (desde) params.append("desde", desde);
@@ -91,7 +87,7 @@ function buildRangeQuery(desde, hasta) {
   return qs ? `?${qs}` : "";
 }
 
-// ---------- REPORTES BÁSICOS ----------
+//REPORTES
 
 // Usuarios activos
 export function getReporteUsuariosActivos({ desde, hasta } = {}) {
@@ -138,7 +134,7 @@ export function getReporteImpactoAcumulado({ idTipoReporte, idPeriodo }) {
   return api(`/reportes/impacto-acumulado?${qs}`);
 }
 
-// ---------- REPORTES AVANZADOS ----------
+//REPORTES 
 
 // Ranking de usuarios por impacto
 export function getReporteRankingUsuarios({ idPeriodo = null, limit = 10 } = {}) {

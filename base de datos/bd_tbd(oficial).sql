@@ -1258,7 +1258,7 @@ CALL sp_generar_reporte_impacto(
   NULL
 );
 
--- Crear sp_obtener_ranking_usuarios (faltaba en el script)
+-- Crear sp_obtener_ranking_usuarios
 
 DROP PROCEDURE IF EXISTS sp_obtener_ranking_usuarios;
 DELIMITER $$
@@ -1583,23 +1583,101 @@ DELIMITER ;
 -- C7) Impacto acumulado por período (lectura directa)
 --     Asume que ya corriste sp_generar_reporte_impacto antes
 
-DROP PROCEDURE IF EXISTS sp_rep_impacto_acumulado;
+DROP PROCEDURE IF EXISTS sp_generar_reporte_impacto;
 DELIMITER $$
-CREATE PROCEDURE sp_rep_impacto_acumulado(
+
+CREATE PROCEDURE sp_generar_reporte_impacto(
   IN p_id_tipo_reporte INT,
-  IN p_id_periodo INT
+  IN p_id_periodo      INT,
+  IN p_id_usuario      INT        -- NULL = reporte global, no NULL = por usuario
 )
 BEGIN
-  SELECT
+  DECLARE v_total_co2      DECIMAL(12,6) DEFAULT 0;
+  DECLARE v_total_ag       DECIMAL(12,6) DEFAULT 0;
+  DECLARE v_total_en       DECIMAL(12,6) DEFAULT 0;
+  DECLARE v_total_tx       BIGINT        DEFAULT 0;
+  DECLARE v_total_users    BIGINT        DEFAULT 0;
+  DECLARE v_id_reporte_new INT;
+
+  -- 1) Calcular totales desde IMPACTO_AMBIENTAL
+
+  IF p_id_usuario IS NULL THEN
+    -- GLOBAL (todos los usuarios)
+    SELECT
+      IFNULL(SUM(co2_ahorrado), 0),
+      IFNULL(SUM(agua_ahorrada), 0),
+      IFNULL(SUM(energia_ahorrada), 0),
+      COUNT(DISTINCT id_transaccion),
+      COUNT(DISTINCT id_usuario)
+    INTO
+      v_total_co2,
+      v_total_ag,
+      v_total_en,
+      v_total_tx,
+      v_total_users
+    FROM IMPACTO_AMBIENTAL
+    WHERE id_periodo = p_id_periodo;
+  ELSE
+    -- SOLO UN USUARIO
+    SELECT
+      IFNULL(SUM(co2_ahorrado), 0),
+      IFNULL(SUM(agua_ahorrada), 0),
+      IFNULL(SUM(energia_ahorrada), 0),
+      COUNT(DISTINCT id_transaccion),
+      COUNT(DISTINCT id_usuario)
+    INTO
+      v_total_co2,
+      v_total_ag,
+      v_total_en,
+      v_total_tx,
+      v_total_users
+    FROM IMPACTO_AMBIENTAL
+    WHERE id_periodo = p_id_periodo
+      AND id_usuario = p_id_usuario;
+  END IF;
+
+  -- 2) Limpiar reporte anterior (si existe)
+  
+  DELETE FROM REPORTE_IMPACTO
+  WHERE id_tipo_reporte = p_id_tipo_reporte
+    AND id_periodo      = p_id_periodo
+    AND (
+         (p_id_usuario IS NULL AND id_usuario IS NULL)
+         OR id_usuario = p_id_usuario
+        );
+
+  -- 3) Insertar nuevo registro de reporte
+  
+  INSERT INTO REPORTE_IMPACTO (
     id_usuario,
+    id_tipo_reporte,
+    id_periodo,
     total_co2_ahorrado,
     total_agua_ahorrada,
     total_energia_ahorrada,
     total_transacciones,
     total_usuarios_activos
+  )
+  VALUES (
+    p_id_usuario,
+    p_id_tipo_reporte,
+    p_id_periodo,
+    v_total_co2,
+    v_total_ag,
+    v_total_en,
+    v_total_tx,
+    v_total_users
+  );
+
+  SET v_id_reporte_new = LAST_INSERT_ID();
+
+  -- 4) Devolver el registro insertado
+  --    (esto es lo que verá Postman / Prisma)
+  
+  SELECT *
   FROM REPORTE_IMPACTO
-  WHERE id_tipo_reporte = p_id_tipo_reporte
-    AND id_periodo = p_id_periodo;
+  WHERE id_reporte = v_id_reporte_new;
+
 END$$
 DELIMITER ;
 
@@ -1609,8 +1687,6 @@ ALTER TABLE USUARIO
   
   ALTER TABLE BITACORA_ACCESO
   MODIFY fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;
-
-USE CREDITOS_VERDES2;
 
 DROP PROCEDURE IF EXISTS sp_rep_creditos_generados_vs_consumidos;
 

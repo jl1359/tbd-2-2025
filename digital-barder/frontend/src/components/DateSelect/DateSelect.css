@@ -1,0 +1,101 @@
+.date-select-container {
+    position: relative;
+    flex: 1;
+}
+
+/* DÍA MÁS ANCHO */
+.date-select-container.dia {
+    flex: 1.2;
+    max-width: 110px;
+}
+
+/* AÑO MÁS ANCHO */
+.date-select-container.ano {
+    flex: 1.2;
+    max-width: 130px;
+}
+
+/* MES MÁS ANCHO */
+.date-select-container.mes {
+    flex: 1.5;
+    max-width: 160px;
+}
+
+.date-select-button {
+    width: 100%;
+    background-color: rgba(233, 255, 217, 0.5) !important;
+    color: #454343 !important;
+    border: none !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    height: 55px;
+    border-radius: 8px;
+    padding: 16px 45px 16px 20px;
+    font-size: 20px !important;
+    font-weight: 600 !important;
+    font-family: 'Inter', system-ui, sans-serif !important;
+    cursor: pointer;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.date-select-button:focus {
+    outline: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.date-select-arrow {
+    color: #454343;
+    font-size: 26px;
+    font-weight: bold;
+    transform: rotate(-90deg);
+    transition: transform 0.3s ease;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.date-select-arrow.open {
+    transform: rotate(90deg);
+}
+
+.date-select-options {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: rgba(233, 255, 217, 0.95);
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    max-height: 200px;
+    overflow-y: auto;
+    margin-top: 2px;
+}
+
+.date-select-option {
+    padding: 12px 20px;
+    font-size: 18px;
+    font-weight: 600;
+    font-family: 'Inter', system-ui, sans-serif;
+    color: #454343;
+    cursor: pointer;
+    text-align: center;
+    border-bottom: 1px solid rgba(0, 91, 48, 0.1);
+    transition: background-color 0.2s ease;
+}
+
+.date-select-option:hover {
+    background-color: rgba(0, 91, 48, 0.1);
+}
+
+.date-select-option:last-child {
+    border-bottom: none;
+}
+
+.date-select-option.selected {
+    background-color: rgba(0, 91, 48, 0.2);
+}

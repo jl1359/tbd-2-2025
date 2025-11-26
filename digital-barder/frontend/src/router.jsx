@@ -1,60 +1,16 @@
 import React from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
-import ProtectedRoute from "./components/ProtectedRoute.jsx";
-import Layout from "./components/Layout.jsx";
-import Login from "./pages/Login.jsx";
-import Home from "./pages/Home.jsx";
-import NotFound from "./pages/NotFound.jsx";
-import Reportes from "./pages/Reportes.jsx";
-import ReportesDashboard from "./pages/ReportesDashboard.jsx";
+import { Route, Routes } from "react-router-dom";
+import Dashboard from "./components/Dashboard";  // Componente de ejemplo
+import Sidebar from "./components/Sidebar";    // Sidebar si lo necesitas
 
-export default function AppRouter() {
+function AppRouter() {
   return (
     <Routes>
-      {/* Ruta raíz → /home */}
-      <Route path="/" element={<Navigate to="/home" replace />} />
-
-      {/* Login público */}
-      <Route path="/login" element={<Login />} />
-
-      {/* Home protegido */}
-      <Route
-        path="/home"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <Home />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      {/* Reportes en tablas */}
-      <Route
-        path="/reportes"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <Reportes />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      {/* NUEVO: Dashboard con gráficos de reportes */}
-      <Route
-        path="/reportes-dashboard"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <ReportesDashboard />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      {/* 404 */}
-      <Route path="*" element={<NotFound />} />
+      {/* Definir las rutas aquí */}
+      <Route path="/" element={<Dashboard />} />
+      {/* Otras rutas que puedas tener */}
     </Routes>
   );
 }
+
+export default AppRouter;

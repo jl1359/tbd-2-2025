@@ -1,0 +1,355 @@
+/* Search.css - CONTROL ABSOLUTO CON CSS GRID */
+.search-page {
+    min-height: 100vh;
+    background: radial-gradient(
+        50% 50% at 50% 50%,
+        rgba(3, 72, 40, 1) 0%,
+        rgba(2, 32, 18, 0.85) 100%
+    ) !important;
+    background-attachment: fixed;
+    padding: 20px;
+    color: white;
+    font-family: 'Inter', system-ui, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+/* CONTENEDOR GRID PRINCIPAL - DEFINE TU PROPIO LAYOUT */
+.search-grid-container {
+    display: grid;
+    width: 100%;
+    max-width: 1200px;
+    min-height: 80vh;
+    
+    /* ⚡⚡⚡ AJUSTA ESTA PLANTILLA SEGÚN TUS NECESIDADES ⚡⚡⚡ */
+    grid-template-areas: 
+        "search search search"
+        "category-title category-title category-title"
+        "categories categories categories"
+        "profile profile profile";
+    
+    grid-template-rows: auto auto auto auto; /* AJUSTA ALTURAS */
+    grid-template-columns: 1fr 1fr 1fr; /* AJUSTA COLUMNAS */
+    gap: 30px; /* ESPACIO ENTRE ELEMENTOS - AJUSTABLE */
+    
+    /* Posición general del grid en la página */
+    align-items: start;
+    justify-items: center;
+}
+
+/* 🔧 CLASES DE POSICIONAMIENTO - USA ESTAS EN TU JSX 🔧 */
+.grid-area-search { grid-area: search; }
+.grid-area-category-title { grid-area: category-title; }
+.grid-area-categories { grid-area: categories; }
+.grid-area-profile { grid-area: profile; }
+
+/* 📦 ESTILOS DE CAJAS - MANTIENEN DISEÑO DEL REGISTER 📦 */
+
+/* BARRA DE BÚSQUEDA */
+.search-box {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.search-input {
+    width: 100%;
+    max-width: 500px;
+    background-color: #E9FFD9 !important;
+    color: #454343 !important;
+    border: none !important;
+    border-radius: 8px;
+    padding: 16px 25px;
+    font-size: 18px;
+    font-weight: 600;
+    font-family: 'Inter', system-ui, sans-serif;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.search-input::placeholder {
+    color: #454343 !important;
+    font-size: 18px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.search-input:focus {
+    outline: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* TÍTULO CATEGORÍA */
+.category-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #E8E0E0;
+    margin: 0;
+    text-align: center;
+}
+
+/* CONTENEDOR DE CATEGORÍAS */
+.categories-box {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.categories-buttons {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+    max-width: 600px;
+}
+
+.category-btn {
+    background: rgba(8, 112, 62, 0.85) !important;
+    border: none !important;
+    border-radius: 8px;
+    padding: 15px 25px;
+    color: #E8E0E0;
+    font-size: 18px;
+    font-weight: 600;
+    font-family: 'Inter', system-ui, sans-serif;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 180px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    flex: 1;
+    max-width: 200px;
+}
+
+.category-btn:hover {
+    background: rgba(8, 112, 62, 1) !important;
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.category-btn.active {
+    background: rgba(8, 112, 62, 1) !important;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* PERFIL DE USUARIO */
+.profile-box {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.profile-content {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+.profile-img-container {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(8, 112, 62, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-text {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: center;
+}
+
+.profile-code {
+  font-size: 20px;
+  font-weight: 700;
+  color: #E8E0E0;
+}
+
+.profile-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #E8E0E0;
+}
+
+/* 🎯 CLASES UTILITARIAS PARA CONTROL ABSOLUTO 🎯 */
+
+/* Control de posición en el grid */
+.pos-top { align-self: start; }
+.pos-middle { align-self: center; }
+.pos-bottom { align-self: end; }
+.pos-left { justify-self: start; }
+.pos-center { justify-self: center; }
+.pos-right { justify-self: end; }
+
+/* Control de tamaño */
+.width-auto { width: auto; }
+.width-full { width: 100%; }
+.width-half { width: 50%; }
+.width-third { width: 33.333%; }
+.width-quarter { width: 25%; }
+
+.height-auto { height: auto; }
+.height-full { height: 100%; }
+.height-half { height: 50%; }
+
+/* Control de márgenes */
+.m-0 { margin: 0; }
+.m-10 { margin: 10px; }
+.m-20 { margin: 20px; }
+.m-30 { margin: 30px; }
+
+.mt-0 { margin-top: 0; }
+.mt-10 { margin-top: 10px; }
+.mt-20 { margin-top: 20px; }
+.mt-30 { margin-top: 30px; }
+
+.mb-0 { margin-bottom: 0; }
+.mb-10 { margin-bottom: 10px; }
+.mb-20 { margin-bottom: 20px; }
+.mb-30 { margin-bottom: 30px; }
+
+.ml-0 { margin-left: 0; }
+.ml-10 { margin-left: 10px; }
+.ml-20 { margin-left: 20px; }
+.ml-30 { margin-left: 30px; }
+
+.mr-0 { margin-right: 0; }
+.mr-10 { margin-right: 10px; }
+.mr-20 { margin-right: 20px; }
+.mr-30 { margin-right: 30px; }
+
+/* Control de padding */
+.p-0 { padding: 0; }
+.p-10 { padding: 10px; }
+.p-20 { padding: 20px; }
+.p-30 { padding: 30px; }
+
+/* Control de orden visual */
+.order-1 { order: 1; }
+.order-2 { order: 2; }
+.order-3 { order: 3; }
+.order-4 { order: 4; }
+
+/* 🔄 EJEMPLOS DE LAYOUTS PREDEFINIDOS - DESCOMENTA EL QUE QUIERAS USAR 🔄 */
+
+/* Layout 1: Todo centrado (actual) */
+.layout-centered {
+    grid-template-areas: 
+    "search search search"
+    "category-title category-title category-title"
+    "categories categories profile";
+    justify-items: center;
+}
+
+/* Layout 2: Todo a la izquierda */
+.layout-left {
+    grid-template-areas: 
+        "search . ."
+        "category-title . ."
+        "categories . ."
+        "profile . .";
+    justify-items: start;
+}
+
+/* Layout 3: Todo a la derecha */
+.layout-right {
+    grid-template-areas: 
+        ". . search"
+        ". . category-title"
+        ". . categories"
+        ". . profile";
+    justify-items: end;
+}
+
+/* Layout 4: Distribución en 2 columnas */
+.layout-two-columns {
+    grid-template-areas: 
+        "search search"
+        "category-title category-title"
+        "categories profile";
+    grid-template-columns: 1fr 1fr;
+}
+
+/* Layout 5: Distribución en 3 columnas */
+.layout-three-columns {
+    grid-template-areas: 
+        "search search search"
+        "category-title category-title category-title"
+        "categories categories profile";
+}
+
+/* 🎨 RESPONSIVE - MANTIENE CONTROL EN TODOS LOS DISPOSITIVOS 🎨 */
+@media (max-width: 768px) {
+    .search-grid-container {
+        grid-template-areas: 
+            "search"
+            "category-title"
+            "categories"
+            "profile";
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto auto;
+        gap: 20px;
+        padding: 0 10px;
+    }
+    
+    .search-input {
+        padding: 14px 20px;
+        font-size: 16px;
+    }
+    
+    .categories-buttons {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .category-btn {
+        width: 100%;
+        max-width: 300px;
+        min-width: auto;
+    }
+    
+    .profile-content {
+        flex-direction: column;
+        text-align: center;
+        gap: 15px;
+    }
+    
+    .profile-img-container {
+        width: 80px;
+        height: 80px;
+    }
+}
+
+@media (max-width: 480px) {
+    .search-grid-container {
+        gap: 15px;
+    }
+    
+    .category-btn {
+        padding: 12px 20px;
+        font-size: 16px;
+    }
+    
+    .profile-content {
+        padding: 15px 20px;
+    }
+    
+    .profile-code {
+        font-size: 18px;
+    }
+    
+    .profile-name {
+        font-size: 14px;
+    }
+}

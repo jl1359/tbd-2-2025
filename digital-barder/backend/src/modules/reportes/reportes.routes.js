@@ -1,65 +1,28 @@
-// src/modules/reportes/reportes.routes.js
 import { Router } from "express";
+import { authMiddleware } from "../../middlewares/auth.js";
+import { isAdmin } from "../../middlewares/isAdmin.js";
 import {
-  getUsuariosActivos,
-  getUsuariosAbandonados,
-  getIngresosCreditos,
-  getCreditosGeneradosVsConsumidos,
-  getIntercambiosPorCategoria,
-  getPublicacionesVsIntercambios,
-  getImpactoAcumulado,
-  getRankingUsuarios,
-  getUsuariosPremium,
-  getUsuariosNuevos,
-  getSaldosCreditos,
-  getActividadesSostenibles,
-  getImpactoPorCategoria,
+  repUsuariosActivosController,
+  repUsuariosAbandonadosController,
+  repIngresosCreditosController,
+  repCreditosGenConsController,
+  repIntercambiosCategoriaController,
+  repPublicacionesVsIntercambiosController,
+  repImpactoAcumuladoController,
+  rankingUsuariosController,
 } from "./reportes.controller.js";
 
 const router = Router();
 
-/*  REPORTES PRINCIPALES */
+router.use(authMiddleware, isAdmin);
 
-// ✔ Usuarios activos
-router.get("/usuarios-activos", getUsuariosActivos);
-
-// ✔ Usuarios abandonados
-router.get("/usuarios-abandonados", getUsuariosAbandonados);
-
-// ✔ Ingresos por venta de créditos
-router.get("/ingresos-creditos", getIngresosCreditos);
-
-// ✔ Créditos generados vs consumidos
-router.get("/creditos-generados-consumidos", getCreditosGeneradosVsConsumidos);
-
-// ✔ Intercambios por categoría
-router.get("/intercambios-categoria", getIntercambiosPorCategoria);
-
-// ✔ Publicaciones vs intercambios
-router.get("/publicaciones-vs-intercambios", getPublicacionesVsIntercambios);
-
-// ✔ Impacto ecológico acumulado
-router.get("/impacto-acumulado", getImpactoAcumulado);
-
-
-/* REPORTES AVANZADOS */
-
-// ✔ Ranking de usuarios (top N)
-router.get("/ranking-usuarios", getRankingUsuarios);
-
-// ✔ Reporte de usuarios premium
-router.get("/usuarios-premium", getUsuariosPremium);
-
-// ✔ Usuarios nuevos (primer login)
-router.get("/usuarios-nuevos", getUsuariosNuevos);
-
-// ✔ Saldos de créditos (top N)
-router.get("/saldos-usuarios", getSaldosCreditos);
-
-// ✔ Actividades sostenibles
-router.get("/actividades-sostenibles", getActividadesSostenibles);
-
-// ✔ Impacto ambiental por categoría (por período)
-router.get("/impacto-categoria", getImpactoPorCategoria);
+router.get("/usuarios-activos", repUsuariosActivosController);
+router.get("/usuarios-abandonados", repUsuariosAbandonadosController);
+router.get("/ingresos-creditos", repIngresosCreditosController);
+router.get("/creditos-generados-consumidos", repCreditosGenConsController);
+router.get("/intercambios-categoria", repIntercambiosCategoriaController);
+router.get("/publicaciones-intercambios", repPublicacionesVsIntercambiosController);
+router.get("/impacto-acumulado", repImpactoAcumuladoController);
+router.get("/ranking-usuarios", rankingUsuariosController);
 
 export default router;

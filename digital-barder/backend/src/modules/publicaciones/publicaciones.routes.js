@@ -1,17 +1,30 @@
-// src/modules/publicaciones/publicaciones.routes.js
-import { Router } from 'express'
+import { Router } from "express";
+import { authMiddleware } from "../../middlewares/auth.js";
 import {
-    listarPublicaciones,
-    crearPublicacion,
-    obtenerPublicacion,
-    cambiarEstadoPublicacion,
-} from './publicaciones.controller.js'
+  listarPublicacionesController,
+  obtenerPublicacionController,
+  crearPublicacionProductoController,
+  crearPublicacionServicioController,
+  misPublicacionesController,
+  buscarPublicacionesController,
+  crearCalificacionController,
+  listarCalificacionesController,
+} from "./publicaciones.controller.js";
 
-const router = Router()
+const router = Router();
 
-router.get('/', listarPublicaciones)
-router.get('/:id', obtenerPublicacion)
-router.post('/', crearPublicacion)
-router.patch('/:id/estado', cambiarEstadoPublicacion)
+// públicas
+router.get("/", listarPublicacionesController);
+router.get("/busqueda", buscarPublicacionesController);
+router.get("/:id", obtenerPublicacionController);
+router.get("/:id/calificaciones", listarCalificacionesController);
 
-export default router
+// protegidas
+router.use(authMiddleware);
+
+router.get("/mias/listado", misPublicacionesController);
+router.post("/producto", crearPublicacionProductoController);
+router.post("/servicio", crearPublicacionServicioController);
+router.post("/:id/calificaciones", crearCalificacionController);
+
+export default router;

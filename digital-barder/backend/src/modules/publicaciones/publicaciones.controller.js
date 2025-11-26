@@ -1,127 +1,68 @@
-// src/modules/publicaciones/publicaciones.controller.js
-import { prisma } from '../../config/prisma.js'
+import {
+  listarPublicacionesService,
+  obtenerPublicacionService,
+  crearPublicacionProductoService,
+  crearPublicacionServicioService,
+  misPublicacionesService,
+  buscarPublicacionesService,
+  crearCalificacionService,
+  listarCalificacionesService,
+} from "./publicaciones.service.js";
 
-export async function listarPublicaciones(req, res, next) {
-    try {
-        const { estado, categoria } = req.query
+export const listarPublicacionesController = async (req, res, next) => {
+  try {
+    const { categoria, estado } = req.query;
+    res.json(await listarPublicacionesService({ categoria, estado }));
+  } catch (e) { next(e); }
+};
 
-        const where = {}
-        if (estado) where.estado = estado
-        if (categoria) where.id_categoria = Number(categoria)
+export const obtenerPublicacionController = async (req, res, next) => {
+  try { res.json(await obtenerPublicacionService(+req.params.id)); }
+  catch (e) { next(e); }
+};
 
-        const publicaciones = await prisma.publicacion.findMany({
-        where,
-        orderBy: { creado_en: 'desc' },
-        select: {
-            id_publicacion: true,
-            titulo: true,
-            descripcion: true,
-            valor_creditos: true,
-            estado: true,
-            creado_en: true,
-            usuario: {
-            select: { id_usuario: true, nombre: true, apellido: true, correo: true },
-            },
-            categoria: {
-            select: { id_categoria: true, nombre: true },
-            },
-        },
-        })
+export const crearPublicacionProductoController = async (req, res, next) => {
+  try {
+    const idUsuario = req.user.id_usuario;
+    const pub = await crearPublicacionProductoService(idUsuario, req.body);
+    res.status(201).json(pub);
+  } catch (e) { next(e); }
+};
 
-        res.json(publicaciones)
-    } catch (err) {
-        next(err)
-    }
-}
+export const crearPublicacionServicioController = async (req, res, next) => {
+  try {
+    const idUsuario = req.user.id_usuario;
+    const pub = await crearPublicacionServicioService(idUsuario, req.body);
+    res.status(201).json(pub);
+  } catch (e) { next(e); }
+};
 
-export async function obtenerPublicacion(req, res, next) {
-    try {
-        const id = Number(req.params.id)
+export const misPublicacionesController = async (req, res, next) => {
+  try {
+    const idUsuario = req.user.id_usuario;
+    res.json(await misPublicacionesService(idUsuario));
+  } catch (e) { next(e); }
+};
 
-        const pub = await prisma.publicacion.findUnique({
-        where: { id_publicacion: id },
-        include: {
-            usuario: true,
-            categoria: true,
-        },
-        })
+export const buscarPublicacionesController = async (req, res, next) => {
+  try { res.json(await buscarPublicacionesService(req.query.q || "")); }
+  catch (e) { next(e); }
+};
 
-        if (!pub) {
-        return res.status(404).json({ ok: false, message: 'Publicación no encontrada' })
-        }
+export const crearCalificacionController = async (req, res, next) => {
+  try {
+    const idUsuario = req.user.id_usuario;
+    const idPublicacion = +req.params.id;
+    const { estrellas, comentario } = req.body;
+    const calif = await crearCalificacionService({
+      idUsuario, idPublicacion, estrellas, comentario,
+    });
+    res.status(201).json(calif);
+  } catch (e) { next(e); }
+};
 
-        res.json(pub)
-    } catch (err) {
-        next(err)
-    }
-}
-
-export async function crearPublicacion(req, res, next) {
-    try {
-        const {
-        id_usuario,
-        id_categoria,
-        id_tipo_publicacion,
-        titulo,
-        descripcion,
-        valor_creditos,
-        id_ubicacion,
-        imagen_url,
-        } = req.body || {}
-
-        if (
-        !id_usuario ||
-        !id_categoria ||
-        !id_tipo_publicacion ||
-        !titulo ||
-        !descripcion ||
-        !valor_creditos
-        ) {
-        return res.status(400).json({
-            ok: false,
-            message:
-            'id_usuario, id_categoria, id_tipo_publicacion, titulo, descripcion y valor_creditos son requeridos',
-        })
-        }
-
-        const pub = await prisma.publicacion.create({
-        data: {
-            id_usuario,
-            id_categoria,
-            id_tipo_publicacion,
-            titulo,
-            descripcion,
-            valor_creditos,
-            id_ubicacion,
-            imagen_url,
-        },
-        })
-
-        res.status(201).json(pub)
-    } catch (err) {
-        next(err)
-    }
-}
-
-export async function cambiarEstadoPublicacion(req, res, next) {
-    try {
-        const id = Number(req.params.id)
-        const { estado } = req.body || {}
-
-        if (!estado) {
-        return res.status(400).json({
-            ok: false,
-            message: 'estado es requerido',
-        })
-        }
-
-        const pub = await prisma.publicacion.update({
-        where: { id_publicacion: id },
-        data: { estado },
-        })
-
-        res.json(pub)
-    } catch (err) {
-        next(err)
-    }
-}
+export const listarCalificacionesController = async (req, res, next) => {
+  try {
+    res.json(await listarCalificacionesService(+req.params.id));
+  } catch (e) { next(e); }
+};

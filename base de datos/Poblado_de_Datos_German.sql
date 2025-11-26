@@ -1,5 +1,6 @@
--- POBLAR LA BD
+use creditos_verdes2;
 
+-- POBLAR LA BD
 
 -- FUNCION QUE GENERA STRINGS ALEATORIOS
 DROP FUNCTION IF EXISTS rand_str;
@@ -18,9 +19,6 @@ BEGIN
   RETURN outp;
 END$$
 DELIMITER ;
-
-
-
 
 -- PROCEDIMIENTO QUE CREARA 500 USUARIOS + BILLETERAS
 DELIMITER $$
@@ -53,9 +51,6 @@ DELIMITER ;
 CALL poblar_usuarios();
 -- select * from usuario;
 
-
-
-
 -- POBLADO DE CATEGORIAS, UNIDAD DE MEDIDA Y UBICACION
 INSERT INTO CATEGORIA (nombre, descripcion)
 SELECT CONCAT('Cat', n), 'Categoria generada'
@@ -74,9 +69,6 @@ SELECT CONCAT('Dir', n), 'CiudadTest', 'ProvTest', -17.3 + RAND()/10, -66.2 + RA
 FROM (
   SELECT ROW_NUMBER() OVER () AS n FROM INFORMATION_SCHEMA.COLUMNS LIMIT 50
 ) t;
-
-
-
 
 -- CREACION DE PROCEDIMIENTO QUE CREARA 1000 PRODUCTOS
 DELIMITER $$
@@ -99,9 +91,6 @@ DELIMITER ;
 -- LLAMAMOS A LA FUNCION QUE CREARA LOS 1000 PRODUCTOS
 CALL poblar_productos();
 -- select * from producto;
-
-
-
 
 -- PROCEDIMIENTO QUE CREARA SERVICIOS ALEATORIOS
 DELIMITER $$
@@ -127,10 +116,6 @@ DELIMITER ;
 -- LLAMAMOS AL PROCEDIMIENTO QUE CREARA 500 SERVICIOS
 CALL poblar_servicios();
 -- select * from servicio;
-
-
-
-
 
 -- PROCEDIMIENTO QUE CREARA PUBLICACIONES 
 DELIMITER $$
@@ -165,11 +150,6 @@ DELIMITER ;
 CALL poblar_publicaciones();
 -- select * from publicacion;
 
-
-
-
-
-
 -- VINCULAMOS A PUBLICACIONES CON PRODUCTO O SERVICIO SEGUN CORRESPONDA
 INSERT INTO PUBLICACION_PRODUCTO(id_publicacion, id_producto, cantidad, id_um)
 SELECT p.id_publicacion,
@@ -187,11 +167,6 @@ SELECT p.id_publicacion,
 FROM PUBLICACION p
 JOIN TIPO_PUBLICACION tp ON tp.id_tipo_publicacion = p.id_tipo_publicacion
 WHERE tp.nombre = 'SERVICIO';
-
-
-
-
-
 
 -- PROC QUE POBLARA LA COMPRA DE CREDITOS
 DELIMITER $$
@@ -213,13 +188,7 @@ DELIMITER ;
 
 CALL poblar_recargas();
 
-
-
-
-
-
 -- POBLAR INTERCAMBIOS REALES 
-
 
 -- PRIMERO CREAMOS PERIODO PARA QUE NO FALLE LA POBLACION
 INSERT INTO PERIODO (nombre, descripcion, fecha_inicio, fecha_fin)
@@ -237,18 +206,14 @@ WHERE NOT EXISTS (
   WHERE e.id_categoria = c.id_categoria
 );
 
-
 -- AGREGAR VALORES POR DEFECTO PARA NO ROMPER TRIGGERS
 ALTER TABLE IMPACTO_AMBIENTAL 
 MODIFY co2_ahorrado DECIMAL(18,6) NOT NULL DEFAULT 0,
 MODIFY agua_ahorrada DECIMAL(18,6) NOT NULL DEFAULT 0,
 MODIFY energia_ahorrada DECIMAL(18,6) NOT NULL DEFAULT 0;
 
-
-
-
-
 -- PROC PARA POBLAR INTERCAMBIOS
+DROP PROCEDURE IF EXISTS poblar_intercambios;
 DELIMITER $$
 
 CREATE PROCEDURE poblar_intercambios()
@@ -258,13 +223,26 @@ BEGIN
   DECLARE pub INT;
   DECLARE precio DECIMAL(15,2);
   DECLARE vendedor INT;
+  DECLARE v_err INT DEFAULT 0;
+
+  -- Cualquier error SQL dentro del procedimiento NO lo corta,
+  -- sólo setea v_err = 1 y continúa.
+  DECLARE CONTINUE HANDLER FOR SQLEXCEPTION
+  BEGIN
+    SET v_err = 1;
+  END;
 
   WHILE i <= 1200 DO
     
     -- comprador aleatorio
-    SET comp = (SELECT id_usuario FROM USUARIO ORDER BY RAND() LIMIT 1);
+    SET comp = (
+      SELECT id_usuario
+      FROM USUARIO
+      ORDER BY RAND()
+      LIMIT 1
+    );
 
-    -- una publicación aleatoria CON categoría y equivalencia ambiental
+    -- publicación aleatoria con equivalencia ambiental
     SET pub = (
       SELECT p.id_publicacion
       FROM PUBLICACION p
@@ -274,30 +252,31 @@ BEGIN
       LIMIT 1
     );
 
-    -- precio
-    SELECT valor_creditos INTO precio FROM PUBLICACION WHERE id_publicacion = pub;
+    -- precio + vendedor de esa publicación
+    SELECT valor_creditos, id_usuario
+    INTO precio, vendedor
+    FROM PUBLICACION
+    WHERE id_publicacion = pub;
 
-    -- vendedor de esa publicación
-    SELECT id_usuario INTO vendedor FROM PUBLICACION WHERE id_publicacion = pub;
-
-    -- evita que comprador == vendedor
+    -- evita que el comprador sea el mismo que el vendedor
     IF comp <> vendedor THEN
-        CALL sp_realizar_intercambio(comp, pub, precio);
+      SET v_err = 0;
+      CALL sp_realizar_intercambio(comp, pub, precio);
+      -- si aquí hay "Saldo insuficiente" u otro error:
+      -- sp_realizar_intercambio hace ROLLBACK de esa transacción
+      -- y el handler pone v_err=1, pero el WHILE sigue.
     END IF;
 
     SET i = i + 1;
-
   END WHILE;
 
 END$$
 DELIMITER ;
+
 -- LLAMAMOS AL PROC PARA POBLAR INTERCAMBIOS
 call poblar_intercambios();
 select * from transaccion;
 select * from bitacora_intercambio;
-
-
-
 
 
 
@@ -323,4 +302,10 @@ END$$
 DELIMITER ;
 
 CALL poblar_actividades();
-select * from intercambio;
+SELECT * FROM TRANSACCION LIMIT 1000;
+SELECT * FROM BITACORA_INTERCAMBIO LIMIT 1000;
+SELECT * FROM IMPACTO_AMBIENTAL LIMIT 1000;
+
+SELECT * FROM MOVIMIENTO_CREDITOS LIMIT 100;
+SELECT * FROM BILLETERA LIMIT 100;
+

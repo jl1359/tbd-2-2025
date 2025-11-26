@@ -1,9 +1,20 @@
-// src/modules/auth/auth.routes.js
-import { Router } from 'express'
-import { loginDemo } from './auth.controller.js'
+import { Router } from "express";
+import {
+    registerController,
+    loginController,
+    meController,
+} from "./auth.controller.js";
+import { authMiddleware } from "../../middlewares/auth.js";
 
-const router = Router()
+const router = Router();
 
-router.post('/login', loginDemo)
+// Registro público (rol COMPRADOR)
+router.post("/register", registerController);
 
-export default router
+// Login
+router.post("/login", loginController);
+
+// Datos del usuario logueado
+router.get("/me", authMiddleware, meController);
+
+export default router;

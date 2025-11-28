@@ -87,6 +87,22 @@ export default function Home() {
             Listado de últimas publicaciones, intercambios, etc.
           </p>
         </div>
+        
+          <Link
+            to="/backend-lab"
+            className="card hover:shadow-md transition"
+          >
+            <p className="text-xs font-medium text-gray-500 uppercase mb-1">
+              Laboratorio Backend
+            </p>
+            <p className="text-sm font-semibold">
+              Probar todos los módulos (QA)
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              Registro, login, wallet, publicaciones, intercambios, actividades,
+              reportes y más desde una sola pantalla.
+            </p>
+          </Link>
 
         {/* ⭐ NUEVA TARJETA: REPORTES ⭐ */}
         <div className="card flex flex-col justify-between">

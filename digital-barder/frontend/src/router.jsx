@@ -6,13 +6,14 @@ import Layout from "./components/Layout.jsx";
 
 // Páginas base
 import Login from "./pages/Login.jsx";
+import Register from "./pages/Register.jsx";
 import Home from "./pages/Home.jsx";
 import NotFound from "./pages/NotFound.jsx";
 
 // Índice de reportes + botón a dashboard
 import Reportes from "./pages/Reportes.jsx";
 
-// Dashboard con gráficas (ya lo tienes creado)
+// Dashboard con gráficas
 import ReportesDashboard from "./pages/ReportesDashboard.jsx";
 
 // Páginas individuales de reportes (tablas)
@@ -29,16 +30,21 @@ import ReportesSaldosUsuarios from "./pages/ReportesSaldosUsuarios.jsx";
 import ReportesActividadesSostenibles from "./pages/ReportesActividadesSostenibles.jsx";
 import ReportesImpactoCategoria from "./pages/ReportesImpactoCategoria.jsx";
 
+import BackendLab from "./pages/BackendLab.jsx";
+
 export default function AppRouter() {
   return (
     <Routes>
-      {/* Ruta raíz → /home */}
-      <Route path="/" element={<Navigate to="/home" replace />} />
+      {/* Inicio: manda siempre al login */}
+      <Route path="/" element={<Navigate to="/login" replace />} />
 
-      {/* Login público */}
+      {/* RUTAS PÚBLICAS */}
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
 
-      {/* Home protegido */}
+      {/* RUTAS PROTEGIDAS (requieren token) */}
+
+      {/* Home */}
       <Route
         path="/home"
         element={
@@ -50,7 +56,7 @@ export default function AppRouter() {
         }
       />
 
-      {/* Índice de reportes (lista de tarjetas + botón al dashboard) */}
+      {/* Índice de reportes */}
       <Route
         path="/reportes"
         element={
@@ -62,7 +68,7 @@ export default function AppRouter() {
         }
       />
 
-      {/* Páginas individuales de reportes (tablas) */}
+      {/* Páginas individuales de reportes */}
       <Route
         path="/reportes/usuarios"
         element={
@@ -184,13 +190,25 @@ export default function AppRouter() {
         }
       />
 
-      {/* Dashboard con gráficos de reportes */}
+      {/* Dashboard con gráficos */}
       <Route
         path="/reportes-dashboard"
         element={
           <ProtectedRoute>
             <Layout>
               <ReportesDashboard />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Laboratorio de backend */}
+      <Route
+        path="/backend-lab"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <BackendLab />
             </Layout>
           </ProtectedRoute>
         }

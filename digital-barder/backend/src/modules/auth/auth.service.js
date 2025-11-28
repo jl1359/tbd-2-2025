@@ -44,12 +44,13 @@ export async function registrarUsuarioService({
   const hash = await bcrypt.hash(password, 10);
   const idRolComprador = await getRolId("COMPRADOR");
 
-  const result = await prisma.$queryRaw`
+  await prisma.$queryRaw`
     INSERT INTO USUARIO (id_rol, estado, nombre, apellido, correo, password_hash, telefono, url_perfil)
     VALUES (${idRolComprador}, 'ACTIVO', ${nombre}, ${apellido || null}, ${correo},
             ${hash}, ${telefono || null}, NULL)
   `;
-  // MySQL devuelve info rara en raw, vuelvo a leer el row
+
+  // Volver a leer el usuario insertado
   const usuarioRows = await prisma.$queryRaw`
     SELECT u.id_usuario, u.nombre, u.apellido, u.correo, u.telefono, r.nombre AS rol
     FROM USUARIO u
@@ -75,15 +76,29 @@ export async function loginService({ correo, password, ip, userAgent }) {
   let resultadoNombre = "FAIL";
 
   if (!user) {
-    // Registrar intento fallido genérico (sin usuario)
     const idFail = await getResultadoAccesoId(resultadoNombre);
-    // no hay id_usuario, así que no insertamos bitácora aquí
+    // Podrías registrar intento fallido sin usuario si quisieras
     const error = new Error("Credenciales inválidas");
     error.status = 401;
     throw error;
   }
 
-  const ok = await bcrypt.compare(password, user.password_hash);
+  // ===== CAMBIO IMPORTANTE: compatibilidad con hashes bcrypt y texto plano =====
+  let ok = false;
+
+  try {
+    // Si parece un hash bcrypt ($2a$, $2b$, $2y$...), usamos bcrypt.compare
+    if (user.password_hash && user.password_hash.startsWith("$2")) {
+      ok = await bcrypt.compare(password, user.password_hash);
+    } else {
+      // Si NO parece hash, asumimos que está en texto plano (ej: '123456')
+      ok = password === user.password_hash;
+    }
+  } catch (e) {
+    // Si bcrypt truena por hash inválido, hacemos fallback a texto plano
+    ok = password === user.password_hash;
+  }
+
   if (!ok) {
     const idFail = await getResultadoAccesoId(resultadoNombre);
     await prisma.$queryRaw`
@@ -95,6 +110,7 @@ export async function loginService({ correo, password, ip, userAgent }) {
     throw error;
   }
 
+  // Login correcto
   resultadoNombre = "OK";
   const idOk = await getResultadoAccesoId(resultadoNombre);
   await prisma.$queryRaw`

@@ -87,6 +87,13 @@ function buildRangeQuery(desde, hasta) {
   return qs ? `?${qs}` : "";
 }
 
+export async function register({ nombre, apellido, correo, password, telefono }) {
+  return api("/auth/register", {
+    method: "POST",
+    body: { nombre, apellido, correo, password, telefono },
+  });
+}
+
 //REPORTES
 
 // Usuarios activos

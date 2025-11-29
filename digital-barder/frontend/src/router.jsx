@@ -26,13 +26,20 @@ import MisPublicaciones from "./pages/MisPublicaciones.jsx";
 
 import PublicacionNueva from "./pages/PublicacionNueva.jsx";
 
-
 import Intercambios from "./pages/Intercambios.jsx";
+
+import Actividades from "./pages/Actividades.jsx";
+import MisActividades from "./pages/MisActividades.jsx";
+
+import Premium from "./pages/Premium.jsx";
+
+import Logros from "./pages/Logros.jsx";
+import Promociones from "./pages/Promociones.jsx";
+
 // Reportes menú principal
 import Reportes from "./pages/Reportes.jsx";
+import Publicidad from "./pages/Publicidad.jsx";
 
-// Dashboard de reportes
-import ReportesDashboard from "./pages/ReportesDashboard.jsx";
 
 // Reportes individuales
 import ReportesUsuarios from "./pages/ReportesUsuarios.jsx";
@@ -185,6 +192,71 @@ export default function AppRouter() {
           </ProtectedRoute>
         }
       />
+
+      <Route
+        path="/actividades"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Actividades />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/actividades/mias"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <MisActividades />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+    <Route
+      path="/premium"
+      element={
+        <ProtectedRoute>
+          <Layout>
+            <Premium />
+          </Layout>
+        </ProtectedRoute>
+      }
+    />
+      <Route
+      path="/logros"
+      element={
+        <ProtectedRoute>
+          <Layout>
+            <Logros />
+          </Layout>
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/promociones"
+      element={
+        <ProtectedRoute>
+          <Layout>
+            <Promociones />
+          </Layout>
+        </ProtectedRoute>
+      }
+    />
+
+      <Route
+        path="/publicidad"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Publicidad />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
       {/* REPORTES */}
       <Route
         path="/reportes"
@@ -314,18 +386,6 @@ export default function AppRouter() {
           <ProtectedRoute>
             <Layout>
               <ReportesImpactoCategoria />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      {/* DASHBOARD DE REPORTES */}
-      <Route
-        path="/reportes-dashboard"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <ReportesDashboard />
             </Layout>
           </ProtectedRoute>
         }

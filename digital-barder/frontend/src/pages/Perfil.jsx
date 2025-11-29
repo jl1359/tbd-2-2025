@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from "react";
 import hoja from "../assets/hoja.png";
 import { api } from "../services/api";
+import { useNavigate } from "react-router-dom";
 
 export default function Perfil() {
   const [usuario, setUsuario] = useState(null);
   const [creditos, setCreditos] = useState(null);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     cargarDatos();
@@ -71,7 +74,7 @@ export default function Perfil() {
             </p>
 
             <button
-              onClick={() => (window.location.href = "/perfil/editar")}
+              onClick={() => navigate("/perfil/editar")}
               className="mt-4 bg-emerald-500 hover:bg-emerald-600 px-5 py-2 rounded-lg font-semibold transition"
             >
               Editar Perfil
@@ -92,19 +95,19 @@ export default function Perfil() {
         </div>
 
         {/* Logros */}
-        <a
-          href="/logros"
+        <div
+          onClick={() => navigate("/logros")}
           className="bg-[#0e4330] border border-emerald-500 p-6 rounded-xl shadow-lg 
           hover:bg-[#14694c] transition cursor-pointer"
         >
           <h3 className="text-lg font-semibold text-emerald-300">Logros</h3>
           <p className="opacity-80 mt-1">Ver mis insignias ganadas</p>
-        </a>
+        </div>
 
-        {/* Actividades sostenibles */}
-        <a
-          href="/actividades"
-          className="bg-[#0e4330] border border-emerald-500 p-6 rounded-xl rounded-xl shadow-lg
+        {/* Actividades */}
+        <div
+          onClick={() => navigate("/actividades")}
+          className="bg-[#0e4330] border border-emerald-500 p-6 rounded-xl shadow-lg
           hover:bg-[#14694c] transition cursor-pointer"
         >
           <h3 className="text-lg font-semibold text-emerald-300">
@@ -113,8 +116,18 @@ export default function Perfil() {
           <p className="opacity-80 mt-1">
             Mi impacto positivo registrado
           </p>
-        </a>
+        </div>
+
       </div>
+
+      {/* Botón independiente (extra) */}
+      <button
+        onClick={() => navigate("/logros")}
+        className="mt-6 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl 
+        text-white font-semibold shadow-md transition"
+      >
+        Ver logros
+      </button>
 
     </div>
   );

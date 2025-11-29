@@ -1,9 +1,6 @@
 // src/modules/reportes/reportes.controller.js
 import { prisma } from '../../config/prisma.js'
 
-/* ---------------------------------------------
-   Helper: BigInt / Date / Decimal -> valor plano
---------------------------------------------- */
 function toPlain(value) {
   // BigInt primitivo
   if (typeof value === 'bigint') {
@@ -45,10 +42,6 @@ function toPlain(value) {
   return value
 }
 
-/* ---------------------------------------------
-   Normaliza el resultado de CALL:
-   - Puede venir como [ [rows] ] o [rows] u objeto
---------------------------------------------- */
 function normalizeResult(raw) {
   if (!raw) return []
 
@@ -62,9 +55,8 @@ function normalizeResult(raw) {
   return []
 }
 
-/* ---------------------------------------------
-   Rango de fechas por defecto: últimos 30 días
---------------------------------------------- */
+// Rango de fechas por defecto: últimos 30 días
+
 function getRangoFechas(req) {
   const { desde, hasta } = req.query
 
@@ -84,9 +76,8 @@ function getRangoFechas(req) {
   }
 }
 
-/* ---------------------------------------------
-   Mapeos de columnas f0, f1... -> nombres reales
---------------------------------------------- */
+//  Mapeos de columnas f0, f1... -> nombres reales
+
 
 // sp_rep_usuarios_activos:
 // id_usuario, nombre, correo, primera_actividad, ultima_actividad, total_acciones
@@ -156,9 +147,81 @@ function mapImpacto(r) {
   }
 }
 
-/* =
-   CONTROLADORES
-= */
+// sp_obtener_ranking_usuarios:
+// id_usuario, co2_total, agua_total, energia_total, transacciones
+function mapRankingUsuarios(r) {
+  return {
+    id_usuario: r.id_usuario ?? r.f0 ?? null,
+    co2_total: r.co2_total ?? r.f1 ?? null,
+    agua_total: r.agua_total ?? r.f2 ?? null,
+    energia_total: r.energia_total ?? r.f3 ?? null,
+    transacciones: r.transacciones ?? r.f4 ?? null,
+  }
+}
+
+// sp_rep_usuarios_premium:
+// desde, hasta, total_usuarios_activos,
+// usuarios_nuevos_premium, usuarios_premium_activos,
+// ingresos_suscripcion_bs, porcentaje_adopcion_premium
+function mapUsuariosPremium(r) {
+  return {
+    desde: r.desde ?? r.f0 ?? null,
+    hasta: r.hasta ?? r.f1 ?? null,
+    total_usuarios_activos: r.total_usuarios_activos ?? r.f2 ?? null,
+    usuarios_nuevos_premium: r.usuarios_nuevos_premium ?? r.f3 ?? null,
+    usuarios_premium_activos: r.usuarios_premium_activos ?? r.f4 ?? null,
+    ingresos_suscripcion_bs: r.ingresos_suscripcion_bs ?? r.f5 ?? null,
+    porcentaje_adopcion_premium:
+      r.porcentaje_adopcion_premium ?? r.f6 ?? null,
+  }
+}
+
+// Usuarios nuevos (calculados por primer login en BITACORA_ACCESO)
+// id_usuario, nombre, correo, fecha_primer_login
+function mapUsuariosNuevos(r) {
+  return {
+    id_usuario: r.id_usuario ?? r.f0 ?? null,
+    nombre: r.nombre ?? r.f1 ?? null,
+    correo: r.correo ?? r.f2 ?? null,
+    fecha_primer_login: r.fecha_primer_login ?? r.f3 ?? null,
+  }
+}
+
+// Saldos de créditos por usuario
+// id_usuario, nombre, correo, saldo_creditos
+function mapSaldoUsuario(r) {
+  return {
+    id_usuario: r.id_usuario ?? r.f0 ?? null,
+    nombre: r.nombre ?? r.f1 ?? null,
+    correo: r.correo ?? r.f2 ?? null,
+    saldo_creditos: r.saldo_creditos ?? r.f3 ?? null,
+  }
+}
+
+// Actividades sostenibles por usuario
+// id_usuario, nombre, correo, total_actividades, creditos_otorgados
+function mapActividadSostenible(r) {
+  return {
+    id_usuario: r.id_usuario ?? r.f0 ?? null,
+    nombre: r.nombre ?? r.f1 ?? null,
+    correo: r.correo ?? r.f2 ?? null,
+    total_actividades: r.total_actividades ?? r.f3 ?? null,
+    creditos_otorgados: r.creditos_otorgados ?? r.f4 ?? null,
+  }
+}
+
+// Impacto ambiental por categoría
+// categoria, co2_total, agua_total, energia_total
+function mapImpactoCategoria(r) {
+  return {
+    categoria: r.categoria ?? r.f0 ?? null,
+    co2_total: r.co2_total ?? r.f1 ?? null,
+    agua_total: r.agua_total ?? r.f2 ?? null,
+    energia_total: r.energia_total ?? r.f3 ?? null,
+  }
+}
+
+//   CONTROLADORES
 
 /* C1) Usuarios activos en el rango */
 export async function getUsuariosActivos(req, res, next) {
@@ -292,6 +355,172 @@ export async function getImpactoAcumulado(req, res, next) {
     )
 
     const rows = normalizeResult(raw).map(mapImpacto)
+    res.json(toPlain(rows))
+  } catch (err) {
+    next(err)
+  }
+}
+
+/* C8) Ranking de usuarios por impacto (top N) */
+export async function getRankingUsuarios(req, res, next) {
+  try {
+    // opcionales: vienen por query ?idPeriodo=&limit=
+    let { idPeriodo, limit } = req.query
+    const pPeriodo = idPeriodo ? Number(idPeriodo) : null // el SP acepta NULL
+    const pLimit = limit ? Number(limit) : 10
+
+    const raw = await prisma.$queryRawUnsafe(
+      'CALL sp_obtener_ranking_usuarios(?, ?)',
+      pPeriodo,
+      pLimit
+    )
+
+    const rows = normalizeResult(raw).map(mapRankingUsuarios)
+    res.json(toPlain(rows))
+  } catch (err) {
+    next(err)
+  }
+}
+
+/* C9) Reporte de usuarios premium */
+export async function getUsuariosPremium(req, res, next) {
+  try {
+    const { desde, hasta } = getRangoFechas(req)
+
+    const raw = await prisma.$queryRawUnsafe(
+      'CALL sp_rep_usuarios_premium(?, ?)',
+      desde,
+      hasta
+    )
+
+    const rows = normalizeResult(raw).map(mapUsuariosPremium)
+    res.json(toPlain(rows))
+  } catch (err) {
+    next(err)
+  }
+}
+
+/* C10) Usuarios nuevos (por fecha de primer login) */
+export async function getUsuariosNuevos(req, res, next) {
+  try {
+    const { desde, hasta } = getRangoFechas(req)
+
+    const raw = await prisma.$queryRawUnsafe(
+      `
+      SELECT
+        u.id_usuario,
+        u.nombre,
+        u.correo,
+        MIN(b.fecha) AS fecha_primer_login
+      FROM USUARIO u
+      JOIN BITACORA_ACCESO b
+        ON b.id_usuario = u.id_usuario
+      GROUP BY u.id_usuario, u.nombre, u.correo
+      HAVING fecha_primer_login BETWEEN ? AND ?
+      ORDER BY fecha_primer_login
+      `,
+      desde,
+      hasta
+    )
+
+    const rows = normalizeResult(raw).map(mapUsuariosNuevos)
+    res.json(toPlain(rows))
+  } catch (err) {
+    next(err)
+  }
+}
+
+/* C11) Saldos de créditos por usuario (top N opcional) */
+export async function getSaldosCreditos(req, res, next) {
+  try {
+    const limit = req.query.limit ? Number(req.query.limit) : 50
+
+    const raw = await prisma.$queryRawUnsafe(
+      `
+      SELECT
+        u.id_usuario,
+        u.nombre,
+        u.correo,
+        b.saldo_creditos
+      FROM USUARIO u
+      JOIN BILLETERA b
+        ON b.id_usuario = u.id_usuario
+      ORDER BY b.saldo_creditos DESC
+      LIMIT ?
+      `,
+      limit
+    )
+
+    const rows = normalizeResult(raw).map(mapSaldoUsuario)
+    res.json(toPlain(rows))
+  } catch (err) {
+    next(err)
+  }
+}
+
+/* C12) Resumen de actividades sostenibles por usuario */
+export async function getActividadesSostenibles(req, res, next) {
+  try {
+    const { desde, hasta } = getRangoFechas(req)
+
+    const raw = await prisma.$queryRawUnsafe(
+      `
+      SELECT
+        u.id_usuario,
+        u.nombre,
+        u.correo,
+        COUNT(a.id_actividad) AS total_actividades,
+        SUM(a.creditos_otorgados) AS creditos_otorgados
+      FROM ACTIVIDAD_SOSTENIBLE a
+      JOIN USUARIO u
+        ON u.id_usuario = a.id_usuario
+      WHERE a.creado_en BETWEEN ? AND ?
+      GROUP BY u.id_usuario, u.nombre, u.correo
+      ORDER BY total_actividades DESC
+      `,
+      desde,
+      hasta
+    )
+
+    const rows = normalizeResult(raw).map(mapActividadSostenible)
+    res.json(toPlain(rows))
+  } catch (err) {
+    next(err)
+  }
+}
+
+/* C13) Impacto ambiental por categoría (usa PERIODO) */
+export async function getImpactoPorCategoria(req, res, next) {
+  try {
+    const { idPeriodo } = req.query
+    if (!idPeriodo) {
+      return res
+        .status(400)
+        .json({ ok: false, message: 'idPeriodo es requerido' })
+    }
+
+    const raw = await prisma.$queryRawUnsafe(
+      `
+      SELECT
+        c.nombre AS categoria,
+        SUM(ia.co2_ahorrado)     AS co2_total,
+        SUM(ia.agua_ahorrada)    AS agua_total,
+        SUM(ia.energia_ahorrada) AS energia_total
+      FROM IMPACTO_AMBIENTAL ia
+      JOIN TRANSACCION t
+        ON t.id_transaccion = ia.id_transaccion
+      JOIN PUBLICACION p
+        ON p.id_publicacion = t.id_publicacion
+      JOIN CATEGORIA c
+        ON c.id_categoria = p.id_categoria
+      WHERE ia.id_periodo = ?
+      GROUP BY c.nombre
+      ORDER BY co2_total DESC
+      `,
+      Number(idPeriodo)
+    )
+
+    const rows = normalizeResult(raw).map(mapImpactoCategoria)
     res.json(toPlain(rows))
   } catch (err) {
     next(err)

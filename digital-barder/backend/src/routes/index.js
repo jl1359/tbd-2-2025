@@ -17,6 +17,15 @@ import uploadsRoutes from '../modules/uploads/uploads.routes.js';
 
 const router = Router();
 
+// 🔹 Health check (para el Home del frontend)
+router.get("/health", (req, res) => {
+  res.json({
+    ok: true,
+    message: "API Digital Barter OK",
+  });
+});
+
+// Rutas de módulos
 router.use('/auth', authRoutes);
 router.use('/usuarios', usuariosRoutes);
 router.use('/catalogos', catalogosRoutes);

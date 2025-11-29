@@ -188,3 +188,66 @@ export function getReporteImpactoPorCategoria({ idPeriodo }) {
   const qs = params.toString();
   return api(`/reportes/impacto-categoria?${qs}`);
 }
+// ================= WALLET / CRÉDITOS =================
+
+// Saldo de créditos del usuario logueado
+// GET /api/wallet/mis-creditos
+export function getMisCreditos() {
+  return api("/wallet/mis-creditos");
+}
+
+// Movimientos de la billetera
+// GET /api/wallet/mis-movimientos
+export function getMisMovimientos() {
+  return api("/wallet/mis-movimientos");
+}
+
+// Paquetes de créditos disponibles
+// GET /api/catalogos/paquetes-creditos  (ajusta si tu ruta es otra)
+export function getPaquetesCreditos() {
+  return api("/catalogos/paquetes-creditos");
+}
+
+// Registrar compra de un paquete de créditos
+// POST /api/wallet/compra-creditos
+export function crearCompraCreditos({ idPaquete, idTransaccionPago = null }) {
+  return api("/wallet/compra-creditos", {
+    method: "POST",
+    body: {
+      idPaquete,
+      idTransaccionPago,
+    },
+  });
+}
+
+// Historial de compras de créditos
+// GET /api/wallet/compras
+export function getMisComprasCreditos() {
+  return api("/wallet/compras");
+}
+
+// ================= INTERCAMBIOS =================
+
+// Crear un intercambio (comprar una publicación con créditos)
+// body: { id_publicacion, creditos }
+export function crearIntercambio({ id_publicacion, creditos }) {
+  return api("/intercambios", {
+    method: "POST",
+    body: { id_publicacion, creditos },
+  });
+}
+
+// Listar mis compras (donde yo soy el comprador)
+export function getMisComprasIntercambios() {
+  return api("/intercambios/mis-compras");
+}
+
+// Listar mis ventas (donde yo soy el vendedor)
+export function getMisVentasIntercambios() {
+  return api("/intercambios/mis-ventas");
+}
+
+// Detalle de una transacción individual
+export function getDetalleTransaccion(idTransaccion) {
+  return api(`/intercambios/${idTransaccion}`);
+}

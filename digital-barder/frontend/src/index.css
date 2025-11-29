@@ -1,16 +1,115 @@
+/* index.css */
+@import url('https://fonts.cdnfonts.com/css/berlin-sans-fb-demi');
+/* Si quieres que Jaro sea real y no solo fallback, puedes descomentar esto:
+@import url('https://fonts.googleapis.com/css2?family=Jaro:wght@400;600&display=swap');
+*/
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* estilos globales */
-body {
-  @apply bg-gray-100 text-gray-900;
+/* FONDO RADIAL VERDE OSCURO (igual al zip) */
+html,
+body,
+#root,
+#root > div {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background: radial-gradient(
+    50% 50% at 50% 50%,
+    rgba(3, 72, 40, 1) 0%,
+    rgba(2, 32, 18, 0.85) 100%
+  ) !important;
+  background-attachment: fixed;
+  color: white;
+  overflow-y: auto;
 }
 
-.btn-primary {
-  @apply inline-flex items-center justify-center px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition;
+* {
+  box-sizing: border-box;
 }
 
-.card {
-  @apply bg-white rounded-lg shadow-sm border border-gray-200 p-4;
+/* Fuente Berlin Sans FB Demi como fallback (por si el import no carga) */
+@font-face {
+  font-family: "Berlin Sans FB Demi";
+  src: local("Berlin Sans FB Demi Bold"),
+       local("BerlinSansFB-DemiBold"),
+       url('https://fonts.cdnfonts.com/s/15049/Berlin Sans FB Demi Bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Estilos base para inputs, botones y enlaces */
+input,
+button,
+a {
+  margin: 0;
+  padding: 0;
+}
+
+/* Inputs con tamaño específico y texto más grande */
+input {
+  background-color: #e9ffd9 !important;
+  color: #454343 !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  height: 60px;
+  width: 445px;
+  border-radius: 8px;
+  padding: 16px 20px;
+  font-size: 18px !important;
+  font-weight: 500 !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+}
+
+input::placeholder {
+  color: #666666 !important;
+  font-size: 18px !important;
+  font-weight: 500 !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+}
+
+input:focus {
+  outline: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Botones con la fuente correcta */
+button {
+  font-family: "Berlin Sans FB Demi", "Arial Black", "Arial Bold", Gadget, sans-serif !important;
+  font-weight: 700 !important;
+  transition: all 0.3s ease;
+  border: none !important;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  letter-spacing: 0.5px;
+}
+
+button:focus {
+  outline: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Enlaces */
+a {
+  transition: all 0.3s ease;
+  color: #ffffff;
+  text-decoration: none;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+a:hover {
+  color: #06b060;
+}
+
+/* Títulos con la fuente correcta */
+h1, h2 {
+  font-family: "Berlin Sans FB Demi", "Arial Black", "Arial Bold", Gadget, sans-serif !important;
 }

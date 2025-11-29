@@ -1258,7 +1258,7 @@ CALL sp_generar_reporte_impacto(
   NULL
 );
 
--- Crear sp_obtener_ranking_usuarios (faltaba en el script)
+-- Crear sp_obtener_ranking_usuarios
 
 DROP PROCEDURE IF EXISTS sp_obtener_ranking_usuarios;
 DELIMITER $$
@@ -1583,23 +1583,101 @@ DELIMITER ;
 -- C7) Impacto acumulado por período (lectura directa)
 --     Asume que ya corriste sp_generar_reporte_impacto antes
 
-DROP PROCEDURE IF EXISTS sp_rep_impacto_acumulado;
+DROP PROCEDURE IF EXISTS sp_generar_reporte_impacto;
 DELIMITER $$
-CREATE PROCEDURE sp_rep_impacto_acumulado(
+
+CREATE PROCEDURE sp_generar_reporte_impacto(
   IN p_id_tipo_reporte INT,
-  IN p_id_periodo INT
+  IN p_id_periodo      INT,
+  IN p_id_usuario      INT        -- NULL = reporte global, no NULL = por usuario
 )
 BEGIN
-  SELECT
+  DECLARE v_total_co2      DECIMAL(12,6) DEFAULT 0;
+  DECLARE v_total_ag       DECIMAL(12,6) DEFAULT 0;
+  DECLARE v_total_en       DECIMAL(12,6) DEFAULT 0;
+  DECLARE v_total_tx       BIGINT        DEFAULT 0;
+  DECLARE v_total_users    BIGINT        DEFAULT 0;
+  DECLARE v_id_reporte_new INT;
+
+  -- 1) Calcular totales desde IMPACTO_AMBIENTAL
+
+  IF p_id_usuario IS NULL THEN
+    -- GLOBAL (todos los usuarios)
+    SELECT
+      IFNULL(SUM(co2_ahorrado), 0),
+      IFNULL(SUM(agua_ahorrada), 0),
+      IFNULL(SUM(energia_ahorrada), 0),
+      COUNT(DISTINCT id_transaccion),
+      COUNT(DISTINCT id_usuario)
+    INTO
+      v_total_co2,
+      v_total_ag,
+      v_total_en,
+      v_total_tx,
+      v_total_users
+    FROM IMPACTO_AMBIENTAL
+    WHERE id_periodo = p_id_periodo;
+  ELSE
+    -- SOLO UN USUARIO
+    SELECT
+      IFNULL(SUM(co2_ahorrado), 0),
+      IFNULL(SUM(agua_ahorrada), 0),
+      IFNULL(SUM(energia_ahorrada), 0),
+      COUNT(DISTINCT id_transaccion),
+      COUNT(DISTINCT id_usuario)
+    INTO
+      v_total_co2,
+      v_total_ag,
+      v_total_en,
+      v_total_tx,
+      v_total_users
+    FROM IMPACTO_AMBIENTAL
+    WHERE id_periodo = p_id_periodo
+      AND id_usuario = p_id_usuario;
+  END IF;
+
+  -- 2) Limpiar reporte anterior (si existe)
+  
+  DELETE FROM REPORTE_IMPACTO
+  WHERE id_tipo_reporte = p_id_tipo_reporte
+    AND id_periodo      = p_id_periodo
+    AND (
+         (p_id_usuario IS NULL AND id_usuario IS NULL)
+         OR id_usuario = p_id_usuario
+        );
+
+  -- 3) Insertar nuevo registro de reporte
+  
+  INSERT INTO REPORTE_IMPACTO (
     id_usuario,
+    id_tipo_reporte,
+    id_periodo,
     total_co2_ahorrado,
     total_agua_ahorrada,
     total_energia_ahorrada,
     total_transacciones,
     total_usuarios_activos
+  )
+  VALUES (
+    p_id_usuario,
+    p_id_tipo_reporte,
+    p_id_periodo,
+    v_total_co2,
+    v_total_ag,
+    v_total_en,
+    v_total_tx,
+    v_total_users
+  );
+
+  SET v_id_reporte_new = LAST_INSERT_ID();
+
+  -- 4) Devolver el registro insertado
+  --    (esto es lo que verá Postman / Prisma)
+  
+  SELECT *
   FROM REPORTE_IMPACTO
-  WHERE id_tipo_reporte = p_id_tipo_reporte
-    AND id_periodo = p_id_periodo;
+  WHERE id_reporte = v_id_reporte_new;
+
 END$$
 DELIMITER ;
 
@@ -1609,8 +1687,6 @@ ALTER TABLE USUARIO
   
   ALTER TABLE BITACORA_ACCESO
   MODIFY fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;
-
-USE CREDITOS_VERDES2;
 
 DROP PROCEDURE IF EXISTS sp_rep_creditos_generados_vs_consumidos;
 
@@ -1635,5 +1711,74 @@ BEGIN
     ) AS creditos_consumidos
   FROM vw_mov_creditos_signo
   WHERE creado_en BETWEEN p_desde AND p_hasta;
+END$$
+DELIMITER ;
+USE CREDITOS_VERDES2;
+
+-- TABLA: SUSCRIPCION_PREMIUM
+CREATE TABLE IF NOT EXISTS SUSCRIPCION_PREMIUM (
+  id_suscripcion INT PRIMARY KEY AUTO_INCREMENT,
+  id_usuario INT NOT NULL,
+  fecha_inicio DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  fecha_fin DATETIME NULL,
+  estado ENUM('ACTIVA','CANCELADA','VENCIDA') NOT NULL DEFAULT 'ACTIVA',
+  monto_bs DECIMAL(12,2) NOT NULL,
+  CONSTRAINT fk_suscrip_usuario
+    FOREIGN KEY (id_usuario) REFERENCES USUARIO(id_usuario)
+    ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE INDEX ix_suscrip_usuario_estado
+  ON SUSCRIPCION_PREMIUM (id_usuario, estado);
+
+CREATE INDEX ix_suscrip_fechas
+  ON SUSCRIPCION_PREMIUM (fecha_inicio, fecha_fin);
+
+DROP PROCEDURE IF EXISTS sp_rep_usuarios_premium;
+DELIMITER $$
+CREATE PROCEDURE sp_rep_usuarios_premium(
+  IN p_desde DATETIME,
+  IN p_hasta DATETIME
+)
+BEGIN
+  DECLARE v_total_usuarios BIGINT DEFAULT 0;
+  DECLARE v_nuevos_premium BIGINT DEFAULT 0;
+  DECLARE v_premium_activos BIGINT DEFAULT 0;
+  DECLARE v_ingresos_bs DECIMAL(12,2) DEFAULT 0.00;
+
+  -- Total de usuarios activos en el sistema
+  SELECT COUNT(*) INTO v_total_usuarios
+  FROM USUARIO
+  WHERE estado = 'ACTIVO';
+
+  -- Usuarios que ADQUIRIERON la suscripción en el rango (alta)
+  SELECT COUNT(DISTINCT id_usuario) INTO v_nuevos_premium
+  FROM SUSCRIPCION_PREMIUM
+  WHERE fecha_inicio BETWEEN p_desde AND p_hasta;
+
+  -- Usuarios con suscripción ACTIVA en el rango
+  SELECT COUNT(DISTINCT id_usuario) INTO v_premium_activos
+  FROM SUSCRIPCION_PREMIUM
+  WHERE estado = 'ACTIVA'
+    AND fecha_inicio <= p_hasta
+    AND (fecha_fin IS NULL OR fecha_fin >= p_desde);
+
+  -- Ingresos por suscripción en el rango
+  SELECT IFNULL(SUM(monto_bs), 0.00) INTO v_ingresos_bs
+  FROM SUSCRIPCION_PREMIUM
+  WHERE fecha_inicio BETWEEN p_desde AND p_hasta;
+
+  -- Resultado del reporte
+  SELECT
+    p_desde AS desde,
+    p_hasta AS hasta,
+    v_total_usuarios        AS total_usuarios_activos,
+    v_nuevos_premium        AS usuarios_nuevos_premium,
+    v_premium_activos       AS usuarios_premium_activos,
+    v_ingresos_bs           AS ingresos_suscripcion_bs,
+    CASE
+      WHEN v_total_usuarios = 0 THEN NULL
+      ELSE ROUND(100 * v_premium_activos / v_total_usuarios, 2)
+    END AS porcentaje_adopcion_premium;
 END$$
 DELIMITER ;

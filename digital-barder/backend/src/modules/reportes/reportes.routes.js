@@ -1,23 +1,28 @@
-// src/modules/reportes/reportes.routes.js
-import { Router } from 'express'
+import { Router } from "express";
+import { authMiddleware } from "../../middlewares/auth.js";
+import { isAdmin } from "../../middlewares/isAdmin.js";
 import {
-  getUsuariosActivos,
-  getUsuariosAbandonados,
-  getIngresosCreditos,
-  getCreditosGeneradosVsConsumidos,
-  getIntercambiosPorCategoria,
-  getPublicacionesVsIntercambios,
-  getImpactoAcumulado,
-} from './reportes.controller.js'
+  repUsuariosActivosController,
+  repUsuariosAbandonadosController,
+  repIngresosCreditosController,
+  repCreditosGenConsController,
+  repIntercambiosCategoriaController,
+  repPublicacionesVsIntercambiosController,
+  repImpactoAcumuladoController,
+  rankingUsuariosController,
+} from "./reportes.controller.js";
 
-const router = Router()
+const router = Router();
 
-router.get('/usuarios-activos', getUsuariosActivos)
-router.get('/usuarios-abandonados', getUsuariosAbandonados)
-router.get('/ingresos-creditos', getIngresosCreditos)
-router.get('/creditos-generados-consumidos', getCreditosGeneradosVsConsumidos)
-router.get('/intercambios-categoria', getIntercambiosPorCategoria)
-router.get('/publicaciones-vs-intercambios', getPublicacionesVsIntercambios)
-router.get('/impacto-acumulado', getImpactoAcumulado)
+router.use(authMiddleware, isAdmin);
 
-export default router
+router.get("/usuarios-activos", repUsuariosActivosController);
+router.get("/usuarios-abandonados", repUsuariosAbandonadosController);
+router.get("/ingresos-creditos", repIngresosCreditosController);
+router.get("/creditos-generados-consumidos", repCreditosGenConsController);
+router.get("/intercambios-categoria", repIntercambiosCategoriaController);
+router.get("/publicaciones-intercambios", repPublicacionesVsIntercambiosController);
+router.get("/impacto-acumulado", repImpactoAcumuladoController);
+router.get("/ranking-usuarios", rankingUsuariosController);
+
+export default router;

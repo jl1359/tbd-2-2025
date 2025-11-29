@@ -1,0 +1,708 @@
+/* CreatePost.css - CLASES DE CONTROL DE POSICIÓN */
+
+/* CLASE PRINCIPAL DEL TÍTULO */
+.create-post-title {
+  font-family: "ADLaM Display", cursive;
+  font-weight: 400;
+  font-size: 5rem;
+  color: white;
+  text-align: center;
+  position: relative;
+  left: -350px;
+  top: -5px;
+  margin-bottom: 2rem;
+}
+
+/* CUADRO CON FONDO #E9FFD9 - TÍTULO */
+.titulo-cuadro {
+  background-color: #E9FFD9;
+  border-radius: 8px;
+  padding: 20px;
+  position: relative;
+  left: 0px;
+  top: 0px;
+  width: 850px;
+  height: 120px;
+  cursor: text;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* TEXTO "Titulo" en la parte superior izquierda */
+.titulo-texto {
+  color: rgba(0, 0, 0, 0.65);
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 1.5rem;
+  margin: 0 0 10px 0;
+  text-align: left;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* TEXTAREA PARA EDITAR TÍTULO */
+.titulo-input {
+  background-color: transparent;
+  border: none;
+  color: #000000;
+  font-family: 'Inter', sans-serif;
+  font-weight: 525;
+  font-size: 1.4rem;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  outline: none;
+  text-align: left;
+  resize: none;
+  overflow: hidden;
+  line-height: 1.3;
+  display: block;
+  box-sizing: border-box;
+  flex: 1;
+  min-height: 60px;
+}
+
+/* CONTENEDOR PARA TEXTO INGRESADO TÍTULO */
+.titulo-ingresado-container {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  overflow: hidden;
+}
+
+/* TEXTO INGRESADO TÍTULO */
+.titulo-ingresado {
+  color: #000000dc;
+  font-family: 'Inter', sans-serif;
+  font-weight: 525;
+  font-size: 1.4rem;
+  margin: 0;
+  padding: 0;
+  word-wrap: break-word;
+  line-height: 1.3;
+  text-align: left;
+  width: 100%;
+  max-height: 60px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  box-sizing: border-box;
+}
+
+/* CUADRO CON FONDO #E9FFD9 - DESCRIPCIÓN */
+.descripcion-cuadro {
+  background-color: #E9FFD9;
+  border-radius: 8px;
+  padding: 20px;
+  position: relative;
+  left: 0px;
+  top: 0px;
+  width: 850px;
+  height: 180px;
+  cursor: text;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* TEXTO "Descripción" en la parte superior izquierda */
+.descripcion-texto {
+  color: rgba(0, 0, 0, 0.65);
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 1.5rem;
+  margin: 0 0 10px 0;
+  text-align: left;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* TEXTAREA PARA EDITAR DESCRIPCIÓN */
+.descripcion-input {
+  background-color: transparent;
+  border: none;
+  color: #000000;
+  font-family: 'Inter', sans-serif;
+  font-weight: 525;
+  font-size: 1.4rem;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  outline: none;
+  text-align: left;
+  resize: none;
+  overflow: hidden;
+  line-height: 1.3;
+  display: block;
+  box-sizing: border-box;
+  flex: 1;
+  min-height: 120px;
+}
+
+/* CONTENEDOR PARA TEXTO INGRESADO DESCRIPCIÓN */
+.descripcion-ingresado-container {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  overflow: hidden;
+}
+
+/* TEXTO INGRESADO DESCRIPCIÓN */
+.descripcion-ingresado {
+  color: #000000dc;
+  font-family: 'Inter', sans-serif;
+  font-weight: 525;
+  font-size: 1.4rem;
+  margin: 0;
+  padding: 0;
+  word-wrap: break-word;
+  line-height: 1.3;
+  text-align: left;
+  width: 100%;
+  max-height: 120px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  box-sizing: border-box;
+}
+
+/* Eliminar cualquier efecto de focus */
+.titulo-input:focus,
+.descripcion-input:focus {
+  outline: none;
+  box-shadow: none;
+  border: none;
+}
+
+/* CUADRO CON FONDO #E9FFD9 - CATEGORÍA */
+.categoria-cuadro {
+  background-color: #E9FFD9;
+  border-radius: 8px;
+  padding: 20px;
+  position: relative;
+  left: 0px;
+  top: 0px;
+  width: 290px;
+  height: 70px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* TEXTO "Categoría" en la parte superior izquierda */
+.categoria-texto {
+  color: rgba(0, 0, 0, 0.65);
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 1.5rem;
+  margin: 0 0 10px 0;
+  text-align: left;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* TEXTO DE CATEGORÍA SELECCIONADA */
+.categoria-seleccionada {
+  color: #000000dc;
+  font-family: 'Inter', sans-serif;
+  font-weight: 525;
+  font-size: 1.4rem;
+  margin: 0;
+  padding: 0;
+  word-wrap: break-word;
+  line-height: 1.3;
+  text-align: left;
+  width: 100%;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  box-sizing: border-box;
+}
+
+/* TEXTO PLACEHOLDER */
+.categoria-placeholder {
+  color: rgba(0, 0, 0, 0.5);
+  font-family: 'Inter', sans-serif;
+  font-weight: 525;
+  font-size: 1.4rem;
+  margin: 0;
+  padding: 0;
+  word-wrap: break-word;
+  line-height: 1.3;
+  text-align: left;
+  width: 100%;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  box-sizing: border-box;
+}
+
+/* Control horizontal - LEFT (VALORES NEGATIVOS EXTENDIDOS) */
+.cuadro-move-left-5 { left: -5px; }
+.cuadro-move-left-10 { left: -10px; }
+.cuadro-move-left-15 { left: -15px; }
+.cuadro-move-left-20 { left: -20px; }
+.cuadro-move-left-25 { left: -25px; }
+.cuadro-move-left-30 { left: -30px; }
+.cuadro-move-left-40 { left: -40px; }
+.cuadro-move-left-50 { left: -50px; }
+.cuadro-move-left-75 { left: -75px; }
+.cuadro-move-left-100 { left: -100px; }
+.cuadro-move-left-150 { left: -150px; }
+.cuadro-move-left-200 { left: -200px; }
+.cuadro-move-left-250 { left: -250px; }
+.cuadro-move-left-300 { left: -300px; }
+.cuadro-move-left-350 { left: -350px; }
+.cuadro-move-left-400 { left: -400px; }
+.cuadro-move-left-450 { left: -450px; }
+.cuadro-move-left-500 { left: -500px; }
+.cuadro-move-left-550 { left: -550px; }
+.cuadro-move-left-600 { left: -600px; }
+
+/* Control horizontal - RIGHT (VALORES POSITIVOS) */
+.cuadro-move-right-5 { left: 5px; }
+.cuadro-move-right-10 { left: 10px; }
+.cuadro-move-right-15 { left: 15px; }
+.cuadro-move-right-20 { left: 20px; }
+.cuadro-move-right-25 { left: 25px; }
+.cuadro-move-right-30 { left: 30px; }
+.cuadro-move-right-40 { left: 40px; }
+.cuadro-move-right-50 { left: 50px; }
+.cuadro-move-right-75 { left: 75px; }
+.cuadro-move-right-100 { left: 100px; }
+.cuadro-move-right-150 { left: 150px; }
+.cuadro-move-right-200 { left: 200px; }
+.cuadro-move-right-250 { left: 250px; }
+.cuadro-move-right-300 { left: 300px; }
+.cuadro-move-right-350 { left: 350px; }
+.cuadro-move-right-400 { left: 400px; }
+.cuadro-move-right-450 { left: 450px; }
+.cuadro-move-right-500 { left: 500px; }
+
+/* Control vertical - UP (VALORES NEGATIVOS CORREGIDOS) */
+.cuadro-move-up-5 { top: -5px; }
+.cuadro-move-up-10 { top: -10px; }
+.cuadro-move-up-15 { top: -15px; }
+.cuadro-move-up-20 { top: -20px; }
+.cuadro-move-up-25 { top: -25px; }
+.cuadro-move-up-30 { top: -30px; }
+.cuadro-move-up-40 { top: -40px; }
+.cuadro-move-up-50 { top: -50px; }
+.cuadro-move-up-75 { top: -75px; }
+.cuadro-move-up-100 { top: -100px; }
+.cuadro-move-up-150 { top: -150px; }
+.cuadro-move-up-200 { top: -200px; }
+.cuadro-move-up-250 { top: -250px; }
+.cuadro-move-up-300 { top: -300px; }
+.cuadro-move-up-350 { top: -350px; }
+.cuadro-move-up-400 { top: -400px; }
+
+/* Control vertical - DOWN (VALORES POSITIVOS CORREGIDOS) */
+.cuadro-move-down-5 { top: 5px; }
+.cuadro-move-down-10 { top: 10px; }
+.cuadro-move-down-15 { top: 15px; }
+.cuadro-move-down-20 { top: 20px; }
+.cuadro-move-down-25 { top: 25px; }
+.cuadro-move-down-30 { top: 30px; }
+.cuadro-move-down-40 { top: 40px; }
+.cuadro-move-down-50 { top: 50px; }
+.cuadro-move-down-75 { top: 75px; }
+.cuadro-move-down-100 { top: 100px; }
+.cuadro-move-down-150 { top: 150px; }
+.cuadro-move-down-200 { top: 200px; }
+.cuadro-move-down-250 { top: 250px; }
+.cuadro-move-down-300 { top: 300px; }
+.cuadro-move-down-350 { top: 350px; }
+.cuadro-move-down-400 { top: 400px; }
+
+/* Control de ancho del cuadro */
+.cuadro-width-small { width: 200px; }
+.cuadro-width-medium { width: 700px; }
+.cuadro-width-large { width: 400px; }
+.cuadro-width-xl { width: 500px; }
+.cuadro-width-xxl { width: 800px; }
+.cuadro-width-xxxl { width: 1000px; }
+
+/* Control de tamaño de texto */
+.texto-size-small { font-size: 1rem; }
+.texto-size-medium { font-size: 1.5rem; }
+.texto-size-large { font-size: 2rem; }
+.texto-size-xl { font-size: 2.5rem; }
+.texto-size-xxl { font-size: 3rem; }
+
+/* CLASES DE UTILIDAD PARA EL TÍTULO PRINCIPAL */
+.title-move-left-5 { left: -5px; }
+.title-move-left-10 { left: -10px; }
+.title-move-left-15 { left: -15px; }
+.title-move-left-20 { left: -20px; }
+.title-move-left-25 { left: -25px; }
+.title-move-left-30 { left: -30px; }
+.title-move-left-40 { left: -40px; }
+.title-move-left-50 { left: -50px; }
+.title-move-left-75 { left: -75px; }
+.title-move-left-100 { left: -100px; }
+.title-move-left-150 { left: -150px; }
+.title-move-left-200 { left: -200px; }
+.title-move-left-250 { left: -250px; }
+.title-move-left-300 { left: -300px; }
+.title-move-left-350 { left: -350px; }
+.title-move-left-400 { left: -400px; }
+.title-move-left-450 { left: -450px; }
+.title-move-left-500 { left: -500px; }
+
+.title-move-right-5 { left: 5px; }
+.title-move-right-10 { left: 10px; }
+.title-move-right-15 { left: 15px; }
+.title-move-right-20 { left: 20px; }
+.title-move-right-25 { left: 25px; }
+.title-move-right-30 { left: 30px; }
+.title-move-right-40 { left: 40px; }
+.title-move-right-50 { left: 50px; }
+.title-move-right-75 { left: 75px; }
+.title-move-right-100 { left: 100px; }
+.title-move-right-150 { left: 150px; }
+.title-move-right-200 { left: 200px; }
+
+.title-move-up-5 { top: -5px; }
+.title-move-up-10 { top: -10px; }
+.title-move-up-15 { top: -15px; }
+.title-move-up-20 { top: -20px; }
+.title-move-up-25 { top: -25px; }
+.title-move-up-30 { top: -30px; }
+.title-move-up-40 { top: -40px; }
+.title-move-up-50 { top: -50px; }
+.title-move-up-75 { top: -75px; }
+.title-move-up-100 { top: -100px; }
+.title-move-up-150 { top: -150px; }
+.title-move-up-200 { top: -200px; }
+
+.title-move-down-5 { top: 5px; }
+.title-move-down-10 { top: 10px; }
+.title-move-down-15 { top: 15px; }
+.title-move-down-20 { top: 20px; }
+.title-move-down-25 { top: 25px; }
+.title-move-down-30 { top: 30px; }
+.title-move-down-40 { top: 40px; }
+.title-move-down-50 { top: 50px; }
+.title-move-down-75 { top: 75px; }
+.title-move-down-100 { top: 100px; }
+
+.title-size-small { font-size: 2rem; }
+.title-size-medium { font-size: 3rem; }
+.title-size-large { font-size: 4rem; }
+.title-size-xl { font-size: 5rem; }
+.title-size-xxl { font-size: 6rem; }
+/* Contenedor del header de categoría */
+.categoria-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+/* Botón dropdown de categoría */
+.categoria-dropdown-btn {
+  background: transparent;
+  border: none;
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 5px 0%;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 0px;
+  height: 30px;
+}
+
+.categoria-dropdown-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+  transform: scale(1.1);
+}
+
+.categoria-dropdown-btn:active {
+  transform: scale(0.95);
+}
+
+/* Ajustar el texto de categoría para que no ocupe todo el ancho */
+.categoria-texto {
+  color: rgba(0, 0, 0, 0.65);
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 1.5rem;
+  margin: 0;
+  text-align: left;
+  flex-shrink: 0;
+  /* Removemos el margin-bottom ya que está en el header */
+}
+/* CUADRO CON FONDO #E9FFD9 - HORARIO */
+.horario-cuadro {
+  background-color: #E9FFD9;
+  border-radius: 8px;
+  padding: 20px;
+  position: relative;
+  left: 0px;
+  top: 0px;
+  width: 370px;
+  height: 70px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* TEXTO "Horario de atención" en la parte superior izquierda */
+.horario-texto {
+  color: rgba(0, 0, 0, 0.65);
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 1.5rem;
+  margin: 0;
+  text-align: left;
+  flex-shrink: 0;
+}
+
+/* Contenedor del header de horario */
+.horario-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+/* Botón dropdown de horario */
+.horario-dropdown-btn {
+  background: transparent;
+  border: none;
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 5px 10px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+}
+
+.horario-dropdown-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+  transform: scale(1.1);
+}
+
+.horario-dropdown-btn:active {
+  transform: scale(0.95);
+}
+
+/* TEXTO DE HORARIO SELECCIONADO */
+.horario-seleccionado {
+  color: #000000dc;
+  font-family: 'Inter', sans-serif;
+  font-weight: 525;
+  font-size: 1.4rem;
+  margin: 0;
+  padding: 0;
+  word-wrap: break-word;
+  line-height: 1.3;
+  text-align: left;
+  width: 100%;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  box-sizing: border-box;
+}
+
+/* TEXTO PLACEHOLDER HORARIO */
+.horario-placeholder {
+  color: rgba(0, 0, 0, 0.5);
+  font-family: 'Inter', sans-serif;
+  font-weight: 525;
+  font-size: 1.4rem;
+  margin: 0;
+  padding: 0;
+  word-wrap: break-word;
+  line-height: 1.3;
+  text-align: left;
+  width: 100%;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  box-sizing: border-box;
+}
+/* CUADRO CON FONDO #E9FFD9 - DIRECCIÓN */
+.direccion-cuadro {
+  background-color: #E9FFD9;
+  border-radius: 8px;
+  padding: 20px;
+  position: relative;
+  left: 0px;
+  top: 0px;
+  width: 290px;
+  height: 70px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* TEXTO "Dirección" en la parte superior izquierda */
+.direccion-texto {
+  color: rgba(0, 0, 0, 0.65);
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 1.5rem;
+  margin: 0;
+  text-align: left;
+  flex-shrink: 0;
+}
+
+/* Contenedor del header de dirección */
+.direccion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+/* Botón dropdown de dirección */
+.direccion-dropdown-btn {
+  background: transparent;
+  border: none;
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 5px 10px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+}
+
+.direccion-dropdown-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+  transform: scale(1.1);
+}
+
+.direccion-dropdown-btn:active {
+  transform: scale(0.95);
+}
+
+/* TEXTO DE DIRECCIÓN SELECCIONADA */
+.direccion-seleccionada {
+  color: #000000dc;
+  font-family: 'Inter', sans-serif;
+  font-weight: 525;
+  font-size: 1.4rem;
+  margin: 0;
+  padding: 0;
+  word-wrap: break-word;
+  line-height: 1.3;
+  text-align: left;
+  width: 100%;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  box-sizing: border-box;
+}
+
+/* TEXTO PLACEHOLDER DIRECCIÓN */
+.direccion-placeholder {
+  color: rgba(0, 0, 0, 0.5);
+  font-family: 'Inter', sans-serif;
+  font-weight: 525;
+  font-size: 1.4rem;
+  margin: 0;
+  padding: 0;
+  word-wrap: break-word;
+  line-height: 1.3;
+  text-align: left;
+  width: 100%;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  box-sizing: border-box;
+}
+/* Añadir al final de CreatePost.css */
+
+/* CONTENEDOR RELATIVO PARA LOS CUADROS PEQUEÑOS */
+.relative {
+  position: relative !important;
+}
+
+/* ===== MENÚS ABSOLUTOS EN CREATE POST ===== */
+.createpost-menu-absolute {
+  position: absolute !important;
+  z-index: 1000;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* Asegurar que los menús internos se adapten */
+.createpost-menu-absolute > div {
+  width: 100% !important;
+  position: static !important;
+}
+
+/* Estilos específicos para los menús en CreatePost */
+.createpost-menu-absolute .category-menu-createpost,
+.createpost-menu-absolute .direccion-menu-createpost,
+.createpost-menu-absolute .horario-menu-createpost {
+  position: relative !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  animation: none !important;
+}
+
+/* Opcional: Estilo para el scroll de los menús */
+.createpost-menu-absolute::-webkit-scrollbar {
+  width: 6px;
+}
+
+.createpost-menu-absolute::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.createpost-menu-absolute::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.createpost-menu-absolute::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Eliminar estilos de menús fijos anteriores */
+.createpost-menu-fixed {
+  display: none !important;
+}

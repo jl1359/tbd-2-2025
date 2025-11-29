@@ -1,0 +1,148 @@
+.horario-menu-createpost-overlay {
+    position: fixed;
+    top:0;
+    left:0;
+    right: 0;
+    bottom: 0;
+    background: transparent;
+    z-index: 999;
+}
+
+.horario-menu-createpost {
+    position: absolute;
+    width: 350px;
+    height: 500px;
+    background: linear-gradient(135deg, #E9FFD9 0%, #E9FFD9 100%);
+    border-radius: 8px;
+    padding: 0;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.scroll-container-horario {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 20px;
+}
+
+/* Personalización del scrollbar */
+.scroll-container-horario::-webkit-scrollbar {
+    width: 6px;
+}
+
+.scroll-container-horario::-webkit-scrollbar-track {
+    background: rgba(3, 75, 9, 0.1);
+    border-radius: 3px;
+}
+
+.scroll-container-horario::-webkit-scrollbar-thumb {
+    background: rgba(3, 75, 9, 0.3);
+    border-radius: 3px;
+}
+
+.scroll-container-horario::-webkit-scrollbar-thumb:hover {
+    background: rgba(3, 75, 9, 0.5);
+}
+
+.horario-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: #2c3e50;
+    padding-bottom: 8px;
+    border-bottom: 2px solid rgba(43, 35, 35, 0.5);
+    text-align: center;
+}
+
+.horario-dia {
+    margin-bottom: 15px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 6px;
+    border: 1px solid rgba(3, 75, 9, 0.2);
+}
+
+.horario-dia-header {
+    margin-bottom: 10px;
+}
+
+.horario-dia-nombre {
+    font-size: 16px;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.horario-selectores {
+    display: flex;
+    gap: 15px;
+    justify-content: space-between;
+}
+
+.horario-selector {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.horario-selector label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.horario-select {
+    padding: 8px;
+    border: 1px solid rgba(3, 75, 9, 0.3);
+    border-radius: 4px;
+    background: white;
+    font-size: 14px;
+    color: #2c3e50;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.horario-select:focus {
+    outline: none;
+    border-color: rgba(3, 75, 9, 0.7);
+    box-shadow: 0 0 0 2px rgba(3, 75, 9, 0.1);
+}
+
+.horario-select:hover {
+    border-color: rgba(3, 75, 9, 0.5);
+}
+
+.horario-actions {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(43, 35, 35, 0.3);
+    text-align: center;
+}
+
+.horario-guardar-btn {
+    background: rgba(3, 75, 9, 0.85);
+    border: none;
+    border-radius: 6px;
+    padding: 12px 25px;
+    color: #E8E0E0;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 150px;
+}
+
+.horario-guardar-btn:hover {
+    background: rgba(3, 75, 9, 1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes fadeInHorario {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}

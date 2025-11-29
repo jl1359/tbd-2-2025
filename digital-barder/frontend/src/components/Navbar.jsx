@@ -1,51 +1,83 @@
+// src/components/Navbar.jsx
 import React from "react";
-import { useNavigate } from "react-router-dom";
-import { logout } from "../services/api.js";
+import hoja from "../assets/hoja.png";
 
 export default function Navbar() {
-  const navigate = useNavigate();
-  const usuarioJson = localStorage.getItem("usuario");
-  let usuario = null;
-
-  try {
-    usuario = usuarioJson ? JSON.parse(usuarioJson) : null;
-  } catch {
-    usuario = null;
-  }
-
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
-
   return (
-    <header className="w-full bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <span className="font-bold text-lg text-blue-700">Digital Barter</span>
-        <span className="text-xs text-gray-500 hidden sm:inline">
-          Panel principal
-        </span>
+    <nav className="w-full bg-[#0b3a2c] border-b border-emerald-600 px-6 py-4 flex items-center justify-between shadow-md">
+      
+      {/* LOGO */}
+      <div className="flex items-center gap-3 cursor-pointer"
+        onClick={() => (window.location.href = "/home")}
+      >
+        <img src={hoja} className="w-9 h-9 drop-shadow-lg" />
+        <h1 className="text-2xl font-bold text-emerald-400">
+          Digital Barter
+        </h1>
       </div>
 
-      <div className="flex items-center gap-3">
-        {usuario && (
-          <div className="text-right">
-            <p className="text-sm font-medium">
-              {usuario.nombre ?? usuario.correo ?? "Usuario"}
-            </p>
-            <p className="text-xs text-gray-500">
-              {usuario.rol ?? "Rol no asignado"}
-            </p>
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="px-3 py-1 text-xs rounded-md border border-gray-300 hover:bg-gray-100"
+      {/* BOTONES DE NAVEGACIÓN */}
+      <div className="flex items-center gap-6">
+
+        {/* PERFIL */}
+        <a
+          href="/perfil"
+          className="text-white hover:text-emerald-400 transition font-semibold"
         >
-          Cerrar sesión
+          Perfil
+        </a>
+
+        {/* WALLET */}
+        <a
+          href="/wallet"
+          className="text-white hover:text-emerald-400 transition font-semibold"
+        >
+          Wallet
+        </a>
+
+        {/* PUBLICACIONES */}
+        <a
+          href="/publicaciones"
+          className="text-white hover:text-emerald-400 transition font-semibold"
+        >
+          Publicaciones
+        </a>
+
+        {/* ACTIVIDADES */}
+        <a
+          href="/actividades"
+          className="text-white hover:text-emerald-400 transition font-semibold"
+        >
+          Actividades
+        </a>
+
+        {/* PREMIUM */}
+        <a
+          href="/premium"
+          className="text-white hover:text-yellow-400 transition font-semibold"
+        >
+          Premium
+        </a>
+        {/* INTERCAMBIOS */}
+        <a
+          href="/intercambios"
+          className="text-white hover:text-emerald-400 transition font-semibold"
+        >
+          Intercambios
+        </a>
+
+
+        {/* CERRAR SESIÓN */}
+        <button
+          onClick={() => {
+            localStorage.removeItem("token");
+            window.location.href = "/login";
+          }}
+          className="bg-emerald-500 hover:bg-emerald-600 px-4 py-1 rounded-lg text-white font-semibold transition"
+        >
+          Salir
         </button>
       </div>
-    </header>
+    </nav>
   );
 }

@@ -10,41 +10,61 @@ import Register from "./pages/Register.jsx";
 import Home from "./pages/Home.jsx";
 import NotFound from "./pages/NotFound.jsx";
 
-// Índice de reportes + botón a dashboard
+// Perfil
+import Perfil from "./pages/Perfil.jsx";
+import EditarPerfil from "./pages/EditarPerfil.jsx";
+
+// Wallet
+import ComprarCreditos from "./pages/ComprarCreditos.jsx";
+import Movimientos from "./pages/Movimientos.jsx";
+import HistorialCompras from "./pages/HistorialCompras.jsx";
+
+import Wallet from "./pages/Wallet.jsx";
+
+import Publicaciones from "./pages/Publicaciones.jsx";
+import MisPublicaciones from "./pages/MisPublicaciones.jsx";
+
+import PublicacionNueva from "./pages/PublicacionNueva.jsx";
+
+
+import Intercambios from "./pages/Intercambios.jsx";
+// Reportes menú principal
 import Reportes from "./pages/Reportes.jsx";
 
-// Dashboard con gráficas
+// Dashboard de reportes
 import ReportesDashboard from "./pages/ReportesDashboard.jsx";
 
-// Páginas individuales de reportes (tablas)
+// Reportes individuales
 import ReportesUsuarios from "./pages/ReportesUsuarios.jsx";
 import ReportesIngresosCreditos from "./pages/ReportesIngresosCreditos.jsx";
 import ReportesCreditosGeneradosConsumidos from "./pages/ReportesCreditosGeneradosConsumidos.jsx";
 import ReportesIntercambiosCategoria from "./pages/ReportesIntercambiosCategoria.jsx";
 import ReportesPublicacionesVsIntercambios from "./pages/ReportesPublicacionesVsIntercambios.jsx";
 import ReportesImpactoAcumulado from "./pages/ReportesImpactoAcumulado.jsx";
-
 import ReportesRankingUsuarios from "./pages/ReportesRankingUsuarios.jsx";
 import ReportesUsuariosPremium from "./pages/ReportesUsuariosPremium.jsx";
 import ReportesSaldosUsuarios from "./pages/ReportesSaldosUsuarios.jsx";
 import ReportesActividadesSostenibles from "./pages/ReportesActividadesSostenibles.jsx";
 import ReportesImpactoCategoria from "./pages/ReportesImpactoCategoria.jsx";
 
+// Backend lab
 import BackendLab from "./pages/BackendLab.jsx";
 
 export default function AppRouter() {
   return (
     <Routes>
-      {/* Inicio: manda siempre al login */}
+      {/* Redirige raíz a login */}
       <Route path="/" element={<Navigate to="/login" replace />} />
 
       {/* RUTAS PÚBLICAS */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
-      {/* RUTAS PROTEGIDAS (requieren token) */}
+      {/* ------------------------------- */}
+      {/*         RUTAS PROTEGIDAS        */}
+      {/* ------------------------------- */}
 
-      {/* Home */}
+      {/* HOME */}
       <Route
         path="/home"
         element={
@@ -56,7 +76,116 @@ export default function AppRouter() {
         }
       />
 
-      {/* Índice de reportes */}
+      {/* PERFIL */}
+      <Route
+        path="/perfil"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Perfil />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* EDITAR PERFIL (NUEVO, FUNCIONAL) */}
+      <Route
+        path="/perfil/editar"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <EditarPerfil />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+        <Route
+          path="/wallet"
+          element={
+            <ProtectedRoute>
+              <Wallet />
+            </ProtectedRoute>
+          }
+        />
+            {/* WALLET */}
+      <Route
+        path="/comprar-creditos"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ComprarCreditos />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/wallet/movimientos"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Movimientos />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/wallet/compras"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <HistorialCompras />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/publicaciones"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Publicaciones />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/publicaciones/mias"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <MisPublicaciones />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/publicaciones/nueva"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <PublicacionNueva />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/intercambios"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Intercambios />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      {/* REPORTES */}
       <Route
         path="/reportes"
         element={
@@ -68,7 +197,7 @@ export default function AppRouter() {
         }
       />
 
-      {/* Páginas individuales de reportes */}
+      {/* REPORTES INDIVIDUALES */}
       <Route
         path="/reportes/usuarios"
         element={
@@ -190,7 +319,7 @@ export default function AppRouter() {
         }
       />
 
-      {/* Dashboard con gráficos */}
+      {/* DASHBOARD DE REPORTES */}
       <Route
         path="/reportes-dashboard"
         element={
@@ -202,7 +331,7 @@ export default function AppRouter() {
         }
       />
 
-      {/* Laboratorio de backend */}
+      {/* LABORATORIO BACKEND */}
       <Route
         path="/backend-lab"
         element={

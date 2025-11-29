@@ -207,13 +207,12 @@ export default function Publicaciones() {
               >
                 Ver detalle
               </button>
-              <button
-                type="button"
-                onClick={() => handleIntercambiar(pub)}
-                className="mt-2 w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 py-2 text-sm font-semibold"
+             <button
+                onClick={() => handleIntercambiar(pub.id_publicacion)}
+                className="mt-3 w-full bg-emerald-500 hover:bg-emerald-600 text-emerald-950 font-semibold py-2 rounded-xl"
                 >
                 Intercambiar
-                </button>
+            </button>
 
             </article>
           ))}

@@ -103,9 +103,12 @@ digital-barder/backend/src/modules/wallet/wallet.routes.js
 digital-barder/backend/src/modules/wallet/wallet.service.js
 digital-barder/backend/src/routes/index.js
 digital-barder/backend/src/server.js
+digital-barder/backend/uploads_storage/1717f8c0-ba65-48b3-80da-d06a474dd514.png
 digital-barder/backend/uploads_storage/cb6b319f-881d-4f8a-8a5e-9f8eecd10402.png
+digital-barder/backend/uploads_storage/d6b3b8be-16ba-41bc-b958-7ab0c3e14e38.png
 digital-barder/backend/utils/jsonBigInt.js
 digital-barder/docker-compose.yml
+digital-barder/frontend.zip
 digital-barder/frontend/index.html
 digital-barder/frontend/package.json
 digital-barder/frontend/postcss.config.js
@@ -120,13 +123,26 @@ digital-barder/frontend/src/components/Navbar.jsx
 digital-barder/frontend/src/components/ProtectedRoute.jsx
 digital-barder/frontend/src/index.css
 digital-barder/frontend/src/main.jsx
+digital-barder/frontend/src/pages/Actividades.jsx
 digital-barder/frontend/src/pages/BackendLab.jsx
 digital-barder/frontend/src/pages/ComprarCreditos.jsx
 digital-barder/frontend/src/pages/EditarPerfil.jsx
+digital-barder/frontend/src/pages/HistorialCompras.jsx
 digital-barder/frontend/src/pages/Home.jsx
+digital-barder/frontend/src/pages/IntercambioDetalle.jsx
+digital-barder/frontend/src/pages/Intercambios.jsx
 digital-barder/frontend/src/pages/Login.jsx
+digital-barder/frontend/src/pages/Logros.jsx
+digital-barder/frontend/src/pages/MisActividades.jsx
+digital-barder/frontend/src/pages/MisPublicaciones.jsx
+digital-barder/frontend/src/pages/Movimientos.jsx
 digital-barder/frontend/src/pages/NotFound.jsx
 digital-barder/frontend/src/pages/Perfil.jsx
+digital-barder/frontend/src/pages/Premium.jsx
+digital-barder/frontend/src/pages/Promociones.jsx
+digital-barder/frontend/src/pages/Publicaciones.jsx
+digital-barder/frontend/src/pages/PublicacionNueva.jsx
+digital-barder/frontend/src/pages/Publicidad.jsx
 digital-barder/frontend/src/pages/Register.jsx
 digital-barder/frontend/src/pages/Reportes.jsx
 digital-barder/frontend/src/pages/ReportesActividadesSostenibles.jsx
@@ -141,6 +157,7 @@ digital-barder/frontend/src/pages/ReportesRankingUsuarios.jsx
 digital-barder/frontend/src/pages/ReportesSaldosUsuarios.jsx
 digital-barder/frontend/src/pages/ReportesUsuarios.jsx
 digital-barder/frontend/src/pages/ReportesUsuariosPremium.jsx
+digital-barder/frontend/src/pages/Wallet.jsx
 digital-barder/frontend/src/router.jsx
 digital-barder/frontend/src/services/api.js
 digital-barder/frontend/tailwind.config.js
@@ -154,66 +171,720 @@ README.md
 <files>
 This section contains the contents of the repository's files.
 
-<file path="digital-barder/frontend/src/pages/ComprarCreditos.jsx">
-// digital-barder/frontend/src/pages/ComprarCreditos.jsx
-import { useEffect, useState } from "react";
+<file path="digital-barder/frontend/src/pages/Actividades.jsx">
+// digital-barder/frontend/src/pages/Actividades.jsx
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "../services/api";
+import { registrarActividadSostenible } from "../services/api";
+import { ArrowLeft, Leaf, CheckCircle2 } from "lucide-react";
+import hoja from "../assets/hoja.png";
 
-export default function ComprarCreditos() {
-  const [paquetes, setPaquetes] = useState([]);
-  const [selected, setSelected] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState("");
+export default function Actividades() {
   const navigate = useNavigate();
 
-  // Cargar paquetes activos
-  useEffect(() => {
-    async function cargarPaquetes() {
-      try {
-        setError("");
-        const data = await api("/catalogos/paquetes-creditos");
-        setPaquetes(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error(err);
-        setError("No se pudieron cargar los paquetes de créditos.");
-      }
+  const [idTipoActividad, setIdTipoActividad] = useState("");
+  const [descripcion, setDescripcion] = useState("");
+  const [creditos, setCreditos] = useState("");
+  const [evidenciaUrl, setEvidenciaUrl] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [mensajeOk, setMensajeOk] = useState("");
+  const [ultimaActividad, setUltimaActividad] = useState(null);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError("");
+    setMensajeOk("");
+    setUltimaActividad(null);
+
+    const id_tipo_actividad = Number(idTipoActividad);
+    const creditos_otorgados = Number(creditos);
+
+    if (
+      Number.isNaN(id_tipo_actividad) ||
+      Number.isNaN(creditos_otorgados) ||
+      !descripcion.trim()
+    ) {
+      setError(
+        "id_tipo_actividad, descripción y créditos otorgados son obligatorios y deben ser válidos."
+      );
+      return;
     }
-    cargarPaquetes();
-  }, []);
-
-  async function comprar() {
-    if (!selected) return;
-
-    const ok = window.confirm(
-      `¿Confirmas la compra del paquete "${selected.nombre}" por ${selected.precio_bs} Bs?`
-    );
-    if (!ok) return;
 
     try {
       setLoading(true);
-      setError("");
-      setSuccess(false);
 
-      await api("/wallet/compra-creditos", {
-        method: "POST",
-        body: { id_paquete: selected.id_paquete },
+      const act = await registrarActividadSostenible({
+        id_tipo_actividad,
+        descripcion,
+        creditos_otorgados,
+        evidencia_url: evidenciaUrl || null,
       });
 
-      setSuccess(true);
-      setSelected(null);
+      setMensajeOk("Actividad registrada correctamente 🌱");
+      setUltimaActividad(act);
+
+      // limpiar parcialmente
+      setDescripcion("");
+      setCreditos("");
+      setEvidenciaUrl("");
     } catch (err) {
       console.error(err);
-      setError(err.message || "Ocurrió un error al procesar la compra de créditos.");
+      setError(
+        err.message || "Ocurrió un error al registrar la actividad sostenible."
+      );
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-950 via-emerald-900 to-emerald-950 text-emerald-50 px-4 py-6">
+    <div className="min-h-screen bg-[#082b1f] text-white p-6 md:p-10">
+      {/* HEADER */}
+      <header className="flex items-center justify-between gap-3 mb-8">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-2 rounded-full bg-black/30 px-3 py-1 text-sm hover:bg-black/40"
+          >
+            <ArrowLeft size={16} />
+            Volver
+          </button>
+          <div className="flex items-center gap-2 rounded-2xl bg-emerald-900/70 px-3 py-2 text-sm">
+            <Leaf size={18} className="text-emerald-300" />
+            <span className="font-semibold">Actividades sostenibles</span>
+          </div>
+        </div>
 
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate("/actividades/mias")}
+            className="px-4 py-2 rounded-lg border border-emerald-500 text-sm hover:bg-emerald-500/10 font-semibold"
+          >
+            Mis actividades
+          </button>
+          <img src={hoja} alt="logo" className="w-9 h-9 drop-shadow-md" />
+        </div>
+      </header>
+
+      {/* DESCRIPCIÓN */}
+      <section className="mb-6 max-w-3xl">
+        <h1 className="text-2xl font-semibold mb-2">
+          Registrar actividad sostenible
+        </h1>
+        <p className="text-sm text-emerald-100/80">
+          Aquí puedes registrar acciones ecológicas que realizaste (reciclaje,
+          voluntariado, movilidad sostenible, etc.). El sistema las guardará en
+          tu historial y te otorgará créditos verdes según las reglas
+          definidas por el administrador.
+        </p>
+      </section>
+
+      {/* MENSAJES */}
+      {error && (
+        <div className="mb-4 rounded-md border border-red-400 bg-red-900/40 px-4 py-2 text-sm text-red-100">
+          {error}
+        </div>
+      )}
+
+      {mensajeOk && (
+        <div className="mb-4 rounded-md border border-emerald-400 bg-emerald-900/40 px-4 py-2 text-sm text-emerald-100 flex items-center gap-2">
+          <CheckCircle2 size={18} />
+          <span>{mensajeOk}</span>
+        </div>
+      )}
+
+      {/* FORMULARIO */}
+      <form
+        onSubmit={handleSubmit}
+        className="max-w-3xl bg-[#0f3f2d] border border-emerald-700 rounded-2xl p-5 shadow-md space-y-4"
+      >
+        {/* id_tipo_actividad */}
+        <div>
+          <label className="block text-xs mb-1">
+            ID tipo de actividad (id_tipo_actividad) *
+          </label>
+          <input
+            type="number"
+            value={idTipoActividad}
+            onChange={(e) => setIdTipoActividad(e.target.value)}
+            className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
+            placeholder="Ej. 1 (Reciclaje), 2 (Movilidad sostenible), etc."
+          />
+          <p className="text-[11px] text-emerald-100/70 mt-1">
+            Usa los IDs definidos en la tabla TIPO_ACTIVIDAD_SOSTENIBLE.
+          </p>
+        </div>
+
+        {/* descripción */}
+        <div>
+          <label className="block text-xs mb-1">Descripción *</label>
+          <textarea
+            value={descripcion}
+            onChange={(e) => setDescripcion(e.target.value)}
+            rows={3}
+            className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
+            placeholder="Ej. Participé 3 horas en una campaña de reforestación en el parque..."
+          />
+        </div>
+
+        {/* créditos */}
+        <div>
+          <label className="block text-xs mb-1">
+            Créditos otorgados (creditos_otorgados) *
+          </label>
+          <input
+            type="number"
+            value={creditos}
+            onChange={(e) => setCreditos(e.target.value)}
+            className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
+            placeholder="Ej. 10"
+          />
+        </div>
+
+        {/* evidencia_url */}
+        <div>
+          <label className="block text-xs mb-1">
+            URL de evidencia (opcional)
+          </label>
+          <input
+            type="url"
+            value={evidenciaUrl}
+            onChange={(e) => setEvidenciaUrl(e.target.value)}
+            className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
+            placeholder="Link a foto, drive, formulario, etc."
+          />
+        </div>
+
+        <div className="pt-2 flex justify-end">
+          <button
+            type="submit"
+            disabled={loading}
+            className="px-6 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 disabled:cursor-not-allowed text-sm font-semibold text-emerald-950"
+          >
+            {loading ? "Guardando..." : "Registrar actividad"}
+          </button>
+        </div>
+      </form>
+
+      {/* ÚLTIMA ACTIVIDAD REGISTRADA (respuesta del backend) */}
+      {ultimaActividad && (
+        <section className="max-w-3xl mt-6 bg-[#0f3f2d] border border-emerald-700 rounded-2xl p-4 text-sm text-emerald-100/90">
+          <p className="font-semibold mb-1">
+            Última actividad registrada (respuesta del backend):
+          </p>
+          <pre className="text-xs overflow-x-auto">
+            {JSON.stringify(ultimaActividad, null, 2)}
+          </pre>
+        </section>
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="digital-barder/frontend/src/pages/IntercambioDetalle.jsx">
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { getIntercambioDetalle } from "../services/api";
+import { ArrowLeft, Info } from "lucide-react";
+
+export default function IntercambioDetalle() {
+  const { id } = useParams();
+  const [detalle, setDetalle] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    cargar();
+  }, []);
+
+  async function cargar() {
+    try {
+      const data = await getIntercambioDetalle(id);
+      setDetalle(data);
+    } catch (err) {
+      setError(err.message || "No se pudo cargar el detalle.");
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-[#082b1f] text-white p-6">
+      <button
+        onClick={() => (window.location.href = "/intercambios")}
+        className="inline-flex items-center gap-2 px-3 py-1 bg-black/30 rounded-full text-sm hover:bg-black/40"
+      >
+        <ArrowLeft size={16} /> Volver
+      </button>
+
+      <h1 className="text-xl font-semibold flex items-center gap-2 mt-4">
+        <Info size={20} className="text-emerald-400" />
+        Detalle del intercambio #{id}
+      </h1>
+
+      {error && <p className="text-red-400 mt-4">{error}</p>}
+
+      {detalle && (
+        <div className="bg-[#0f3f2d] border border-emerald-700 p-5 rounded-xl mt-4">
+          <p><strong>Producto:</strong> {detalle.titulo}</p>
+          <p><strong>Descripción:</strong> {detalle.descripcion}</p>
+          <p><strong>Créditos usados:</strong> {detalle.creditos}</p>
+          <p><strong>Estado:</strong> {detalle.estado}</p>
+          <p><strong>Fecha:</strong> {new Date(detalle.fecha).toLocaleString()}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="digital-barder/frontend/src/pages/Logros.jsx">
+// digital-barder/frontend/src/pages/Logros.jsx
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { getMisLogros } from "../services/api";
+import { ArrowLeft, Medal, Award, Crown } from "lucide-react";
+import hoja from "../assets/hoja.png";
+
+export default function Logros() {
+  const navigate = useNavigate();
+  const [logros, setLogros] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    cargarLogros();
+  }, []);
+
+  async function cargarLogros() {
+    try {
+      setLoading(true);
+      setError("");
+      const data = await getMisLogros();
+      setLogros(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "No se pudieron cargar tus logros.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Estadísticas simples
+  const stats = useMemo(() => {
+    if (!logros.length) return { total: 0, ult: null };
+
+    const ordenados = [...logros].sort((a, b) => {
+      const fa = new Date(a.obtenido_en || a.creado_en || 0).getTime();
+      const fb = new Date(b.obtenido_en || b.creado_en || 0).getTime();
+      return fb - fa;
+    });
+
+    return {
+      total: logros.length,
+      ult: ordenados[0],
+    };
+  }, [logros]);
+
+  return (
+    <div className="min-h-screen bg-[#082b1f] text-white p-6 md:p-10">
+      {/* HEADER */}
+      <header className="flex items-center justify-between mb-8 gap-4">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-2 rounded-full bg-black/30 px-3 py-1 text-sm hover:bg-black/40"
+          >
+            <ArrowLeft size={16} />
+            Volver
+          </button>
+          <div className="flex items-center gap-2 rounded-2xl bg-emerald-900/70 px-3 py-2 text-sm">
+            <Medal size={18} className="text-emerald-300" />
+            <span className="font-semibold">Mis logros</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-emerald-100/80">
+            Total de insignias:{" "}
+            <span className="font-semibold text-emerald-300">
+              {stats.total}
+            </span>
+          </span>
+          <img src={hoja} alt="logo" className="w-9 h-9 drop-shadow-md" />
+        </div>
+      </header>
+
+      {/* DESCRIPCIÓN */}
+      <section className="max-w-3xl mb-6">
+        <h1 className="text-2xl font-semibold mb-2">Tus insignias verdes</h1>
+        <p className="text-sm text-emerald-100/80">
+          Aquí puedes ver todos los logros que has obtenido en Digital Barter:
+          actividades sostenibles, intercambios, uso de la plataforma y otros
+          hitos que te otorgan créditos de recompensa.
+        </p>
+      </section>
+
+      {/* ERROR */}
+      {error && (
+        <div className="mb-4 rounded-md border border-red-400 bg-red-900/40 px-4 py-2 text-sm text-red-100">
+          {error}
+        </div>
+      )}
+
+      {/* CONTENIDO */}
+      {loading ? (
+        <div className="text-center text-emerald-100/80">
+          Cargando tus logros...
+        </div>
+      ) : logros.length === 0 ? (
+        <div className="text-center text-emerald-100/80 mt-10">
+          Aún no has desbloqueado ningún logro.  
+          Participa en actividades, realiza intercambios y usa la plataforma
+          para comenzar a ganar insignias.
+        </div>
+      ) : (
+        <>
+          {/* ÚLTIMO LOGRO DESTACADO */}
+          {stats.ult && (
+            <section className="max-w-3xl mb-6 bg-[#0f3f2d] border border-emerald-700 rounded-2xl p-4 flex items-start gap-4">
+              <div className="mt-1">
+                <Crown size={28} className="text-yellow-300" />
+              </div>
+              <div>
+                <p className="text-xs text-emerald-300/90 mb-1">
+                  Último logro obtenido
+                </p>
+                <h2 className="text-lg font-semibold text-emerald-200">
+                  {stats.ult.nombre || "Logro reciente"}
+                </h2>
+                <p className="text-sm text-emerald-100/90 mt-1">
+                  {stats.ult.descripcion || "Sin descripción."}
+                </p>
+                <p className="text-xs text-emerald-200/80 mt-2">
+                  Obtenido el{" "}
+                  {new Date(
+                    stats.ult.obtenido_en ||
+                      stats.ult.creado_en ||
+                      Date.now()
+                  ).toLocaleString()}
+                </p>
+                {typeof stats.ult.creditos_recompensa === "number" && (
+                  <p className="text-xs text-emerald-200/90 mt-1">
+                    Créditos de recompensa:{" "}
+                    <span className="font-semibold text-emerald-300">
+                      {stats.ult.creditos_recompensa} cr.
+                    </span>
+                  </p>
+                )}
+              </div>
+            </section>
+          )}
+
+          {/* GRID DE LOGROS */}
+          <section className="grid gap-4 md:grid-cols-3">
+            {logros.map((logro, idx) => {
+              const progreso =
+                logro.progreso_actual ??
+                logro.progreso ??
+                null;
+              const meta = logro.meta_requerida ?? null;
+              const porcentaje =
+                progreso && meta ? Math.min(100, (progreso / meta) * 100) : null;
+
+              return (
+                <article
+                  key={logro.id_logro || idx}
+                  className="bg-[#0f3f2d] border border-emerald-700 rounded-2xl p-4 shadow-md flex flex-col"
+                >
+                  {/* Icono / encabezado */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-10 h-10 rounded-full bg-emerald-700/40 flex items-center justify-center">
+                      <Award size={20} className="text-emerald-200" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-emerald-100">
+                        {logro.nombre || "Logro sin nombre"}
+                      </h3>
+                      {logro.meta_requerida && (
+                        <p className="text-[11px] text-emerald-300/90">
+                          Meta: {logro.meta_requerida}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Descripción */}
+                  <p className="text-xs text-emerald-100/80 flex-1">
+                    {logro.descripcion || "Sin descripción."}
+                  </p>
+
+                  {/* Progreso */}
+                  {porcentaje !== null && (
+                    <div className="mt-3">
+                      <p className="text-[11px] text-emerald-200/90 mb-1">
+                        Progreso: {progreso} / {meta}
+                      </p>
+                      <div className="w-full h-2 rounded-full bg-emerald-900/60 overflow-hidden">
+                        <div
+                          className="h-full bg-emerald-400"
+                          style={{ width: `${porcentaje}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Créditos recompensa + fecha */}
+                  <div className="mt-3 text-[11px] text-emerald-200/80">
+                    {typeof logro.creditos_recompensa === "number" && (
+                      <p>
+                        Créditos recompensa:{" "}
+                        <span className="font-semibold text-emerald-300">
+                          {logro.creditos_recompensa} cr.
+                        </span>
+                      </p>
+                    )}
+                    {(logro.obtenido_en || logro.creado_en) && (
+                      <p className="mt-1">
+                        Obtenido el{" "}
+                        {new Date(
+                          logro.obtenido_en || logro.creado_en
+                        ).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </section>
+        </>
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="digital-barder/frontend/src/pages/MisActividades.jsx">
+// digital-barder/frontend/src/pages/MisActividades.jsx
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { getMisActividadesSostenibles } from "../services/api";
+import { ArrowLeft, Leaf } from "lucide-react";
+import hoja from "../assets/hoja.png";
+
+export default function MisActividades() {
+  const navigate = useNavigate();
+
+  const [actividades, setActividades] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    cargarMisActividades();
+  }, []);
+
+  async function cargarMisActividades() {
+    try {
+      setCargando(true);
+      setError("");
+      const data = await getMisActividadesSostenibles();
+      setActividades(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+      setError(
+        err.message || "No se pudo cargar tu historial de actividades."
+      );
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-[#082b1f] text-white p-6 md:p-10">
+      {/* HEADER */}
+      <header className="flex items-center justify-between gap-3 mb-8">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-2 rounded-full bg-black/30 px-3 py-1 text-sm hover:bg-black/40"
+          >
+            <ArrowLeft size={16} />
+            Volver
+          </button>
+          <div className="flex items-center gap-2 rounded-2xl bg-emerald-900/70 px-3 py-2 text-sm">
+            <Leaf size={18} className="text-emerald-300" />
+            <span className="font-semibold">Mis actividades</span>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => navigate("/actividades")}
+          className="px-4 py-2 rounded-lg border border-emerald-500 text-sm hover:bg-emerald-500/10 font-semibold"
+        >
+          Ver actividades disponibles
+        </button>
+      </header>
+
+      {/* ERROR */}
+      {error && (
+        <div className="mb-4 rounded-md border border-red-400 bg-red-900/40 px-4 py-2 text-sm text-red-100">
+          {error}
+        </div>
+      )}
+
+      {/* CONTENIDO */}
+      {cargando ? (
+        <div className="text-center text-emerald-100/80">
+          Cargando tu historial...
+        </div>
+      ) : actividades.length === 0 ? (
+        <div className="text-center text-emerald-100/80">
+          Aún no has registrado actividades sostenibles.  
+          Participa en alguna para empezar a ganar créditos verdes.
+        </div>
+      ) : (
+        <div className="bg-[#0f3f2d] border border-emerald-700 rounded-xl overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="border-b border-emerald-600 text-emerald-300">
+              <tr>
+                <th className="text-left py-2 px-4">Actividad</th>
+                <th className="text-left py-2 px-4">Créditos</th>
+                <th className="text-left py-2 px-4">Fecha</th>
+                <th className="text-left py-2 px-4">Detalle</th>
+              </tr>
+            </thead>
+            <tbody>
+              {actividades.map((a, idx) => (
+                <tr
+                  key={a.id_actividad || a.id_participacion || idx}
+                  className="border-b border-emerald-800/50 last:border-0"
+                >
+                  <td className="py-2 px-4">
+                    {a.nombre_actividad || a.nombre || "Actividad"}
+                  </td>
+                  <td className="py-2 px-4">
+                    {a.creditos ||
+                      a.creditos_obtenidos ||
+                      a.valor_creditos ||
+                      "—"}
+                  </td>
+                  <td className="py-2 px-4">
+                    {a.fecha_participacion ||
+                      a.creado_en ||
+                      a.fecha ||
+                      "-"}
+                  </td>
+                  <td className="py-2 px-4">
+                    {a.descripcion || a.detalle || (
+                      <span className="text-emerald-100/70 text-xs">
+                        Sin descripción
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className="mt-6 flex justify-center">
+        <img src={hoja} alt="logo" className="w-10 h-10 opacity-80" />
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="digital-barder/frontend/src/pages/Premium.jsx">
+// frontend/src/pages/Premium.jsx
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { api } from "../services/api";
+
+export default function Premium() {
+  const [loadingPlan, setLoadingPlan] = useState(true);
+  const [activando, setActivando] = useState(false);
+  const [plan, setPlan] = useState(null);
+  const [error, setError] = useState("");
+  const [mensaje, setMensaje] = useState("");
+  const navigate = useNavigate();
+
+  // Cargar plan premium actual
+  useEffect(() => {
+    async function cargarPlan() {
+      try {
+        setError("");
+        setMensaje("");
+        setLoadingPlan(true);
+
+        const data = await api("/premium/mi-plan");
+
+        // miPlanPremiumService devuelve una FILA; por seguridad,
+        // soportamos también que pueda venir como array de 1 elemento.
+        let row = null;
+        if (Array.isArray(data)) row = data[0] || null;
+        else if (data && Object.keys(data).length > 0) row = data;
+
+        setPlan(row);
+      } catch (err) {
+        console.error(err);
+        setError("No se pudo cargar la información de tu plan premium.");
+        setPlan(null);
+      } finally {
+        setLoadingPlan(false);
+      }
+    }
+
+    cargarPlan();
+  }, []);
+
+  // En tu BD el valor "activo" es ACTIVA
+  const esPremium = !!plan && plan.estado === "ACTIVA";
+  const esVencida = !!plan && plan.estado === "VENCIDA";
+  const esCancelada = !!plan && plan.estado === "CANCELADA";
+
+  function formatearFecha(fecha) {
+    if (!fecha) return "—";
+    const d = new Date(fecha);
+    if (Number.isNaN(d.getTime())) return fecha;
+    return d.toLocaleDateString("es-BO", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+    });
+  }
+
+  async function activarPremium() {
+    try {
+      setError("");
+      setMensaje("");
+      setActivando(true);
+
+      const nuevaSubscripcion = await api("/premium/activar", {
+        method: "POST",
+      });
+
+      // Actualizamos el plan con lo que devuelva el backend
+      setPlan(nuevaSubscripcion);
+      setMensaje("¡Listo! Ahora eres usuario Premium 🌿");
+    } catch (err) {
+      console.error(err);
+      setError(
+        err.message ||
+          "Ocurrió un error al activar tu plan premium. Intenta de nuevo."
+      );
+    } finally {
+      setActivando(false);
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-emerald-950 via-emerald-900 to-emerald-950 text-emerald-50 px-4 py-6">
       {/* HEADER */}
       <header className="mb-8 flex items-center justify-between">
         <button
@@ -225,411 +896,915 @@ export default function ComprarCreditos() {
           Volver
         </button>
 
-        <div className="flex items-center gap-2 rounded-2xl bg-emerald-900/70 px-3 py-2 text-sm">
-          <span>💰</span>
-          <span className="font-semibold">Compra de créditos</span>
+        <div className="rounded-full bg-emerald-700/80 px-4 py-1.5 text-sm font-semibold shadow">
+          Plan Premium
         </div>
       </header>
 
-      {/* TÍTULO Y DESCRIPCIÓN */}
-      <section className="mb-6 text-center">
-        <h1 className="text-3xl font-semibold tracking-wide">Paquetes de Créditos</h1>
-        <p className="mt-2 text-sm text-emerald-100/80">
-          Selecciona el paquete de créditos que quieres comprar.  
-          El pago se registrará en tu billetera y se reflejará en tu saldo.
+      {/* TÍTULO */}
+      <section className="mb-6 space-y-2">
+        <h1 className="text-3xl font-semibold tracking-wide">
+          Haz crecer tu impacto con{" "}
+          <span className="text-emerald-300">Premium</span>
+        </h1>
+        <p className="max-w-3xl text-sm text-emerald-100/80">
+          Con la suscripción premium obtienes más visibilidad en el marketplace,
+          beneficios especiales y reportes avanzados de tu impacto ambiental.
         </p>
       </section>
 
-      {/* ERRORES */}
+      {/* MENSAJES GLOBALES */}
       {error && (
-        <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="mb-4 rounded-md border border-red-500/60 bg-red-900/40 px-4 py-2 text-sm text-red-100">
+          {error}
+        </div>
+      )}
+      {mensaje && (
+        <div className="mb-4 rounded-md border border-emerald-400/60 bg-emerald-900/40 px-4 py-2 text-sm text-emerald-100">
+          {mensaje}
+        </div>
+      )}
+
+      {/* CONTENIDO PRINCIPAL */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* PANEL IZQUIERDO: ESTADO / CONVERSIÓN A PREMIUM */}
+        <section className="rounded-3xl border border-emerald-700/70 bg-emerald-950/40 p-6 shadow-lg">
+          {loadingPlan && (
+            <p className="text-sm text-emerald-100/80">
+              Cargando estado de tu plan premium…
+            </p>
+          )}
+
+          {!loadingPlan && !esPremium && !esVencida && !esCancelada && (
+            <>
+              <h2 className="text-xl font-semibold mb-2">
+                Aún no eres usuario premium
+              </h2>
+              <p className="text-sm text-emerald-100/80 mb-4">
+                Activa tu suscripción para desbloquear beneficios exclusivos
+                dentro de Digital Barter.
+              </p>
+
+              <ul className="mb-6 ml-4 list-disc space-y-1 text-sm text-emerald-100/90">
+                <li>Mayor visibilidad para tus publicaciones.</li>
+                <li>Acceso a reportes avanzados y métricas de impacto.</li>
+                <li>Insignia especial en tu perfil y en el marketplace.</li>
+              </ul>
+
+              <button
+                type="button"
+                onClick={activarPremium}
+                disabled={activando}
+                className="rounded-full bg-emerald-500 px-6 py-2 text-sm font-semibold text-emerald-950 shadow hover:bg-emerald-400 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {activando ? "Activando..." : "Convertirme en usuario Premium"}
+              </button>
+            </>
+          )}
+
+          {!loadingPlan && esPremium && (
+            <>
+              <h2 className="text-xl font-semibold mb-2">
+                ¡Ya eres usuario Premium! 🌿
+              </h2>
+              <p className="text-sm text-emerald-100/80 mb-4">
+                Tu cuenta tiene una suscripción premium activa.
+              </p>
+
+              <div className="space-y-2 text-sm text-emerald-100/90">
+                <p>
+                  <span className="font-semibold">Estado:</span>{" "}
+                  {plan.estado || "ACTIVA"}
+                </p>
+                <p>
+                  <span className="font-semibold">Fecha inicio:</span>{" "}
+                  {formatearFecha(plan.fecha_inicio)}
+                </p>
+                <p>
+                  <span className="font-semibold">Fecha fin:</span>{" "}
+                  {formatearFecha(plan.fecha_fin)}
+                </p>
+                <p>
+                  <span className="font-semibold">Monto:</span>{" "}
+                  {plan.monto_bs != null
+                    ? Number(plan.monto_bs).toFixed(2)
+                    : "—"}{" "}
+                  Bs
+                </p>
+              </div>
+
+              <p className="mt-5 text-xs text-emerald-200/70">
+                Estos datos provienen de tu última fila en la tabla{" "}
+                <span className="font-mono">SUSCRIPCION_PREMIUM</span>.
+              </p>
+            </>
+          )}
+
+          {!loadingPlan && (esVencida || esCancelada) && !esPremium && (
+            <>
+              <h2 className="text-xl font-semibold mb-2">
+                Tu plan premium ya no está activo
+              </h2>
+              <p className="text-sm text-emerald-100/80 mb-4">
+                Estado actual:{" "}
+                <span className="font-semibold">{plan.estado}</span>. Puedes
+                activar nuevamente tu suscripción para seguir disfrutando de los
+                beneficios premium.
+              </p>
+
+              <div className="space-y-2 text-sm text-emerald-100/90 mb-4">
+                <p>
+                  <span className="font-semibold">Último inicio:</span>{" "}
+                  {formatearFecha(plan.fecha_inicio)}
+                </p>
+                <p>
+                  <span className="font-semibold">Último fin:</span>{" "}
+                  {formatearFecha(plan.fecha_fin)}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={activarPremium}
+                disabled={activando}
+                className="rounded-full bg-emerald-500 px-6 py-2 text-sm font-semibold text-emerald-950 shadow hover:bg-emerald-400 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {activando ? "Reactivando..." : "Volver a ser usuario Premium"}
+              </button>
+            </>
+          )}
+        </section>
+
+        {/* PANEL DERECHO: BENEFICIOS / INFO */}
+        <aside className="rounded-3xl border border-emerald-700/70 bg-emerald-950/30 p-6 shadow-lg">
+          <h2 className="text-xl font-semibold mb-3">¿Qué incluye Premium?</h2>
+          <ul className="ml-4 list-disc space-y-2 text-sm text-emerald-100/90">
+            <li>Prioridad en el listado de publicaciones del marketplace.</li>
+            <li>Mayor límite para registrar actividades sostenibles al mes.</li>
+            <li>Acceso a reportes especiales y estadísticas detalladas.</li>
+            <li>Soporte preferencial dentro de la plataforma.</li>
+          </ul>
+
+        </aside>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="digital-barder/frontend/src/pages/Promociones.jsx">
+// digital-barder/frontend/src/pages/Promociones.jsx
+import { useEffect, useState } from "react";
+import {
+  getPromociones,
+  crearPromocion,
+  cambiarEstadoPromocion,
+  vincularPublicacionPromocion,
+} from "../services/api";
+import { useNavigate } from "react-router-dom";
+import {
+  ArrowLeft,
+  Tag,
+  Percent,
+  Gift,
+  Link2,
+  ToggleLeft,
+  ToggleRight,
+} from "lucide-react";
+import hoja from "../assets/hoja.png";
+
+export default function Promociones() {
+  const navigate = useNavigate();
+
+  const [promociones, setPromociones] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [mensajeOk, setMensajeOk] = useState("");
+
+  // formulario nueva promo
+  const [idTipoPromo, setIdTipoPromo] = useState("");
+  const [nombre, setNombre] = useState("");
+  const [descripcion, setDescripcion] = useState("");
+  const [creditos, setCreditos] = useState("");
+  const [fechaInicio, setFechaInicio] = useState("");
+  const [fechaFin, setFechaFin] = useState("");
+
+  // vincular publicación
+  const [promoSeleccionada, setPromoSeleccionada] = useState(null);
+  const [idPublicacionVincular, setIdPublicacionVincular] = useState("");
+
+  useEffect(() => {
+    cargarPromociones();
+  }, []);
+
+  async function cargarPromociones() {
+    try {
+      setLoading(true);
+      setError("");
+      const data = await getPromociones();
+      setPromociones(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "No se pudieron cargar las promociones.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleCrearPromocion(e) {
+    e.preventDefault();
+    setError("");
+    setMensajeOk("");
+
+    const id_tipo_promocion = Number(idTipoPromo || 0);
+    const creditos_otorgados = Number(creditos || 0);
+
+    if (!id_tipo_promocion || !nombre.trim() || !fechaInicio || !fechaFin) {
+      setError(
+        "id_tipo_promocion, nombre, fecha de inicio y fecha fin son obligatorios."
+      );
+      return;
+    }
+
+    try {
+      await crearPromocion({
+        id_tipo_promocion,
+        nombre,
+        descripcion,
+        creditos_otorgados,
+        fecha_inicio: fechaInicio,
+        fecha_fin: fechaFin,
+      });
+
+      setMensajeOk("Promoción creada correctamente.");
+      // limpiar
+      setIdTipoPromo("");
+      setNombre("");
+      setDescripcion("");
+      setCreditos("");
+      setFechaInicio("");
+      setFechaFin("");
+
+      await cargarPromociones();
+    } catch (err) {
+      console.error(err);
+      setError(
+        err.message || "Ocurrió un error al crear la promoción."
+      );
+    }
+  }
+
+  async function handleToggleEstado(promo) {
+    const nuevoEstado = promo.estado === "ACTIVA" ? "INACTIVA" : "ACTIVA";
+
+    const ok = window.confirm(
+      `¿Deseas cambiar el estado de la promoción "${promo.nombre}" a ${nuevoEstado}?`
+    );
+    if (!ok) return;
+
+    try {
+      setError("");
+      setMensajeOk("");
+      await cambiarEstadoPromocion(promo.id_promocion, nuevoEstado);
+      setMensajeOk("Estado actualizado correctamente.");
+      await cargarPromociones();
+    } catch (err) {
+      console.error(err);
+      setError(
+        err.message || "No se pudo actualizar el estado de la promoción."
+      );
+    }
+  }
+
+  async function handleVincularPublicacion(e) {
+    e.preventDefault();
+    if (!promoSeleccionada || !idPublicacionVincular.trim()) return;
+
+    try {
+      setError("");
+      setMensajeOk("");
+      await vincularPublicacionPromocion(
+        promoSeleccionada.id_promocion,
+        Number(idPublicacionVincular)
+      );
+      setMensajeOk("Publicación vinculada a la promoción.");
+      setIdPublicacionVincular("");
+    } catch (err) {
+      console.error(err);
+      setError(
+        err.message || "No se pudo vincular la publicación a la promoción."
+      );
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-[#082b1f] text-white p-6 md:p-10">
+      {/* HEADER */}
+      <header className="flex items-center justify-between gap-4 mb-8">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-2 rounded-full bg-black/30 px-3 py-1 text-sm hover:bg-black/40"
+          >
+            <ArrowLeft size={16} />
+            Volver
+          </button>
+
+          <div className="flex items-center gap-2 rounded-2xl bg-emerald-900/70 px-3 py-2 text-sm">
+            <Tag size={18} className="text-emerald-300" />
+            <span className="font-semibold">Gestión de promociones</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-emerald-100/80">
+            Total:{" "}
+            <span className="font-semibold text-emerald-300">
+              {promociones.length}
+            </span>
+          </span>
+          <img src={hoja} alt="logo" className="w-9 h-9 drop-shadow-md" />
+        </div>
+      </header>
+
+      {/* MENSAJES */}
+      {error && (
+        <div className="mb-4 rounded-md border border-red-400 bg-red-900/40 px-4 py-2 text-sm text-red-100">
           {error}
         </div>
       )}
 
-      {/* PAQUETES */}
-      <section className="grid gap-4 md:grid-cols-3">
-        {paquetes.map((p) => (
-          <article
-            key={p.id_paquete}
-            onClick={() => setSelected(p)}
-            className={`cursor-pointer rounded-2xl border p-4 shadow-sm transition
-              ${
-                selected?.id_paquete === p.id_paquete
-                  ? "border-emerald-400 bg-emerald-900/80"
-                  : "border-emerald-800/60 bg-emerald-950/60 hover:border-emerald-500/80"
-              }`}
-          >
-            <p className="text-xs uppercase tracking-wide text-emerald-200/80">
-              {p.nombre}
-            </p>
-
-            <p className="mt-3 text-2xl font-bold">
-              {p.cantidad_creditos} créditos
-            </p>
-
-            <p className="mt-4 text-lg">
-              <span className="font-semibold">{Number(p.precio_bs).toFixed(2)}</span> Bs
-            </p>
-
-            <button
-              type="button"
-              className={`mt-5 w-full rounded-2xl py-2 text-sm font-semibold
-                ${
-                  selected?.id_paquete === p.id_paquete
-                    ? "bg-emerald-400 text-emerald-950"
-                    : "bg-emerald-700/80 hover:bg-emerald-600"
-                }`}
-            >
-              {selected?.id_paquete === p.id_paquete ? "Seleccionado" : "Seleccionar"}
-            </button>
-          </article>
-        ))}
-
-        {paquetes.length === 0 && !error && (
-          <p className="col-span-full text-center text-sm text-emerald-100/80">
-            No hay paquetes de créditos activos configurados.
-          </p>
-        )}
-      </section>
-
-      {/* BOTÓN COMPRAR */}
-      <div className="mt-10 flex justify-center">
-        <button
-          disabled={!selected || loading}
-          onClick={comprar}
-          className={`px-10 py-3 rounded-2xl text-lg font-semibold shadow-md
-            ${
-              !selected || loading
-                ? "bg-gray-500 cursor-not-allowed"
-                : "bg-emerald-500 hover:bg-emerald-600"
-            }`}
-        >
-          {loading ? "Procesando..." : "Comprar paquete seleccionado"}
-        </button>
-      </div>
-
-      {/* MENSAJE DE ÉXITO */}
-      {success && (
-        <div className="mt-10 flex flex-col items-center text-center">
-          <span className="text-5xl">✔️</span>
-          <p className="mt-3 text-xl font-semibold">
-            ¡Créditos añadidos correctamente a tu cuenta!
-          </p>
+      {mensajeOk && (
+        <div className="mb-4 rounded-md border border-emerald-400 bg-emerald-900/40 px-4 py-2 text-sm text-emerald-100">
+          {mensajeOk}
         </div>
       )}
-    </div>
-  );
-}
-</file>
 
-<file path="digital-barder/frontend/src/pages/EditarPerfil.jsx">
-import React, { useEffect, useState } from "react";
-import { api } from "../services/api";
-import hoja from "../assets/hoja.png";
+      {/* CONTENIDO: LISTADO + FORMULARIO */}
+      <div className="grid gap-6 lg:grid-cols-[2fr,1.5fr]">
 
-export default function EditarPerfil() {
-  const [usuario, setUsuario] = useState(null);
+        {/* LISTADO DE PROMOCIONES */}
+        <section className="bg-[#0f3f2d] border border-emerald-700 rounded-2xl p-4 md:p-5 shadow-md">
+          <h2 className="text-lg font-semibold text-emerald-200 flex items-center gap-2 mb-3">
+            <Percent size={18} className="text-emerald-300" />
+            Promociones configuradas
+          </h2>
 
-  const [nombre, setNombre] = useState("");
-  const [correo, setCorreo] = useState("");
-  const [telefono, setTelefono] = useState("");
-  const [password, setPassword] = useState("");
+          {loading ? (
+            <p className="text-emerald-100/80 text-sm">Cargando promociones...</p>
+          ) : promociones.length === 0 ? (
+            <p className="text-emerald-100/80 text-sm">
+              No hay promociones registradas.
+            </p>
+          ) : (
+            <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+              {promociones.map((promo) => (
+                <article
+                  key={promo.id_promocion}
+                  className={`rounded-xl border p-3 text-sm flex flex-col gap-2 cursor-pointer ${
+                    promoSeleccionada?.id_promocion === promo.id_promocion
+                      ? "border-emerald-400 bg-emerald-900/50"
+                      : "border-emerald-700/70 bg-emerald-900/30 hover:border-emerald-500/80"
+                  }`}
+                  onClick={() => setPromoSeleccionada(promo)}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs text-emerald-300/80">
+                        ID #{promo.id_promocion}
+                      </p>
+                      <h3 className="font-semibold text-emerald-100">
+                        {promo.nombre}
+                      </h3>
+                    </div>
 
-  const [fotoPreview, setFotoPreview] = useState(null);
-  const [fotoArchivo, setFotoArchivo] = useState(null);
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleEstado(promo);
+                      }}
+                      className="inline-flex items-center gap-1 px-3 py-1 rounded-full border border-emerald-500/70 text-xs"
+                    >
+                      {promo.estado === "ACTIVA" ? (
+                        <>
+                          <ToggleRight size={16} className="text-emerald-300" />
+                          <span>Activa</span>
+                        </>
+                      ) : (
+                        <>
+                          <ToggleLeft size={16} className="text-emerald-300" />
+                          <span>Inactiva</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
 
-  useEffect(() => {
-    cargarDatos();
-  }, []);
+                  <p className="text-emerald-100/80 text-xs">
+                    {promo.descripcion || "Sin descripción."}
+                  </p>
 
-  async function cargarDatos() {
-    try {
-      const data = await api("/usuarios/me");
-      setUsuario(data);
+                  <div className="flex flex-wrap gap-3 text-[11px] text-emerald-200/90">
+                    {typeof promo.creditos_otorgados === "number" && (
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-800/60 border border-emerald-600/80">
+                        +{promo.creditos_otorgados} cr.
+                      </span>
+                    )}
 
-      setNombre(data.nombre || "");
-      setCorreo(data.correo || "");
-      setTelefono(data.telefono || "");
-      setFotoPreview(data.foto || null);
+                    {promo.fecha_inicio && (
+                      <span>
+                        Inicio:{" "}
+                        {new Date(promo.fecha_inicio).toLocaleDateString()}
+                      </span>
+                    )}
+                    {promo.fecha_fin && (
+                      <span>
+                        Fin:{" "}
+                        {new Date(promo.fecha_fin).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
 
-    } catch (error) {
-      console.error("Error al cargar perfil:", error);
-    }
-  }
-
-  async function guardarCambios(e) {
-    e.preventDefault();
-
-    try {
-      let fotoURL = fotoPreview;
-
-      // Si hay una foto nueva, subirla primero
-      if (fotoArchivo) {
-        const formData = new FormData();
-        formData.append("archivo", fotoArchivo);
-        const uploadRes = await api("/uploads", {
-          method: "POST",
-          body: formData,
-        });
-        fotoURL = uploadRes.url;
-      }
-
-      // Enviar actualización
-      await api("/usuarios/me", {
-        method: "PUT",
-        body: {
-          nombre,
-          correo,
-          telefono,
-          foto: fotoURL,
-          password: password || undefined,
-        },
-      });
-
-      alert("Perfil actualizado correctamente.");
-      window.location.href = "/perfil";
-
-    } catch (error) {
-      console.error("Error al guardar cambios:", error);
-      alert("Hubo un error al actualizar.");
-    }
-  }
-
-  if (!usuario) {
-    return (
-      <div className="min-h-screen bg-[#082b1f] text-white flex items-center justify-center">
-        Cargando perfil...
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-[#082b1f] text-white p-6 md:p-10">
-
-      {/* ENCABEZADO */}
-      <div className="flex items-center gap-3 mb-10">
-        <img src={hoja} alt="logo" className="w-12 h-12 drop-shadow-lg" />
-        <h1 className="text-3xl font-bold text-emerald-400">Editar Perfil</h1>
-      </div>
-
-      {/* FORMULARIO */}
-      <form
-        onSubmit={guardarCambios}
-        className="bg-[#0e4330] p-8 rounded-xl border border-emerald-500 shadow-xl max-w-2xl mx-auto"
-      >
-
-        {/* FOTO */}
-        <div className="flex flex-col items-center mb-8">
-          <img
-            src={
-              fotoPreview || "https://via.placeholder.com/120?text=Sin+Foto"
-            }
-            className="w-32 h-32 rounded-full object-cover border-4 border-emerald-500 shadow-lg"
-          />
-
-          <label className="mt-4 cursor-pointer bg-emerald-500 hover:bg-emerald-600 px-4 py-2 rounded-lg font-semibold transition">
-            Cambiar foto
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                setFotoArchivo(e.target.files[0]);
-                setFotoPreview(URL.createObjectURL(e.target.files[0]));
-              }}
-            />
-          </label>
-        </div>
-
-        {/* NOMBRE */}
-        <div className="mb-5">
-          <label className="text-emerald-300 font-semibold">Nombre</label>
-          <input
-            type="text"
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-            className="w-full mt-1 bg-[#0f3f2d] text-white px-4 py-2 rounded-lg border border-emerald-500 outline-none focus:ring-2 focus:ring-emerald-400"
-          />
-        </div>
-
-        {/* CORREO */}
-        <div className="mb-5">
-          <label className="text-emerald-300 font-semibold">Correo</label>
-          <input
-            type="email"
-            value={correo}
-            onChange={(e) => setCorreo(e.target.value)}
-            className="w-full mt-1 bg-[#0f3f2d] text-white px-4 py-2 rounded-lg border border-emerald-500 outline-none focus:ring-2 focus:ring-emerald-400"
-          />
-        </div>
-
-        {/* TELÉFONO */}
-        <div className="mb-5">
-          <label className="text-emerald-300 font-semibold">Teléfono</label>
-          <input
-            type="text"
-            value={telefono}
-            onChange={(e) => setTelefono(e.target.value)}
-            className="w-full mt-1 bg-[#0f3f2d] text-white px-4 py-2 rounded-lg border border-emerald-500 outline-none focus:ring-2 focus:ring-emerald-400"
-          />
-        </div>
-
-        {/* PASSWORD */}
-        <div className="mb-5">
-          <label className="text-emerald-300 font-semibold">
-            Nueva contraseña (opcional)
-          </label>
-          <input
-            type="password"
-            value={password}
-            placeholder="Dejar vacío si no deseas cambiarla"
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full mt-1 bg-[#0f3f2d] text-white px-4 py-2 rounded-lg border border-emerald-500 outline-none focus:ring-2 focus:ring-emerald-400"
-          />
-        </div>
-
-        {/* BOTONES */}
-        <div className="flex justify-between mt-8">
-          <a
-            href="/perfil"
-            className="px-5 py-2 rounded-lg bg-gray-600 hover:bg-gray-700 transition font-semibold"
-          >
-            Cancelar
-          </a>
-
-          <button
-            type="submit"
-            className="px-6 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 transition font-semibold"
-          >
-            Guardar Cambios
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-}
-</file>
-
-<file path="digital-barder/frontend/src/pages/Perfil.jsx">
-import React, { useEffect, useState } from "react";
-import hoja from "../assets/hoja.png";
-import { api } from "../services/api";
-
-export default function Perfil() {
-  const [usuario, setUsuario] = useState(null);
-  const [creditos, setCreditos] = useState(null);
-
-  useEffect(() => {
-    cargarDatos();
-  }, []);
-
-  async function cargarDatos() {
-    try {
-      const datosUsuario = await api("/auth/me");
-      const wallet = await api("/wallet/mis-creditos");
-
-      setUsuario(datosUsuario);
-      setCreditos(wallet.saldo);
-    } catch (err) {
-      console.error("Error cargando perfil:", err);
-    }
-  }
-
-  if (!usuario) {
-    return (
-      <div className="min-h-screen bg-[#082b1f] flex items-center justify-center text-white">
-        <p>Cargando perfil...</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-[#082b1f] text-white p-6 md:p-10">
-
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-8">
-        <img src={hoja} className="w-12 h-12 drop-shadow-lg" />
-        <h1 className="text-3xl font-bold text-emerald-400">Mi Perfil</h1>
-      </div>
-
-      {/* Tarjeta principal */}
-      <div className="bg-[#0e4330] border border-emerald-500 rounded-xl p-6 md:p-8 shadow-xl mb-10">
-        <div className="flex flex-col md:flex-row md:items-center gap-6">
-
-          {/* Foto */}
-          <div>
-            <img
-              src={usuario.foto || "https://via.placeholder.com/120"}
-              className="w-28 h-28 rounded-full object-cover border-4 border-emerald-500 shadow-lg"
-            />
-          </div>
-
-          {/* Info */}
-          <div className="flex-1">
-            <h2 className="text-2xl font-bold text-emerald-300">
-              {usuario.nombre}
+        {/* FORMULARIO NUEVA PROMO + VINCULAR PUBLICACIÓN */}
+        <section className="space-y-4">
+          {/* NUEVA PROMO */}
+          <div className="bg-[#0f3f2d] border border-emerald-700 rounded-2xl p-4 md:p-5 shadow-md">
+            <h2 className="text-lg font-semibold text-emerald-200 flex items-center gap-2 mb-3">
+              <Gift size={18} className="text-emerald-300" />
+              Crear nueva promoción
             </h2>
 
-            <p className="opacity-90">{usuario.correo}</p>
+            <form onSubmit={handleCrearPromocion} className="space-y-3 text-sm">
+              <div>
+                <label className="block text-xs mb-1">
+                  ID tipo de promoción (id_tipo_promocion) *
+                </label>
+                <input
+                  type="number"
+                  value={idTipoPromo}
+                  onChange={(e) => setIdTipoPromo(e.target.value)}
+                  className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
+                  placeholder="Ej. 1 (descuento), 2 (bonus créditos)..."
+                />
+              </div>
 
-            <p className="mt-2 text-sm">
-              Estado:{" "}
-              <span
-                className={`font-bold ${
-                  usuario.es_premium ? "text-yellow-300" : "text-emerald-300"
-                }`}
-              >
-                {usuario.es_premium ? "Premium" : "Cuenta Normal"}
-              </span>
-            </p>
+              <div>
+                <label className="block text-xs mb-1">Nombre *</label>
+                <input
+                  type="text"
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
+                  placeholder="Ej. Promo bienvenida, 2x1 en créditos..."
+                />
+              </div>
 
-            <button
-              onClick={() => (window.location.href = "/perfil/editar")}
-              className="mt-4 bg-emerald-500 hover:bg-emerald-600 px-5 py-2 rounded-lg font-semibold transition"
-            >
-              Editar Perfil
-            </button>
+              <div>
+                <label className="block text-xs mb-1">Descripción</label>
+                <textarea
+                  value={descripcion}
+                  onChange={(e) => setDescripcion(e.target.value)}
+                  rows={2}
+                  className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
+                  placeholder="Explica las condiciones de la promoción..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs mb-1">
+                  Créditos otorgados (opcional)
+                </label>
+                <input
+                  type="number"
+                  value={creditos}
+                  onChange={(e) => setCreditos(e.target.value)}
+                  className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
+                  placeholder="Ej. 10"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs mb-1">Fecha inicio *</label>
+                  <input
+                    type="date"
+                    value={fechaInicio}
+                    onChange={(e) => setFechaInicio(e.target.value)}
+                    className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs mb-1">Fecha fin *</label>
+                  <input
+                    type="date"
+                    value={fechaFin}
+                    onChange={(e) => setFechaFin(e.target.value)}
+                    className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="submit"
+                  className="px-6 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-sm font-semibold text-emerald-950"
+                >
+                  Guardar promoción
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* VINCULAR PUBLICACIÓN */}
+          <div className="bg-[#0f3f2d] border border-emerald-700 rounded-2xl p-4 md:p-5 shadow-md">
+            <h2 className="text-sm font-semibold text-emerald-200 flex items-center gap-2 mb-3">
+              <Link2 size={16} className="text-emerald-300" />
+              Vincular publicación a promoción
+            </h2>
+
+            {promoSeleccionada ? (
+              <>
+                <p className="text-xs text-emerald-100/90 mb-2">
+                  Promoción seleccionada:{" "}
+                  <span className="font-semibold">{promoSeleccionada.nombre}</span>{" "}
+                  (ID #{promoSeleccionada.id_promocion})
+                </p>
+
+                <form
+                  onSubmit={handleVincularPublicacion}
+                  className="flex flex-col sm:flex-row gap-2 text-sm"
+                >
+                  <input
+                    type="number"
+                    value={idPublicacionVincular}
+                    onChange={(e) => setIdPublicacionVincular(e.target.value)}
+                    className="flex-1 rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
+                    placeholder="ID de publicación"
+                  />
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-sm font-semibold text-emerald-950"
+                  >
+                    Vincular
+                  </button>
+                </form>
+              </>
+            ) : (
+              <p className="text-xs text-emerald-100/80">
+                Primero selecciona una promoción del listado para poder
+                vincularle publicaciones.
+              </p>
+            )}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="digital-barder/frontend/src/pages/Publicidad.jsx">
+// digital-barder/frontend/src/pages/Publicidad.jsx
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { getPublicidadActiva, crearPublicidad } from "../services/api";
+import {
+  ArrowLeft,
+  Megaphone,
+  Monitor,
+  CalendarRange,
+  ExternalLink,
+  Coins,
+} from "lucide-react";
+import hoja from "../assets/hoja.png";
+
+export default function Publicidad() {
+  const navigate = useNavigate();
+
+  const [anuncios, setAnuncios] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [mensajeOk, setMensajeOk] = useState("");
+
+  // formulario nueva publicidad
+  const [idUbicacion, setIdUbicacion] = useState("");
+  const [titulo, setTitulo] = useState("");
+  const [descripcion, setDescripcion] = useState("");
+  const [urlDestino, setUrlDestino] = useState("");
+  const [fechaInicio, setFechaInicio] = useState("");
+  const [fechaFin, setFechaFin] = useState("");
+  const [costoCreditos, setCostoCreditos] = useState("");
+
+  useEffect(() => {
+    cargarPublicidad();
+  }, []);
+
+  async function cargarPublicidad() {
+    try {
+      setLoading(true);
+      setError("");
+      const data = await getPublicidadActiva();
+      setAnuncios(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+      setError(
+        err.message || "No se pudo cargar la publicidad activa."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleCrearPublicidad(e) {
+    e.preventDefault();
+    setError("");
+    setMensajeOk("");
+
+    const id_ubicacion = Number(idUbicacion || 0);
+    const costo_creditos = Number(costoCreditos || 0);
+
+    if (!id_ubicacion || !titulo.trim() || !fechaInicio || !fechaFin || !costo_creditos) {
+      setError(
+        "id_ubicacion, título, fecha inicio, fecha fin y costo en créditos son obligatorios."
+      );
+      return;
+    }
+
+    try {
+      await crearPublicidad({
+        id_ubicacion,
+        titulo,
+        descripcion,
+        url_destino: urlDestino || null,
+        fecha_inicio: fechaInicio,
+        fecha_fin: fechaFin,
+        costo_creditos,
+      });
+
+      setMensajeOk("Publicidad creada correctamente.");
+      // limpiar
+      setIdUbicacion("");
+      setTitulo("");
+      setDescripcion("");
+      setUrlDestino("");
+      setFechaInicio("");
+      setFechaFin("");
+      setCostoCreditos("");
+
+      await cargarPublicidad();
+    } catch (err) {
+      console.error(err);
+      setError(
+        err.message || "Ocurrió un error al crear la publicidad."
+      );
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-[#082b1f] text-white p-6 md:p-10">
+      {/* HEADER */}
+      <header className="flex items-center justify-between gap-4 mb-8">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-2 rounded-full bg-black/30 px-3 py-1 text-sm hover:bg-black/40"
+          >
+            <ArrowLeft size={16} />
+            Volver
+          </button>
+
+          <div className="flex items-center gap-2 rounded-2xl bg-emerald-900/70 px-3 py-2 text-sm">
+            <Megaphone size={18} className="text-emerald-300" />
+            <span className="font-semibold">Gestión de publicidad</span>
           </div>
         </div>
-      </div>
 
-      {/* Tarjetas secundarias */}
-      <div className="grid md:grid-cols-3 gap-6">
-
-        {/* Créditos */}
-        <div className="bg-[#0e4330] border border-emerald-500 p-6 rounded-xl shadow-lg">
-          <h3 className="text-lg font-semibold text-emerald-300">Mis Créditos</h3>
-          <p className="text-4xl font-bold text-emerald-400 mt-2">
-            {creditos !== null ? creditos : "—"}
-          </p>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-emerald-100/80 flex items-center gap-1">
+            <Monitor size={16} className="text-emerald-300" />
+            Activos:{" "}
+            <span className="font-semibold text-emerald-300">
+              {anuncios.length}
+            </span>
+          </span>
+          <img src={hoja} alt="logo" className="w-9 h-9 drop-shadow-md" />
         </div>
+      </header>
 
-        {/* Logros */}
-        <a
-          href="/logros"
-          className="bg-[#0e4330] border border-emerald-500 p-6 rounded-xl shadow-lg 
-          hover:bg-[#14694c] transition cursor-pointer"
-        >
-          <h3 className="text-lg font-semibold text-emerald-300">Logros</h3>
-          <p className="opacity-80 mt-1">Ver mis insignias ganadas</p>
-        </a>
+      {/* MENSAJES */}
+      {error && (
+        <div className="mb-4 rounded-md border border-red-400 bg-red-900/40 px-4 py-2 text-sm text-red-100">
+          {error}
+        </div>
+      )}
 
-        {/* Actividades sostenibles */}
-        <a
-          href="/actividades"
-          className="bg-[#0e4330] border border-emerald-500 p-6 rounded-xl rounded-xl shadow-lg
-          hover:bg-[#14694c] transition cursor-pointer"
-        >
-          <h3 className="text-lg font-semibold text-emerald-300">
-            Actividades sostenibles
-          </h3>
-          <p className="opacity-80 mt-1">
-            Mi impacto positivo registrado
+      {mensajeOk && (
+        <div className="mb-4 rounded-md border border-emerald-400 bg-emerald-900/40 px-4 py-2 text-sm text-emerald-100">
+          {mensajeOk}
+        </div>
+      )}
+
+      {/* CONTENIDO: LISTADO + FORMULARIO */}
+      <div className="grid gap-6 lg:grid-cols-[2fr,1.5fr]">
+        {/* LISTADO DE PUBLICIDAD ACTIVA */}
+        <section className="bg-[#0f3f2d] border border-emerald-700 rounded-2xl p-4 md:p-5 shadow-md">
+          <h2 className="text-lg font-semibold text-emerald-200 flex items-center gap-2 mb-3">
+            <Monitor size={18} className="text-emerald-300" />
+            Publicidad activa
+          </h2>
+
+          {loading ? (
+            <p className="text-emerald-100/80 text-sm">
+              Cargando anuncios...
+            </p>
+          ) : anuncios.length === 0 ? (
+            <p className="text-emerald-100/80 text-sm">
+              No hay publicidad activa en este momento.
+            </p>
+          ) : (
+            <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+              {anuncios.map((ad) => (
+                <article
+                  key={ad.id_publicidad}
+                  className="rounded-xl border border-emerald-700/70 bg-emerald-900/30 p-3 text-sm flex flex-col gap-2"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs text-emerald-300/80">
+                        ID #{ad.id_publicidad} · {ad.usuario || "Usuario"}
+                      </p>
+                      <h3 className="font-semibold text-emerald-100">
+                        {ad.titulo}
+                      </h3>
+                    </div>
+
+                    {typeof ad.costo_creditos === "number" && (
+                      <div className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-emerald-800/70 border border-emerald-500/70">
+                        <Coins size={14} className="text-emerald-300" />
+                        <span>{ad.costo_creditos} cr.</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {ad.descripcion && (
+                    <p className="text-emerald-100/80 text-xs">
+                      {ad.descripcion}
+                    </p>
+                  )}
+
+                  <div className="flex flex-wrap gap-3 text-[11px] text-emerald-200/80 mt-1">
+                    {ad.fecha_inicio && (
+                      <span>
+                        Inicio:{" "}
+                        {new Date(ad.fecha_inicio).toLocaleDateString()}
+                      </span>
+                    )}
+                    {ad.fecha_fin && (
+                      <span>
+                        Fin: {new Date(ad.fecha_fin).toLocaleDateString()}
+                      </span>
+                    )}
+                    {ad.id_ubicacion && (
+                      <span>Ubicación #{ad.id_ubicacion}</span>
+                    )}
+                  </div>
+
+                  {ad.url_destino && (
+                    <a
+                      href={ad.url_destino}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-flex items-center gap-1 text-xs text-emerald-300 hover:text-emerald-100"
+                    >
+                      <ExternalLink size={14} />
+                      Ver destino
+                    </a>
+                  )}
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* FORMULARIO NUEVA PUBLICIDAD */}
+        <section className="bg-[#0f3f2d] border border-emerald-700 rounded-2xl p-4 md:p-5 shadow-md">
+          <h2 className="text-lg font-semibold text-emerald-200 flex items-center gap-2 mb-3">
+            <Megaphone size={18} className="text-emerald-300" />
+            Crear nueva publicidad
+          </h2>
+
+          <p className="text-xs text-emerald-100/80 mb-3">
+            Esta campaña descontará créditos de la billetera del usuario que la
+            publica, según el costo configurado y la ubicación seleccionada.
           </p>
-        </a>
-      </div>
 
+          <form onSubmit={handleCrearPublicidad} className="space-y-3 text-sm">
+            {/* id_ubicacion */}
+            <div>
+              <label className="block text-xs mb-1">
+                ID de ubicación (id_ubicacion) *
+              </label>
+              <input
+                type="number"
+                value={idUbicacion}
+                onChange={(e) => setIdUbicacion(e.target.value)}
+                className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
+                placeholder="Ej. 1 (header), 2 (sidebar), 3 (dashboard)..."
+              />
+            </div>
+
+            {/* título */}
+            <div>
+              <label className="block text-xs mb-1">Título *</label>
+              <input
+                type="text"
+                value={titulo}
+                onChange={(e) => setTitulo(e.target.value)}
+                className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
+                placeholder="Ej. Promociona tu ecoservicio aquí"
+              />
+            </div>
+
+            {/* descripción */}
+            <div>
+              <label className="block text-xs mb-1">Descripción</label>
+              <textarea
+                value={descripcion}
+                onChange={(e) => setDescripcion(e.target.value)}
+                rows={3}
+                className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
+                placeholder="Describe brevemente el anuncio o campaña..."
+              />
+            </div>
+
+            {/* url_destino */}
+            <div>
+              <label className="block text-xs mb-1">
+                URL de destino (opcional)
+              </label>
+              <input
+                type="url"
+                value={urlDestino}
+                onChange={(e) => setUrlDestino(e.target.value)}
+                className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
+                placeholder="https://ejemplo.com/mi-campaña"
+              />
+            </div>
+
+            {/* costo_creditos */}
+            <div>
+              <label className="block text-xs mb-1">
+                Costo en créditos (costo_creditos) *
+              </label>
+              <input
+                type="number"
+                value={costoCreditos}
+                onChange={(e) => setCostoCreditos(e.target.value)}
+                className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
+                placeholder="Ej. 50"
+              />
+            </div>
+
+            {/* fechas */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs mb-1">Fecha inicio *</label>
+                <input
+                  type="date"
+                  value={fechaInicio}
+                  onChange={(e) => setFechaInicio(e.target.value)}
+                  className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
+                />
+              </div>
+              <div>
+                <label className="block text-xs mb-1">Fecha fin *</label>
+                <input
+                  type="date"
+                  value={fechaFin}
+                  onChange={(e) => setFechaFin(e.target.value)}
+                  className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
+                />
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="submit"
+                className="px-6 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-sm font-semibold text-emerald-950"
+              >
+                Guardar publicidad
+              </button>
+            </div>
+          </form>
+        </section>
+      </div>
     </div>
   );
 }
@@ -2498,11 +3673,23 @@ export const misLogrosService = (idUsuario) =>
 
 <file path="digital-barder/backend/src/modules/premium/premium.controller.js">
 // premium.controller.js
-import { miPlanPremiumService } from "./premium.service.js";
+import {
+  miPlanPremiumService,
+  activarPremiumService,
+} from "./premium.service.js";
 
 export const miPlanPremiumController = async (req, res, next) => {
-  try { res.json(await miPlanPremiumService(req.user.id_usuario)); }
-  catch (e) { next(e); }
+  try {
+    res.json(await miPlanPremiumService(req.user.id_usuario));
+  } catch (e) { next(e); }
+};
+
+export const activarPremiumController = async (req, res, next) => {
+  try {
+    const idUsuario = req.user.id_usuario;
+    const data = await activarPremiumService(idUsuario);
+    res.status(201).json(data);
+  } catch (e) { next(e); }
 };
 </file>
 
@@ -2512,12 +3699,14 @@ import { Router } from "express";
 import { authMiddleware } from "../../middlewares/auth.js";
 import {
   miPlanPremiumController,
+  activarPremiumController,
 } from "./premium.controller.js";
 
 const router = Router();
 router.use(authMiddleware);
 
 router.get("/mi-plan", miPlanPremiumController);
+router.post("/activar", activarPremiumController);
 
 export default router;
 </file>
@@ -2528,11 +3717,45 @@ import { prisma } from "../../config/prisma.js";
 
 export const miPlanPremiumService = (idUsuario) =>
   prisma.$queryRaw`
-    SELECT * FROM SUSCRIPCION_PREMIUM
+    SELECT *
+    FROM SUSCRIPCION_PREMIUM
     WHERE id_usuario = ${idUsuario}
     ORDER BY fecha_inicio DESC
     LIMIT 1
   `;
+
+// 👉 NUEVO / CORREGIDO
+export async function activarPremiumService(idUsuario) {
+  // 30 días de duración
+  const fin = new Date();
+  fin.setDate(fin.getDate() + 30);
+
+  // fecha_inicio tiene default CURRENT_TIMESTAMP, así que no es obligatorio mandarla
+  await prisma.$executeRaw`
+    INSERT INTO SUSCRIPCION_PREMIUM (
+      id_usuario,
+      fecha_fin,
+      estado,
+      monto_bs
+    )
+    VALUES (
+      ${idUsuario},
+      ${fin},
+      'ACTIVA',      -- 👈 tiene que ser ACTIVA (no ACTIVO ni VIGENTE)
+      20.00          -- monto que tú quieras
+    )
+  `;
+
+  const [row] = await prisma.$queryRaw`
+    SELECT *
+    FROM SUSCRIPCION_PREMIUM
+    WHERE id_usuario = ${idUsuario}
+    ORDER BY fecha_inicio DESC
+    LIMIT 1
+  `;
+
+  return row;
+}
 </file>
 
 <file path="digital-barder/backend/src/modules/promociones/promociones.controller.js">
@@ -3114,6 +4337,15 @@ export async function repUsuariosAbandonadosService(r) {
   return rows;
 }
 
+// 👇 NUEVO: usuarios nuevos (primer login)
+export async function repUsuariosNuevosService(r) {
+  const [rows] = await prisma.$queryRawUnsafe(
+    "CALL sp_rep_usuarios_nuevos(?, ?)",
+    ...rangoFechas(r)
+  );
+  return rows;
+}
+
 export async function repIngresosCreditosService(r) {
   const [rows] = await prisma.$queryRawUnsafe(
     "CALL sp_rep_ingresos_creditos(?, ?)",
@@ -3146,21 +4378,29 @@ export async function repPublicacionesVsIntercambiosService(r) {
   return rows;
 }
 
+// ✅ Impacto acumulado: usa el SP real de la BD
 export async function repImpactoAcumuladoService(tipoReporte, periodo) {
   const [rows] = await prisma.$queryRawUnsafe(
     "CALL sp_generar_reporte_impacto(?, ?, NULL)",
     tipoReporte,
-    periodo,
+    periodo
   );
   return rows;
 }
-
 
 export async function rankingUsuariosService(idPeriodo, limit) {
   const [rows] = await prisma.$queryRawUnsafe(
     "CALL sp_obtener_ranking_usuarios(?, ?)",
     idPeriodo ?? null,
     limit ?? null
+  );
+  return rows;
+}
+
+export async function repUsuariosPremiumService(r) {
+  const [rows] = await prisma.$queryRawUnsafe(
+    "CALL sp_rep_usuarios_premium(?, ?)",
+    ...rangoFechas(r)
   );
   return rows;
 }
@@ -3549,84 +4789,6 @@ export default function Layout({ children }) {
         {children}
       </main>
     </div>
-  );
-}
-</file>
-
-<file path="digital-barder/frontend/src/components/Navbar.jsx">
-// src/components/Navbar.jsx
-import React from "react";
-import hoja from "../assets/hoja.png";
-
-export default function Navbar() {
-  return (
-    <nav className="w-full bg-[#0b3a2c] border-b border-emerald-600 px-6 py-4 flex items-center justify-between shadow-md">
-      
-      {/* LOGO */}
-      <div className="flex items-center gap-3 cursor-pointer"
-        onClick={() => (window.location.href = "/home")}
-      >
-        <img src={hoja} className="w-9 h-9 drop-shadow-lg" />
-        <h1 className="text-2xl font-bold text-emerald-400">
-          Digital Barter
-        </h1>
-      </div>
-
-      {/* BOTONES DE NAVEGACIÓN */}
-      <div className="flex items-center gap-6">
-
-        {/* PERFIL */}
-        <a
-          href="/perfil"
-          className="text-white hover:text-emerald-400 transition font-semibold"
-        >
-          Perfil
-        </a>
-
-        {/* WALLET */}
-        <a
-          href="/wallet"
-          className="text-white hover:text-emerald-400 transition font-semibold"
-        >
-          Wallet
-        </a>
-
-        {/* PUBLICACIONES */}
-        <a
-          href="/publicaciones"
-          className="text-white hover:text-emerald-400 transition font-semibold"
-        >
-          Publicaciones
-        </a>
-
-        {/* ACTIVIDADES */}
-        <a
-          href="/actividades"
-          className="text-white hover:text-emerald-400 transition font-semibold"
-        >
-          Actividades
-        </a>
-
-        {/* PREMIUM */}
-        <a
-          href="/premium"
-          className="text-white hover:text-yellow-400 transition font-semibold"
-        >
-          Premium
-        </a>
-
-        {/* CERRAR SESIÓN */}
-        <button
-          onClick={() => {
-            localStorage.removeItem("token");
-            window.location.href = "/login";
-          }}
-          className="bg-emerald-500 hover:bg-emerald-600 px-4 py-1 rounded-lg text-white font-semibold transition"
-        >
-          Salir
-        </button>
-      </div>
-    </nav>
   );
 }
 </file>
@@ -4677,6 +5839,1026 @@ export default function BackendLab() {
 }
 </file>
 
+<file path="digital-barder/frontend/src/pages/ComprarCreditos.jsx">
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { api } from "../services/api";
+import { ArrowLeft, Wallet, CheckCircle } from "lucide-react";
+
+export default function ComprarCreditos() {
+  const [paquetes, setPaquetes] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
+
+  // Cargar paquetes activos
+  useEffect(() => {
+    async function cargarPaquetes() {
+      try {
+        setError("");
+        setSuccess(false);
+        const data = await api("/catalogos/paquetes-creditos");
+        // Asumimos que el backend devuelve un array simple de paquetes
+        setPaquetes(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error(err);
+        setError("No se pudieron cargar los paquetes de créditos.");
+      }
+    }
+    cargarPaquetes();
+  }, []);
+
+  async function comprar() {
+    if (!selected) {
+      setError("Debes seleccionar un paquete antes de comprar.");
+      return;
+    }
+
+    const ok = window.confirm(
+      `¿Confirmas la compra del paquete "${selected.nombre}" por ${selected.precio_bs} Bs?`
+    );
+    if (!ok) return;
+
+    try {
+      setLoading(true);
+      setError("");
+      setSuccess(false);
+
+      // 👇 RUTA REAL DEL BACKEND: POST /api/wallet/compra-creditos
+      //    y el controlador espera { idPaquete: ... }
+      await api("/wallet/compra-creditos", {
+        method: "POST",
+        body: {
+          idPaquete: selected.id_paquete, // 👈 CAMBIO IMPORTANTE
+        },
+      });
+
+      setSuccess(true);
+      setSelected(null);
+    } catch (err) {
+      console.error(err);
+      setError(
+        err.message ||
+          "Ocurrió un error al procesar la compra de créditos."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-emerald-950 via-emerald-900 to-emerald-950 text-emerald-50 px-4 py-6">
+      {/* HEADER */}
+      <header className="mb-8 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-2 rounded-full bg-black/30 px-3 py-1 text-sm hover:bg-black/40"
+        >
+          <ArrowLeft size={16} />
+          Volver
+        </button>
+
+        <div className="flex items-center gap-2 rounded-2xl bg-emerald-900/70 px-3 py-2 text-sm">
+          <Wallet size={18} className="text-emerald-300" />
+          <span className="font-semibold">Compra de créditos</span>
+        </div>
+      </header>
+
+      {/* TÍTULO Y DESCRIPCIÓN */}
+      <section className="mb-6 text-center">
+        <h1 className="text-3xl font-semibold tracking-wide">
+          Paquetes de Créditos
+        </h1>
+        <p className="mt-2 text-sm text-emerald-100/80">
+          Selecciona el paquete de créditos que quieres comprar. El pago se
+          registrará en tu billetera y se reflejará en tu saldo.
+        </p>
+      </section>
+
+      {/* ERRORES */}
+      {error && (
+        <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      {/* PAQUETES */}
+      <section className="grid gap-4 md:grid-cols-3">
+        {paquetes.map((p) => (
+          <article
+            key={p.id_paquete}
+            onClick={() => setSelected(p)}
+            className={`cursor-pointer rounded-2xl border p-4 shadow-sm transition
+              ${
+                selected?.id_paquete === p.id_paquete
+                  ? "border-emerald-400 bg-emerald-900/80"
+                  : "border-emerald-800/60 bg-emerald-950/60 hover:border-emerald-500/80"
+              }`}
+          >
+            <p className="text-xs uppercase tracking-wide text-emerald-200/80">
+              {p.nombre}
+            </p>
+
+            <p className="mt-3 text-2xl font-bold">
+              {p.cantidad_creditos} créditos
+            </p>
+
+            <p className="mt-4 text-lg">
+              <span className="font-semibold">
+                {Number(p.precio_bs).toFixed(2)}
+              </span>{" "}
+              Bs
+            </p>
+
+            <button
+              type="button"
+              className={`mt-5 w-full rounded-2xl py-2 text-sm font-semibold
+                ${
+                  selected?.id_paquete === p.id_paquete
+                    ? "bg-emerald-400 text-emerald-950"
+                    : "bg-emerald-700/80 hover:bg-emerald-600"
+                }`}
+            >
+              {selected?.id_paquete === p.id_paquete
+                ? "Seleccionado"
+                : "Seleccionar"}
+            </button>
+          </article>
+        ))}
+
+        {paquetes.length === 0 && !error && (
+          <p className="col-span-full text-center text-sm text-emerald-100/80">
+            No hay paquetes de créditos activos configurados.
+          </p>
+        )}
+      </section>
+
+      {/* BOTÓN COMPRAR */}
+      <div className="mt-10 flex justify-center">
+        <button
+          disabled={!selected || loading}
+          onClick={comprar}
+          className={`px-10 py-3 rounded-2xl text-lg font-semibold shadow-md
+            ${
+              !selected || loading
+                ? "bg-gray-500 cursor-not-allowed"
+                : "bg-emerald-500 hover:bg-emerald-600"
+            }`}
+        >
+          {loading ? "Procesando..." : "Comprar paquete seleccionado"}
+        </button>
+      </div>
+
+      {/* MENSAJE DE ÉXITO */}
+      {success && (
+        <div className="mt-10 flex flex-col items-center text-center">
+          <CheckCircle size={60} className="text-emerald-300" />
+          <p className="mt-3 text-xl font-semibold">
+            ¡Créditos añadidos correctamente a tu cuenta!
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="digital-barder/frontend/src/pages/EditarPerfil.jsx">
+import React, { useEffect, useState } from "react";
+import { api } from "../services/api";
+import hoja from "../assets/hoja.png";
+
+export default function EditarPerfil() {
+  const [usuario, setUsuario] = useState(null);
+
+  const [nombre, setNombre] = useState("");
+  const [correo, setCorreo] = useState("");
+  const [telefono, setTelefono] = useState("");
+  const [password, setPassword] = useState("");
+
+  const [fotoPreview, setFotoPreview] = useState(null);
+  const [fotoArchivo, setFotoArchivo] = useState(null);
+
+  useEffect(() => {
+    cargarDatos();
+  }, []);
+
+  async function cargarDatos() {
+    try {
+      const data = await api("/auth/me");  // ✅ ESTA ES LA RUTA CORRECTA
+      setUsuario(data);
+
+      setNombre(data.nombre || "");
+      setCorreo(data.correo || "");
+      setTelefono(data.telefono || "");
+      setFotoPreview(data.foto || null);
+
+    } catch (error) {
+      console.error("Error al cargar perfil:", error);
+    }
+  }
+
+  async function guardarCambios(e) {
+    e.preventDefault();
+
+    try {
+      let fotoURL = fotoPreview;
+
+      // Si se eligió una nueva foto, subirla
+      if (fotoArchivo) {
+        const formData = new FormData();
+        formData.append("archivo", fotoArchivo);
+
+        const uploadRes = await api("/uploads", {
+          method: "POST",
+          body: formData,
+        });
+
+        fotoURL = uploadRes.url;
+      }
+
+      // Actualizar datos del usuario
+      await api("/auth/me", {
+        method: "PUT",
+        body: {
+          nombre,
+          correo,
+          telefono,
+          foto: fotoURL,
+          password: password || undefined, // si está vacío no lo envía
+        },
+      });
+
+      alert("Perfil actualizado correctamente");
+      window.location.href = "/perfil";
+
+    } catch (error) {
+      console.error("Error guardando perfil:", error);
+      alert("Hubo un error al actualizar el perfil");
+    }
+  }
+
+  if (!usuario) {
+    return (
+      <div className="min-h-screen bg-[#082b1f] text-white flex items-center justify-center">
+        Cargando perfil...
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#082b1f] text-white p-6 md:p-10">
+
+      {/* HEADER */}
+      <div className="flex items-center gap-3 mb-10">
+        <img src={hoja} alt="logo" className="w-12 h-12 drop-shadow-lg" />
+        <h1 className="text-3xl font-bold text-emerald-400">
+          Editar Perfil
+        </h1>
+      </div>
+
+      {/* FORMULARIO */}
+      <form
+        onSubmit={guardarCambios}
+        className="bg-[#0e4330] p-8 rounded-xl border border-emerald-500 shadow-xl max-w-2xl mx-auto"
+      >
+
+        {/* FOTO */}
+        <div className="flex flex-col items-center mb-8">
+          <img
+            src={fotoPreview || "https://via.placeholder.com/120"}
+            className="w-32 h-32 rounded-full object-cover border-4 border-emerald-500 shadow-lg"
+          />
+
+          <label
+            className="mt-4 cursor-pointer bg-emerald-500 hover:bg-emerald-600 px-4 py-2 rounded-lg font-semibold transition"
+          >
+            Cambiar foto
+            <input
+              type="file"
+              className="hidden"
+              accept="image/*"
+              onChange={(e) => {
+                setFotoArchivo(e.target.files[0]);
+                setFotoPreview(URL.createObjectURL(e.target.files[0]));
+              }}
+            />
+          </label>
+        </div>
+
+        {/* NOMBRE */}
+        <div className="mb-5">
+          <label className="text-emerald-300 font-semibold">Nombre</label>
+          <input
+            type="text"
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            className="w-full mt-1 bg-[#0f3f2d] text-white px-4 py-2 rounded-lg 
+                       border border-emerald-500 outline-none focus:ring-2 
+                       focus:ring-emerald-400"
+          />
+        </div>
+
+        {/* CORREO */}
+        <div className="mb-5">
+          <label className="text-emerald-300 font-semibold">Correo</label>
+          <input
+            type="email"
+            value={correo}
+            onChange={(e) => setCorreo(e.target.value)}
+            className="w-full mt-1 bg-[#0f3f2d] text-white px-4 py-2 rounded-lg 
+                       border border-emerald-500 outline-none focus:ring-2 
+                       focus:ring-emerald-400"
+          />
+        </div>
+
+        {/* TELEFONO */}
+        <div className="mb-5">
+          <label className="text-emerald-300 font-semibold">Teléfono</label>
+          <input
+            type="text"
+            value={telefono}
+            onChange={(e) => setTelefono(e.target.value)}
+            className="w-full mt-1 bg-[#0f3f2d] text-white px-4 py-2 rounded-lg 
+                       border border-emerald-500 outline-none focus:ring-2 
+                       focus:ring-emerald-400"
+          />
+        </div>
+
+        {/* PASSWORD (opcional) */}
+        <div className="mb-5">
+          <label className="text-emerald-300 font-semibold">
+            Nueva contraseña (opcional)
+          </label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Dejar vacío si no deseas cambiarla"
+            className="w-full mt-1 bg-[#0f3f2d] text-white px-4 py-2 rounded-lg 
+                       border border-emerald-500 outline-none focus:ring-2 
+                       focus:ring-emerald-400"
+          />
+        </div>
+
+        {/* BOTONES */}
+        <div className="flex justify-between mt-8">
+          <a
+            href="/perfil"
+            className="px-5 py-2 rounded-lg bg-gray-600 hover:bg-gray-700 
+                       transition font-semibold"
+          >
+            Cancelar
+          </a>
+
+          <button
+            type="submit"
+            className="px-6 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 
+                       transition font-semibold"
+          >
+            Guardar Cambios
+          </button>
+        </div>
+
+      </form>
+    </div>
+  );
+}
+</file>
+
+<file path="digital-barder/frontend/src/pages/HistorialCompras.jsx">
+import React, { useEffect, useState } from "react";
+import { api } from "../services/api";
+import hoja from "../assets/hoja.png";
+
+export default function HistorialCompras() {
+  const [compras, setCompras] = useState([]);
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    cargarCompras();
+  }, []);
+
+  async function cargarCompras() {
+    try {
+      // ajusta la ruta si tu backend usa otro nombre
+      const res = await api("/wallet/mis-compras-creditos");
+      setCompras(res);
+    } catch (err) {
+      console.error("Error cargando compras:", err);
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  if (cargando) {
+    return (
+      <div className="min-h-screen bg-[#082b1f] text-white flex items-center justify-center">
+        Cargando historial de compras...
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#082b1f] text-white p-6 md:p-10">
+      {/* HEADER */}
+      <div className="flex items-center gap-3 mb-8">
+        <img src={hoja} alt="logo" className="w-10 h-10 drop-shadow-lg" />
+        <h1 className="text-3xl font-bold text-emerald-400">
+          Historial de Compras de Créditos
+        </h1>
+      </div>
+
+      {/* TABLA */}
+      <div className="bg-[#0f3f2d] border border-emerald-600 rounded-xl shadow-lg p-4 md:p-6 overflow-x-auto">
+        {compras.length === 0 ? (
+          <p className="opacity-80">Todavía no tienes compras registradas.</p>
+        ) : (
+          <table className="min-w-full text-sm">
+            <thead className="border-b border-emerald-600 text-emerald-300">
+              <tr>
+                <th className="py-2 text-left">Fecha</th>
+                <th className="py-2 text-left">Paquete</th>
+                <th className="py-2 text-right">Créditos</th>
+                <th className="py-2 text-right">Monto (Bs)</th>
+                <th className="py-2 text-left">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {compras.map((c, idx) => (
+                <tr
+                  key={idx}
+                  className="border-b border-emerald-800/60 last:border-0"
+                >
+                  <td className="py-2 pr-4">
+                    {c.fecha_compra || c.fecha || "-"}
+                  </td>
+                  <td className="py-2 pr-4">
+                    {c.paquete || c.nombre_paquete || "Paquete"}
+                  </td>
+                  <td className="py-2 pr-4 text-right">
+                    {c.creditos || c.creditos_compra || "—"}
+                  </td>
+                  <td className="py-2 pr-4 text-right">
+                    {(c.monto_bs ?? c.monto) || "—"}
+                  </td>
+                  <td className="py-2 pr-4">
+                    <span className="px-3 py-1 rounded-full bg-emerald-700/40 border border-emerald-500 text-xs uppercase tracking-wide">
+                      {c.estado || "DESCONOCIDO"}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="digital-barder/frontend/src/pages/Intercambios.jsx">
+// digital-barder/frontend/src/pages/Intercambios.jsx
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { api } from "../services/api";
+import { ArrowLeft, ArrowLeftRight, ShoppingBag, Store } from "lucide-react";
+import hoja from "../assets/hoja.png";
+
+export default function Intercambios() {
+  const navigate = useNavigate();
+
+  // formulario crear intercambio
+  const [idPublicacion, setIdPublicacion] = useState("");
+  const [creditos, setCreditos] = useState("");
+  const [creando, setCreando] = useState(false);
+  const [txCreada, setTxCreada] = useState(null);
+  const [errorForm, setErrorForm] = useState("");
+
+  // listas
+  const [tab, setTab] = useState("compras"); // "compras" | "ventas"
+  const [compras, setCompras] = useState([]);
+  const [ventas, setVentas] = useState([]);
+  const [loadingListas, setLoadingListas] = useState(false);
+  const [errorListas, setErrorListas] = useState("");
+
+  // cargar compras y ventas al entrar
+  useEffect(() => {
+    async function cargarListas() {
+      try {
+        setLoadingListas(true);
+        setErrorListas("");
+
+        const [respCompras, respVentas] = await Promise.all([
+          api("/intercambios/mis-compras"),
+          api("/intercambios/mis-ventas"),
+        ]);
+
+        setCompras(Array.isArray(respCompras) ? respCompras : []);
+        setVentas(Array.isArray(respVentas) ? respVentas : []);
+      } catch (err) {
+        console.error(err);
+        setErrorListas(
+          err?.message || "No se pudieron cargar tus intercambios."
+        );
+      } finally {
+        setLoadingListas(false);
+      }
+    }
+
+    cargarListas();
+  }, []);
+
+  async function onCrearIntercambio(e) {
+    e.preventDefault();
+    setErrorForm("");
+    setTxCreada(null);
+
+    if (!idPublicacion || !creditos) {
+      setErrorForm("id_publicacion y créditos son obligatorios.");
+      return;
+    }
+
+    const id_pub = Number(idPublicacion);
+    const cred = Number(creditos);
+
+    if (Number.isNaN(id_pub) || Number.isNaN(cred) || cred <= 0) {
+      setErrorForm("Verifica que el ID y los créditos sean válidos.");
+      return;
+    }
+
+    const ok = window.confirm(
+      `¿Confirmas el intercambio de ${cred} créditos por la publicación #${id_pub}?`
+    );
+    if (!ok) return;
+
+    try {
+      setCreando(true);
+
+      const res = await api("/intercambios", {
+        method: "POST",
+        body: {
+          id_publicacion: id_pub,
+          creditos: cred,
+        },
+      });
+
+      setTxCreada(res?.transaccion || res || null);
+
+      // refrescar listas
+      try {
+        const [respCompras, respVentas] = await Promise.all([
+          api("/intercambios/mis-compras"),
+          api("/intercambios/mis-ventas"),
+        ]);
+        setCompras(Array.isArray(respCompras) ? respCompras : []);
+        setVentas(Array.isArray(respVentas) ? respVentas : []);
+      } catch (errInner) {
+        console.warn("No se pudieron refrescar las listas:", errInner);
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorForm(
+        err?.message ||
+          "Ocurrió un error al intentar realizar el intercambio. Revisa tu saldo o la publicación."
+      );
+    } finally {
+      setCreando(false);
+    }
+  }
+
+  function renderFila(tx) {
+    const id = tx.id_transaccion || tx.id_intercambio || tx.id || null;
+
+    const creditosTx =
+      tx.creditos ??
+      tx.monto_creditos ??
+      tx.cantidad_creditos ??
+      tx.valor_creditos ??
+      "-";
+
+    const titulo =
+      tx.titulo_publicacion ??
+      tx.titulo ??
+      tx.publicacion ??
+      `Transacción #${id || "?"}`;
+
+    const fechaStr = tx.creado_en
+      ? new Date(tx.creado_en).toLocaleString()
+      : tx.fecha ||
+        (tx.fecha_intercambio &&
+          new Date(tx.fecha_intercambio).toLocaleString()) ||
+        "";
+
+    const contraparte =
+      tx.contraparte ||
+      tx.usuario_contraparte ||
+      tx.comprador ||
+      tx.vendedor ||
+      null;
+
+    return (
+      <div
+        key={id || `${titulo}-${fechaStr}`}
+        className="rounded-xl border border-emerald-800/60 bg-emerald-950/60 px-4 py-3 mb-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2"
+      >
+        <div>
+          <p className="font-semibold text-emerald-100">{titulo}</p>
+          <p className="text-xs text-emerald-100/70">
+            {fechaStr || "Sin fecha registrada"}
+          </p>
+          {tx.estado && (
+            <p className="mt-1 inline-flex items-center text-[11px] rounded-full px-2 py-0.5 border border-emerald-400/60 text-emerald-200">
+              Estado: {tx.estado}
+            </p>
+          )}
+        </div>
+
+        <div className="text-right">
+          <p className="text-sm text-emerald-100/80">
+            Créditos:{" "}
+            <span className="font-semibold text-emerald-300">
+              {creditosTx}
+            </span>
+          </p>
+          {contraparte && (
+            <p className="text-xs text-emerald-100/70 mt-1">
+              Con: {contraparte}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-emerald-950 via-emerald-900 to-emerald-950 text-emerald-50 px-4 py-6">
+      {/* HEADER */}
+      <header className="mb-8 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-2 rounded-full bg-black/30 px-3 py-1 text-sm hover:bg-black/40"
+          >
+            <ArrowLeft size={16} />
+            Volver
+          </button>
+          <div className="flex items-center gap-2 rounded-2xl bg-emerald-900/70 px-3 py-2 text-sm">
+            <ArrowLeftRight size={18} className="text-emerald-300" />
+            <span className="font-semibold">Intercambios</span>
+          </div>
+        </div>
+
+        <img src={hoja} alt="logo" className="w-9 h-9 drop-shadow-md" />
+      </header>
+
+      {/* FORMULARIO CREAR INTERCAMBIO */}
+      <section className="mb-10">
+        <h1 className="text-2xl font-semibold mb-1">
+          Realizar intercambio manual
+        </h1>
+        <p className="text-sm text-emerald-100/80 mb-4">
+          Para pruebas: indica el ID de una publicación y la cantidad de
+          créditos. El backend ejecutará el procedimiento de intercambio y
+          actualizará tu billetera.
+        </p>
+
+        <form
+          onSubmit={onCrearIntercambio}
+          className="grid gap-4 md:grid-cols-[1fr_1fr_auto] items-end bg-emerald-950/60 border border-emerald-800/70 rounded-2xl px-4 py-4"
+        >
+          <div>
+            <label className="block text-xs mb-1">
+              ID publicación (id_publicacion) *
+            </label>
+            <input
+              type="number"
+              value={idPublicacion}
+              onChange={(e) => setIdPublicacion(e.target.value)}
+              className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs mb-1">Créditos a pagar *</label>
+            <input
+              type="number"
+              value={creditos}
+              onChange={(e) => setCreditos(e.target.value)}
+              className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={creando}
+            className="mt-2 md:mt-0 inline-flex items-center justify-center rounded-2xl bg-emerald-500 px-6 py-2 text-sm font-semibold text-emerald-950 shadow hover:bg-emerald-400 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {creando ? "Procesando…" : "Realizar intercambio"}
+          </button>
+        </form>
+
+        {errorForm && (
+          <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {errorForm}
+          </div>
+        )}
+
+        {txCreada && (
+          <div className="mt-4 rounded-xl border border-emerald-500/70 bg-emerald-900/70 px-4 py-3 text-sm">
+            <p className="font-semibold mb-1">
+              Intercambio registrado correctamente ✅
+            </p>
+            <pre className="text-xs text-emerald-100/80 overflow-x-auto">
+              {JSON.stringify(txCreada, null, 2)}
+            </pre>
+          </div>
+        )}
+      </section>
+
+      {/* LISTAS DE COMPRAS / VENTAS */}
+      <section>
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <div className="flex gap-2 rounded-full bg-emerald-950/60 p-1 border border-emerald-800/80">
+            <button
+              type="button"
+              onClick={() => setTab("compras")}
+              className={`flex items-center gap-1 rounded-full px-4 py-1.5 text-xs font-medium ${
+                tab === "compras"
+                  ? "bg-emerald-500 text-emerald-950"
+                  : "text-emerald-100 hover:bg-emerald-800/60"
+              }`}
+            >
+              <ShoppingBag size={14} />
+              Mis compras
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("ventas")}
+              className={`flex items-center gap-1 rounded-full px-4 py-1.5 text-xs font-medium ${
+                tab === "ventas"
+                  ? "bg-emerald-500 text-emerald-950"
+                  : "text-emerald-100 hover:bg-emerald-800/60"
+              }`}
+            >
+              <Store size={14} />
+              Mis ventas
+            </button>
+          </div>
+
+          {loadingListas && (
+            <p className="text-xs text-emerald-100/80">Cargando listas…</p>
+          )}
+        </div>
+
+        {errorListas && (
+          <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {errorListas}
+          </div>
+        )}
+
+        {tab === "compras" && !errorListas && (
+          <div>
+            {compras.map(renderFila)}
+            {compras.length === 0 && !loadingListas && (
+              <p className="text-sm text-emerald-100/80">
+                Aún no tienes compras registradas.
+              </p>
+            )}
+          </div>
+        )}
+
+        {tab === "ventas" && !errorListas && (
+          <div>
+            {ventas.map(renderFila)}
+            {ventas.length === 0 && !loadingListas && (
+              <p className="text-sm text-emerald-100/80">
+                Aún no tienes ventas registradas.
+              </p>
+            )}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+</file>
+
+<file path="digital-barder/frontend/src/pages/MisPublicaciones.jsx">
+// frontend/src/pages/MisPublicaciones.jsx
+import { useEffect, useState } from "react";
+import { api } from "../services/api";
+import hoja from "../assets/hoja.png";
+
+export default function MisPublicaciones() {
+  const [publicaciones, setPublicaciones] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    cargarMisPublicaciones();
+  }, []);
+
+  async function cargarMisPublicaciones() {
+    setCargando(true);
+    setError("");
+    try {
+      // 👇 ruta EXACTA según tu router de backend
+      const data = await api("/publicaciones/mias/listado");
+      setPublicaciones(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "No se pudieron cargar tus publicaciones.");
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-[#082b1f] text-white p-6 md:p-10">
+      {/* HEADER */}
+      <div className="flex items-center justify-between gap-3 mb-8">
+        <div className="flex items-center gap-3">
+          <img src={hoja} alt="logo" className="w-10 h-10 drop-shadow-lg" />
+        <div>
+          <h1 className="text-3xl font-bold text-emerald-400">
+            Mis publicaciones
+          </h1>
+          <p className="text-sm text-emerald-100/80">
+            Aquí ves todo lo que has publicado en el marketplace.
+          </p>
+        </div>
+        </div>
+
+        <a
+          href="/publicaciones"
+          className="bg-emerald-500 hover:bg-emerald-600 px-4 py-2 rounded-lg font-semibold"
+        >
+          Ir al marketplace
+        </a>
+      </div>
+
+      {/* ERROR */}
+      {error && (
+        <div className="mb-4 rounded-md border border-red-400 bg-red-900/40 px-4 py-2 text-sm text-red-100">
+          {error}
+        </div>
+      )}
+
+      {/* CONTENIDO */}
+      {cargando ? (
+        <div className="text-center text-emerald-100/80">Cargando...</div>
+      ) : !error && publicaciones.length === 0 ? (
+        <div className="text-center text-emerald-100/80">
+          Todavía no has creado ninguna publicación.
+        </div>
+      ) : !error ? (
+        <div className="bg-[#0f3f2d] border border-emerald-700 rounded-xl overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="border-b border-emerald-600 text-emerald-300">
+              <tr>
+                <th className="text-left py-2 px-4">Título</th>
+                <th className="text-left py-2 px-4">Categoría</th>
+                <th className="text-left py-2 px-4">Créditos</th>
+                <th className="text-left py-2 px-4">Estado</th>
+                <th className="text-left py-2 px-4">Creado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {publicaciones.map((p) => (
+                <tr
+                  key={p.id_publicacion}
+                  className="border-b border-emerald-800/50 last:border-0"
+                >
+                  <td className="py-2 px-4">{p.titulo}</td>
+                  <td className="py-2 px-4">
+                    {p.categoria || p.id_categoria}
+                  </td>
+                  <td className="py-2 px-4">{p.valor_creditos} cr.</td>
+                  <td className="py-2 px-4">
+                    <span
+                      className={`px-2 py-1 rounded-full border text-xs ${
+                        p.estado === "PUBLICADA" || p.estado === "ACTIVA"
+                          ? "border-emerald-400 text-emerald-300"
+                          : "border-yellow-400 text-yellow-300"
+                      }`}
+                    >
+                      {p.estado || "—"}
+                    </span>
+                  </td>
+                  <td className="py-2 px-4">
+                    {p.creado_en || p.created_at || "-"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+</file>
+
+<file path="digital-barder/frontend/src/pages/Movimientos.jsx">
+import React, { useEffect, useState } from "react";
+import { api } from "../services/api";
+import hoja from "../assets/hoja.png";
+
+export default function Movimientos() {
+  const [movimientos, setMovimientos] = useState([]);
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    cargarMovimientos();
+  }, []);
+
+  async function cargarMovimientos() {
+    try {
+      const res = await api("/wallet/mis-movimientos");
+      setMovimientos(res);
+    } catch (err) {
+      console.error("Error cargando movimientos:", err);
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  if (cargando) {
+    return (
+      <div className="min-h-screen bg-[#082b1f] text-white flex items-center justify-center">
+        Cargando movimientos...
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#082b1f] text-white p-6 md:p-10">
+      {/* HEADER */}
+      <div className="flex items-center gap-3 mb-8">
+        <img src={hoja} alt="logo" className="w-10 h-10 drop-shadow-lg" />
+        <h1 className="text-3xl font-bold text-emerald-400">
+          Movimientos de Wallet
+        </h1>
+      </div>
+
+      {/* TABLA */}
+      <div className="bg-[#0f3f2d] border border-emerald-600 rounded-xl shadow-lg p-4 md:p-6 overflow-x-auto">
+        {movimientos.length === 0 ? (
+          <p className="opacity-80">Todavía no tienes movimientos.</p>
+        ) : (
+          <table className="min-w-full text-sm">
+            <thead className="border-b border-emerald-600 text-emerald-300">
+              <tr>
+                <th className="py-2 text-left">Fecha</th>
+                <th className="py-2 text-left">Tipo</th>
+                <th className="py-2 text-left">Descripción</th>
+                <th className="py-2 text-right">Créditos</th>
+                <th className="py-2 text-right">Saldo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {movimientos.map((m, idx) => (
+                <tr
+                  key={idx}
+                  className="border-b border-emerald-800/60 last:border-0"
+                >
+                  <td className="py-2 pr-4">
+                    {m.fecha || m.fecha_movimiento || "-"}
+                  </td>
+                  <td className="py-2 pr-4">
+                    {m.tipo_movimiento || m.tipo || "Movimiento"}
+                  </td>
+                  <td className="py-2 pr-4">
+                    {m.descripcion || "—"}
+                  </td>
+                  <td
+                    className={`py-2 pr-4 text-right font-semibold ${
+                      m.creditos >= 0 ? "text-emerald-400" : "text-red-400"
+                    }`}
+                  >
+                    {m.creditos >= 0 ? "+" : ""}
+                    {m.creditos} cr
+                  </td>
+                  <td className="py-2 pl-4 text-right">
+                    {m.saldo_resultante ?? m.saldo ?? "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+</file>
+
 <file path="digital-barder/frontend/src/pages/NotFound.jsx">
 import React from "react";
 import { Link } from "react-router-dom";
@@ -4693,6 +6875,709 @@ export default function NotFound() {
           Volver al inicio
         </Link>
       </div>
+    </div>
+  );
+}
+</file>
+
+<file path="digital-barder/frontend/src/pages/Perfil.jsx">
+import React, { useEffect, useState } from "react";
+import hoja from "../assets/hoja.png";
+import { api } from "../services/api";
+import { useNavigate } from "react-router-dom";
+
+export default function Perfil() {
+  const [usuario, setUsuario] = useState(null);
+  const [creditos, setCreditos] = useState(null);
+
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    cargarDatos();
+  }, []);
+
+  async function cargarDatos() {
+    try {
+      const datosUsuario = await api("/auth/me");
+      const wallet = await api("/wallet/mis-creditos");
+
+      setUsuario(datosUsuario);
+      setCreditos(wallet.saldo);
+    } catch (err) {
+      console.error("Error cargando perfil:", err);
+    }
+  }
+
+  if (!usuario) {
+    return (
+      <div className="min-h-screen bg-[#082b1f] flex items-center justify-center text-white">
+        <p>Cargando perfil...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#082b1f] text-white p-6 md:p-10">
+
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-8">
+        <img src={hoja} className="w-12 h-12 drop-shadow-lg" />
+        <h1 className="text-3xl font-bold text-emerald-400">Mi Perfil</h1>
+      </div>
+
+      {/* Tarjeta principal */}
+      <div className="bg-[#0e4330] border border-emerald-500 rounded-xl p-6 md:p-8 shadow-xl mb-10">
+        <div className="flex flex-col md:flex-row md:items-center gap-6">
+
+          {/* Foto */}
+          <div>
+            <img
+              src={usuario.foto || "https://via.placeholder.com/120"}
+              className="w-28 h-28 rounded-full object-cover border-4 border-emerald-500 shadow-lg"
+            />
+          </div>
+
+          {/* Info */}
+          <div className="flex-1">
+            <h2 className="text-2xl font-bold text-emerald-300">
+              {usuario.nombre}
+            </h2>
+
+            <p className="opacity-90">{usuario.correo}</p>
+
+            <p className="mt-2 text-sm">
+              Estado:{" "}
+              <span
+                className={`font-bold ${
+                  usuario.es_premium ? "text-yellow-300" : "text-emerald-300"
+                }`}
+              >
+                {usuario.es_premium ? "Premium" : "Cuenta Normal"}
+              </span>
+            </p>
+
+            <button
+              onClick={() => navigate("/perfil/editar")}
+              className="mt-4 bg-emerald-500 hover:bg-emerald-600 px-5 py-2 rounded-lg font-semibold transition"
+            >
+              Editar Perfil
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Tarjetas secundarias */}
+      <div className="grid md:grid-cols-3 gap-6">
+
+        {/* Créditos */}
+        <div className="bg-[#0e4330] border border-emerald-500 p-6 rounded-xl shadow-lg">
+          <h3 className="text-lg font-semibold text-emerald-300">Mis Créditos</h3>
+          <p className="text-4xl font-bold text-emerald-400 mt-2">
+            {creditos !== null ? creditos : "—"}
+          </p>
+        </div>
+
+        {/* Logros */}
+        <div
+          onClick={() => navigate("/logros")}
+          className="bg-[#0e4330] border border-emerald-500 p-6 rounded-xl shadow-lg 
+          hover:bg-[#14694c] transition cursor-pointer"
+        >
+          <h3 className="text-lg font-semibold text-emerald-300">Logros</h3>
+          <p className="opacity-80 mt-1">Ver mis insignias ganadas</p>
+        </div>
+
+        {/* Actividades */}
+        <div
+          onClick={() => navigate("/actividades")}
+          className="bg-[#0e4330] border border-emerald-500 p-6 rounded-xl shadow-lg
+          hover:bg-[#14694c] transition cursor-pointer"
+        >
+          <h3 className="text-lg font-semibold text-emerald-300">
+            Actividades sostenibles
+          </h3>
+          <p className="opacity-80 mt-1">
+            Mi impacto positivo registrado
+          </p>
+        </div>
+
+      </div>
+
+      {/* Botón independiente (extra) */}
+      <button
+        onClick={() => navigate("/logros")}
+        className="mt-6 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl 
+        text-white font-semibold shadow-md transition"
+      >
+        Ver logros
+      </button>
+
+    </div>
+  );
+}
+</file>
+
+<file path="digital-barder/frontend/src/pages/Publicaciones.jsx">
+// digital-barder/frontend/src/pages/Publicaciones.jsx
+import { useEffect, useState } from "react";
+import { api } from "../services/api";
+import hoja from "../assets/hoja.png";
+import { crearIntercambio } from "../services/api";
+
+export default function Publicaciones() {
+  const [publicaciones, setPublicaciones] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState("");
+  const [filtroTexto, setFiltroTexto] = useState("");
+  const [filtroCategoria, setFiltroCategoria] = useState("TODAS");
+
+  useEffect(() => {
+    cargarPublicaciones();
+  }, []);
+
+  async function cargarPublicaciones() {
+    try {
+      setError("");
+      setCargando(true);
+      // usa el listado general, filtrado por estado ACTIVA
+      const data = await api("/publicaciones");
+      setPublicaciones(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+      setError("No se pudieron cargar las publicaciones.");
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  // armar lista de categorías distintas
+  const categorias = [
+    "TODAS",
+    ...Array.from(
+      new Set(
+        publicaciones
+          .map((p) => p.categoria)
+          .filter(Boolean)
+      )
+    ),
+  ];
+
+  const filtradas = publicaciones.filter((p) => {
+    const texto = filtroTexto.trim().toLowerCase();
+    const coincideTexto =
+      !texto ||
+      (p.titulo || "").toLowerCase().includes(texto) ||
+      (p.descripcion || "").toLowerCase().includes(texto);
+
+    const categoriaPub = p.categoria || "OTROS";
+    const coincideCategoria =
+      filtroCategoria === "TODAS" || filtroCategoria === categoriaPub;
+
+    return coincideTexto && coincideCategoria;
+  });
+
+  async function handleIntercambiar(pub) {
+  const creditos = pub.valor_creditos; // viene del backend en la card
+
+  const ok = window.confirm(
+    `¿Quieres intercambiar ${creditos} créditos por "${pub.titulo}"?`
+  );
+  if (!ok) return;
+
+  try {
+    await crearIntercambio({
+      id_publicacion: pub.id_publicacion,
+      creditos,
+    });
+    alert("Intercambio realizado correctamente ✅");
+    // opcional: navigate("/intercambios");
+  } catch (err) {
+    console.error(err);
+    alert(
+      err.message ||
+        "Ocurrió un error al realizar el intercambio. Revisa tu saldo."
+    );
+  }
+}
+
+  return (
+    <div className="min-h-screen bg-[#082b1f] text-white p-6 md:p-10">
+      {/* HEADER */}
+      <div className="flex items-center justify-between gap-3 mb-8">
+        <div className="flex items-center gap-3">
+          <img src={hoja} alt="logo" className="w-10 h-10 drop-shadow-lg" />
+          <h1 className="text-3xl font-bold text-emerald-400">
+            Marketplace
+          </h1>
+        </div>
+
+        {/* luego puedes cambiar href a /publicaciones/nueva */}
+        <a
+            href="/publicaciones/nueva"
+            className="bg-emerald-500 hover:bg-emerald-600 px-4 py-2 rounded-lg font-semibold"
+            >
+            Crear publicación
+        </a>
+        <a
+            href="/publicaciones/mias"
+            className="bg-emerald-500 hover:bg-emerald-600 px-4 py-2 rounded-lg font-semibold"
+            >
+            Mis publicaciones
+            </a>
+      </div>
+
+      {/* FILTROS */}
+      <div className="bg-[#0f3f2d] border border-emerald-600 rounded-xl p-4 mb-6 flex flex-col md:flex-row gap-4 md:items-center">
+        <div className="flex-1">
+          <label className="block text-sm text-emerald-200 mb-1">
+            Buscar
+          </label>
+          <input
+            type="text"
+            value={filtroTexto}
+            onChange={(e) => setFiltroTexto(e.target.value)}
+            placeholder="Título o descripción..."
+            className="w-full bg-[#0e4330] border border-emerald-600 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-400"
+          />
+        </div>
+
+        <div className="w-full md:w-64">
+          <label className="block text-sm text-emerald-200 mb-1">
+            Categoría
+          </label>
+          <select
+            value={filtroCategoria}
+            onChange={(e) => setFiltroCategoria(e.target.value)}
+            className="w-full bg-[#0e4330] border border-emerald-600 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-400"
+          >
+            {categorias.map((c) => (
+              <option key={c} value={c}>
+                {c === "TODAS" ? "Todas las categorías" : c}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* ERRORES */}
+      {error && (
+        <div className="mb-4 rounded-md border border-red-400 bg-red-900/40 px-4 py-2 text-sm text-red-100">
+          {error}
+        </div>
+      )}
+
+      {/* LISTA DE PUBLICACIONES */}
+      {cargando ? (
+        <div className="text-center text-emerald-100/80">Cargando...</div>
+      ) : filtradas.length === 0 ? (
+        <div className="text-center text-emerald-100/80">
+          No se encontraron publicaciones activas con los filtros actuales.
+        </div>
+      ) : (
+        <div className="grid gap-5 md:grid-cols-3">
+          {filtradas.map((p) => (
+            <article
+              key={p.id_publicacion}
+              className="bg-[#0f3f2d] border border-emerald-700 rounded-xl p-4 shadow-md flex flex-col"
+            >
+              {/* Imagen si viene */}
+              {p.imagen_url && (
+                <img
+                  src={p.imagen_url}
+                  alt={p.titulo}
+                  className="w-full h-40 object-cover rounded-lg mb-3"
+                />
+              )}
+
+              <h2 className="text-lg font-semibold text-emerald-200">
+                {p.titulo}
+              </h2>
+
+              <p className="text-xs text-emerald-300/80 mt-1">
+                {p.categoria || "Sin categoría"} · {p.usuario}
+              </p>
+
+              <p className="mt-2 text-sm text-emerald-100/90 line-clamp-3">
+                {p.descripcion || "Sin descripción"}
+              </p>
+
+              <div className="mt-3 flex items-center justify-between text-sm">
+                <span className="font-semibold text-emerald-300">
+                  {p.valor_creditos} cr.
+                </span>
+                <span
+                  className={`text-xs px-2 py-1 rounded-full border ${
+                    p.estado === "ACTIVA"
+                      ? "border-emerald-400 text-emerald-300"
+                      : "border-yellow-400 text-yellow-300"
+                  }`}
+                >
+                  {p.estado}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                className="mt-4 w-full rounded-lg bg-emerald-500 hover:bg-emerald-600 py-2 text-sm font-semibold"
+                onClick={() =>
+                  alert(
+                    "Aquí más adelante podemos abrir el detalle o flujo de intercambio."
+                  )
+                }
+              >
+                Ver detalle
+              </button>
+             <button
+                onClick={() => handleIntercambiar(pub.id_publicacion)}
+                className="mt-3 w-full bg-emerald-500 hover:bg-emerald-600 text-emerald-950 font-semibold py-2 rounded-xl"
+                >
+                Intercambiar
+            </button>
+
+            </article>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="digital-barder/frontend/src/pages/PublicacionNueva.jsx">
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { api } from "../services/api";
+import hoja from "../assets/hoja.png";
+
+export default function PublicacionNueva() {
+  const [tipo, setTipo] = useState("PRODUCTO"); // PRODUCTO | SERVICIO
+  const [titulo, setTitulo] = useState("");
+  const [descripcion, setDescripcion] = useState("");
+  const [idCategoria, setIdCategoria] = useState("");
+  const [costoCreditos, setCostoCreditos] = useState("");
+  const [cantidad, setCantidad] = useState("");
+  const [horario, setHorario] = useState("A convenir");
+
+  const [imagenFile, setImagenFile] = useState(null);
+  const [imagenPreview, setImagenPreview] = useState(null);
+
+  const [loading, setLoading] = useState(false);
+  const [mensajeError, setMensajeError] = useState("");
+  const [mensajeOk, setMensajeOk] = useState("");
+
+  const navigate = useNavigate();
+
+  async function manejarSubmit(e) {
+    e.preventDefault();
+    setMensajeError("");
+    setMensajeOk("");
+
+    if (!titulo.trim() || !descripcion.trim() || !idCategoria || !costoCreditos) {
+      setMensajeError("Título, descripción, categoría y créditos son obligatorios.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // 1) Subir imagen si se seleccionó
+      let imagenURL = null;
+      if (imagenFile) {
+        const formData = new FormData();
+        formData.append("archivo", imagenFile);
+
+        const resUpload = await api("/uploads", {
+          method: "POST",
+          body: formData,
+        });
+
+        imagenURL = resUpload.url || resUpload.imagen_url || null;
+      }
+
+      // 2) Construir body según tipo (usando nombres EXACTOS del backend)
+      const base = {
+        titulo: titulo.trim(),
+        descripcion: descripcion.trim(),
+        id_categoria: Number(idCategoria),
+        valor_creditos: Number(costoCreditos), // nombre del campo en PUBLICACION
+        imagen_url: imagenURL,
+      };
+
+      let endpoint = "";
+      let body = {};
+
+      if (tipo === "PRODUCTO") {
+        endpoint = "/publicaciones/producto";
+
+        body = {
+          ...base,
+          producto: {
+            nombre: titulo.trim(),
+            descripcion: descripcion.trim(),
+            precio: null,
+            peso: null,
+          },
+          cantidad: Number(cantidad || 1), // requerido
+          id_um: 1, // unidad genérica; en tu BD será la UM con id=1
+        };
+      } else {
+        endpoint = "/publicaciones/servicio";
+
+        body = {
+          ...base,
+          servicio: {
+            nombre: titulo.trim(),
+            descripcion: descripcion.trim(),
+            precio: null,
+            duracion_min: null,
+          },
+          horario: horario || "A convenir", // requerido por el backend
+        };
+      }
+
+      await api(endpoint, {
+        method: "POST",
+        body,
+      });
+
+      setMensajeOk("Publicación creada correctamente 🎉");
+
+      // limpiar formulario
+      setTitulo("");
+      setDescripcion("");
+      setIdCategoria("");
+      setCostoCreditos("");
+      setCantidad("");
+      setHorario("A convenir");
+      setImagenFile(null);
+      setImagenPreview(null);
+
+      // redirigir a "Mis publicaciones"
+      setTimeout(() => {
+        navigate("/publicaciones/mias");
+      }, 1200);
+    } catch (err) {
+      console.error(err);
+      setMensajeError(
+        err.message || "Ocurrió un error al crear la publicación."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-[#082b1f] text-white p-6 md:p-10">
+      {/* HEADER */}
+      <div className="flex items-center justify-between gap-3 mb-8">
+        <div className="flex items-center gap-3">
+          <img src={hoja} alt="logo" className="w-10 h-10 drop-shadow-lg" />
+          <div>
+            <h1 className="text-3xl font-bold text-emerald-400">
+              Nueva publicación
+            </h1>
+            <p className="text-sm text-emerald-100/80">
+              Publica un producto o servicio para intercambiar con créditos verdes.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="px-4 py-2 rounded-lg border border-emerald-500 text-sm hover:bg-emerald-500/10"
+        >
+          Volver
+        </button>
+      </div>
+
+      {/* MENSAJES */}
+      {mensajeError && (
+        <div className="mb-4 rounded-md border border-red-400 bg-red-900/40 px-4 py-2 text-sm text-red-100">
+          {mensajeError}
+        </div>
+      )}
+
+      {mensajeOk && (
+        <div className="mb-4 rounded-md border border-emerald-400 bg-emerald-900/40 px-4 py-2 text-sm text-emerald-100">
+          {mensajeOk}
+        </div>
+      )}
+
+      {/* FORMULARIO */}
+      <form
+        onSubmit={manejarSubmit}
+        className="bg-[#0f3f2d] border border-emerald-700 rounded-xl p-6 md:p-8 max-w-3xl mx-auto space-y-6"
+      >
+        {/* Tipo */}
+        <div>
+          <span className="block text-sm font-semibold text-emerald-200 mb-2">
+            Tipo de publicación
+          </span>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setTipo("PRODUCTO")}
+              className={`flex-1 py-2 rounded-lg border text-sm font-semibold
+                ${
+                  tipo === "PRODUCTO"
+                    ? "bg-emerald-500 text-black border-emerald-400"
+                    : "bg-[#0e4330] border-emerald-700 hover:border-emerald-500"
+                }`}
+            >
+              Producto
+            </button>
+            <button
+              type="button"
+              onClick={() => setTipo("SERVICIO")}
+              className={`flex-1 py-2 rounded-lg border text-sm font-semibold
+                ${
+                  tipo === "SERVICIO"
+                    ? "bg-emerald-500 text-black border-emerald-400"
+                    : "bg-[#0e4330] border-emerald-700 hover:border-emerald-500"
+                }`}
+            >
+              Servicio
+            </button>
+          </div>
+        </div>
+
+        {/* Título */}
+        <div>
+          <label className="block text-sm text-emerald-200 mb-1">
+            Título *
+          </label>
+          <input
+            type="text"
+            value={titulo}
+            onChange={(e) => setTitulo(e.target.value)}
+            className="w-full bg-[#0e4330] border border-emerald-600 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-400"
+            placeholder="Ej. Sudadera, Clases de inglés..."
+          />
+        </div>
+
+        {/* Descripción */}
+        <div>
+          <label className="block text-sm text-emerald-200 mb-1">
+            Descripción *
+          </label>
+          <textarea
+            value={descripcion}
+            onChange={(e) => setDescripcion(e.target.value)}
+            rows={4}
+            className="w-full bg-[#0e4330] border border-emerald-600 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-400 resize-y"
+            placeholder="Describe brevemente el producto o servicio..."
+          />
+        </div>
+
+        {/* Categoría + Créditos */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label className="block text-sm text-emerald-200 mb-1">
+              ID categoría *
+            </label>
+            <input
+              type="number"
+              value={idCategoria}
+              onChange={(e) => setIdCategoria(e.target.value)}
+              className="w-full bg-[#0e4330] border border-emerald-600 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-400"
+              placeholder="Ej. 1 (Ropa), 2 (Servicios)..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm text-emerald-200 mb-1">
+              Costo en créditos *
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={costoCreditos}
+              onChange={(e) => setCostoCreditos(e.target.value)}
+              className="w-full bg-[#0e4330] border border-emerald-600 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-400"
+              placeholder="Ej. 100"
+            />
+          </div>
+        </div>
+
+        {/* Cantidad / Horario */}
+        {tipo === "PRODUCTO" ? (
+          <div>
+            <label className="block text-sm text-emerald-200 mb-1">
+              Cantidad disponible
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={cantidad}
+              onChange={(e) => setCantidad(e.target.value)}
+              className="w-full bg-[#0e4330] border border-emerald-600 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-400"
+              placeholder="Por defecto 1"
+            />
+          </div>
+        ) : (
+          <div>
+            <label className="block text-sm text-emerald-200 mb-1">
+              Horario (para el servicio)
+            </label>
+            <input
+              type="text"
+              value={horario}
+              onChange={(e) => setHorario(e.target.value)}
+              className="w-full bg-[#0e4330] border border-emerald-600 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-400"
+              placeholder="Ej. Fines de semana por la tarde"
+            />
+          </div>
+        )}
+
+        {/* Imagen */}
+        <div>
+          <label className="block text-sm text-emerald-200 mb-1">
+            Imagen (opcional)
+          </label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              setImagenFile(file || null);
+              setImagenPreview(file ? URL.createObjectURL(file) : null);
+            }}
+            className="block w-full text-sm text-emerald-100 file:mr-4 file:rounded-lg file:border-0 file:bg-emerald-500 file:px-3 file:py-1 file:text-sm file:font-semibold hover:file:bg-emerald-600"
+          />
+
+          {imagenPreview && (
+            <img
+              src={imagenPreview}
+              alt="Previsualización"
+              className="mt-3 w-40 h-32 object-cover rounded-lg border border-emerald-600"
+            />
+          )}
+        </div>
+
+        {/* BOTONES */}
+        <div className="flex justify-end gap-3 pt-4">
+          <button
+            type="button"
+            onClick={() => navigate("/publicaciones/mias")}
+            className="px-4 py-2 rounded-lg border border-emerald-500 text-sm hover:bg-emerald-500/10"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className={`px-5 py-2 rounded-lg text-sm font-semibold
+              ${
+                loading
+                  ? "bg-gray-500 cursor-not-allowed"
+                  : "bg-emerald-500 hover:bg-emerald-600"
+              }`}
+          >
+            {loading ? "Guardando..." : "Publicar"}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
@@ -6177,6 +9062,178 @@ export default function ReportesUsuariosPremium() {
             </tbody>
           </table>
         </div>
+      </section>
+    </div>
+  );
+}
+</file>
+
+<file path="digital-barder/frontend/src/pages/Wallet.jsx">
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { api } from "../services/api";
+import hoja from "../assets/hoja.png";
+
+export default function Wallet() {
+  const [saldo, setSaldo] = useState(0);
+  const [bloqueado, setBloqueado] = useState(0);
+  const [movimientos, setMovimientos] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    cargarDatos();
+  }, []);
+
+  async function cargarDatos() {
+    try {
+      setCargando(true);
+      setError("");
+
+      const [resCreditos, resMovs] = await Promise.all([
+        api("/wallet/mis-creditos"),
+        api("/wallet/mis-movimientos"),
+      ]);
+
+      // 👇 AQUÍ usamos saldo_creditos que viene del backend
+      const saldoDisponible =
+        resCreditos?.saldo_creditos ??
+        resCreditos?.saldo ??
+        resCreditos?.creditos ??
+        0;
+
+      const saldoBloqueado =
+        resCreditos?.saldo_bloqueado ??
+        resCreditos?.bloqueado ??
+        0;
+
+      setSaldo(saldoDisponible);
+      setBloqueado(saldoBloqueado);
+
+      setMovimientos(
+        Array.isArray(resMovs) ? resMovs.slice(0, 10) : []
+      );
+    } catch (err) {
+      console.error("Error cargando wallet:", err);
+      setError(err.message || "Error al cargar la información de la wallet.");
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  if (cargando) {
+    return (
+      <div className="min-h-screen bg-[#082b1f] text-white flex items-center justify-center">
+        Cargando wallet...
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#082b1f] text-white p-6 md:p-10">
+      {/* HEADER */}
+      <div className="flex items-center gap-3 mb-8">
+        <img src={hoja} alt="logo" className="w-10 h-10 drop-shadow-lg" />
+        <h1 className="text-3xl font-bold text-emerald-400">Mi Wallet</h1>
+      </div>
+
+      {/* ERROR */}
+      {error && (
+        <div className="mb-4 rounded-md border border-red-400 bg-red-900/40 px-4 py-2 text-sm text-red-100">
+          {error}
+        </div>
+      )}
+
+      {/* TARJETAS RESUMEN */}
+      <div className="grid gap-6 md:grid-cols-3 mb-10">
+        {/* Créditos disponibles */}
+        <div className="rounded-2xl border border-emerald-700 bg-[#0f3f2d] p-6 shadow-lg">
+          <p className="text-emerald-200 text-sm mb-2">Créditos disponibles</p>
+          <p className="text-4xl font-bold text-emerald-300">{saldo}</p>
+        </div>
+
+        {/* Créditos bloqueados */}
+        <div className="rounded-2xl border border-emerald-700 bg-[#0f3f2d] p-6 shadow-lg">
+          <p className="text-emerald-200 text-sm mb-2">Créditos bloqueados</p>
+          <p className="text-4xl font-bold text-yellow-300">{bloqueado}</p>
+        </div>
+
+        {/* Acciones rápidas */}
+        <div className="rounded-2xl border border-emerald-700 bg-[#0f3f2d] p-6 shadow-lg flex flex-col gap-3">
+          <p className="text-emerald-200 text-sm mb-2">Acciones rápidas</p>
+
+          <button
+            onClick={() => navigate("/comprar-creditos")}
+            className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 py-2 text-sm font-semibold"
+          >
+            Comprar créditos
+          </button>
+
+          <button
+            onClick={() => navigate("/wallet/movimientos")}
+            className="w-full rounded-xl bg-[#0f3f2d] border border-emerald-500 hover:bg-emerald-700 py-2 text-sm font-semibold"
+          >
+            Ver movimientos
+          </button>
+
+          <button
+            onClick={() => navigate("/wallet/compras")}
+            className="w-full rounded-xl bg-[#0f3f2d] border border-emerald-500 hover:bg-emerald-700 py-2 text-sm font-semibold"
+          >
+            Historial de compras
+          </button>
+        </div>
+      </div>
+
+      {/* ÚLTIMOS MOVIMIENTOS */}
+      <section className="rounded-2xl border border-emerald-700 bg-[#0f3f2d] p-6 shadow-lg">
+        <h2 className="text-xl font-semibold text-emerald-300 mb-4">
+          Últimos movimientos
+        </h2>
+
+        {movimientos.length === 0 ? (
+          <p className="text-sm text-emerald-100/80">
+            Aún no tienes movimientos en tu wallet.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {movimientos.map((m) => (
+              <div
+                key={m.id_movimiento}
+                className="flex items-center justify-between rounded-xl border border-emerald-700 bg-[#0e3a2a] px-4 py-3"
+              >
+                <div>
+                  <p className="font-semibold text-emerald-200">
+                    {m.tipo_movimiento || "MOVIMIENTO"}
+                  </p>
+                  <p className="text-xs text-emerald-100/70">
+                    {m.tipo_referencia || "Sin descripción"}
+                  </p>
+                  <p className="text-[11px] text-emerald-100/60 mt-1">
+                    {m.creado_en
+                      ? new Date(m.creado_en).toLocaleString()
+                      : ""}
+                  </p>
+                </div>
+
+                <div className="text-right">
+                  <p
+                    className={`font-semibold ${
+                      m.cantidad >= 0 ? "text-emerald-300" : "text-red-300"
+                    }`}
+                  >
+                    {m.cantidad >= 0 ? "+" : ""}
+                    {m.cantidad} cr.
+                  </p>
+                  <p className="text-[11px] text-emerald-100/60 mt-1">
+                    Saldo: {m.saldo_posterior ?? m.saldo_posterior ?? "-"} cr.
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );
@@ -16821,6 +19878,111 @@ module.exports = {
 };
 </file>
 
+<file path="digital-barder/frontend/src/components/Navbar.jsx">
+// src/components/Navbar.jsx
+import React from "react";
+import hoja from "../assets/hoja.png";
+
+export default function Navbar() {
+  return (
+    <nav className="w-full bg-[#0b3a2c] border-b border-emerald-600 px-6 py-4 flex items-center justify-between shadow-md">
+      
+      {/* LOGO */}
+      <div className="flex items-center gap-3 cursor-pointer"
+        onClick={() => (window.location.href = "/home")}
+      >
+        <img src={hoja} className="w-9 h-9 drop-shadow-lg" />
+        <h1 className="text-2xl font-bold text-emerald-400">
+          Digital Barter
+        </h1>
+      </div>
+
+      {/* BOTONES DE NAVEGACIÓN */}
+      <div className="flex items-center gap-6">
+
+        {/* PERFIL */}
+        <a
+          href="/perfil"
+          className="text-white hover:text-emerald-400 transition font-semibold"
+        >
+          Perfil
+        </a>
+
+        {/* WALLET */}
+        <a
+          href="/wallet"
+          className="text-white hover:text-emerald-400 transition font-semibold"
+        >
+          Wallet
+        </a>
+
+        {/* PUBLICACIONES */}
+        <a
+          href="/publicaciones"
+          className="text-white hover:text-emerald-400 transition font-semibold"
+        >
+          Publicaciones
+        </a>
+
+        {/* ACTIVIDADES */}
+        <a
+          href="/actividades"
+          className="text-white hover:text-emerald-400 transition font-semibold"
+        >
+          Actividades
+        </a>
+
+        {/* PREMIUM */}
+        <a
+          href="/premium"
+          className="text-white hover:text-yellow-400 transition font-semibold"
+        >
+          Premium
+        </a>
+        {/* INTERCAMBIOS */}
+        <a
+          href="/intercambios"
+          className="text-white hover:text-emerald-400 transition font-semibold"
+        >
+          Intercambios
+        </a>
+        {/* PROMOCIONES (solo admin) */}
+        <a
+          href="/promociones"
+          className="text-white hover:text-emerald-400 transition font-semibold"
+        >
+          Promociones
+        </a>
+        {/* 🔎 NUEVO: REPORTES */}
+        <a
+          href="/reportes"
+          className="px-3 py-1.5 rounded-full border border-emerald-400/70 bg-emerald-500/10 text-emerald-100 text-xs font-semibold tracking-wide uppercase hover:bg-emerald-500/20 hover:border-emerald-300 transition"
+        >
+          Reportes
+        </a>
+        <a
+          href="/publicidad"
+          className="text-white hover:text-emerald-400 transition font-semibold"
+        >
+          Publicidad
+        </a>
+
+        {/* CERRAR SESIÓN */}
+        <button
+          onClick={() => {
+            localStorage.removeItem("token");
+            window.location.href = "/login";
+          }}
+          className="bg-emerald-500 hover:bg-emerald-600 px-4 py-1 rounded-lg text-white font-semibold transition"
+        >
+          Salir
+        </button>
+      </div>
+    </nav>
+  );
+}
+</file>
+
 <file path="digital-barder/frontend/src/components/ProtectedRoute.jsx">
 import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
@@ -19843,70 +23005,6 @@ router.get("/compras", getMisComprasController);
 export default router;
 </file>
 
-<file path="digital-barder/backend/src/routes/index.js">
-// src/routes/index.js
-import { Router } from 'express';
-
-import authRoutes from '../modules/auth/auth.routes.js';
-import usuariosRoutes from '../modules/usuarios/usuarios.routes.js';
-import catalogosRoutes from '../modules/catalogos/catalogos.routes.js';
-import walletRoutes from '../modules/wallet/wallet.routes.js';
-import publicacionesRoutes from '../modules/publicaciones/publicaciones.routes.js';
-import intercambiosRoutes from '../modules/intercambios/intercambios.routes.js';
-import actividadesRoutes from '../modules/actividades/actividades.routes.js';
-import promocionesRoutes from '../modules/promociones/promociones.routes.js';
-import publicidadRoutes from '../modules/publicidad/publicidad.routes.js';
-import logrosRoutes from '../modules/logros/logros.routes.js';
-import premiumRoutes from '../modules/premium/premium.routes.js';
-import reportesRoutes from '../modules/reportes/reportes.routes.js';
-import uploadsRoutes from '../modules/uploads/uploads.routes.js';
-
-const router = Router();
-
-router.use('/auth', authRoutes);
-router.use('/usuarios', usuariosRoutes);
-router.use('/catalogos', catalogosRoutes);
-router.use('/wallet', walletRoutes);
-router.use('/publicaciones', publicacionesRoutes);
-router.use('/intercambios', intercambiosRoutes);
-router.use('/actividades-sostenibles', actividadesRoutes);
-router.use('/promociones', promocionesRoutes);
-router.use('/publicidad', publicidadRoutes);
-router.use('/logros', logrosRoutes);
-router.use('/premium', premiumRoutes);
-router.use('/reportes', reportesRoutes);
-router.use('/uploads', uploadsRoutes);
-
-export default router;
-</file>
-
-<file path="digital-barder/frontend/package.json">
-{
-  "name": "frontend",
-  "version": "0.0.1",
-  "private": true,
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "lucide-react": "^0.555.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.28.0",
-    "recharts": "^3.4.1"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.4",
-    "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.14",
-    "vite": "^5.4.0"
-  }
-}
-</file>
-
 <file path="digital-barder/frontend/src/pages/Login.jsx">
 // frontend/src/pages/Login.jsx
 import React, { useState, useEffect } from "react";
@@ -21089,18 +24187,21 @@ export function errorHandler(err, req, res, next) {
 </file>
 
 <file path="digital-barder/backend/src/modules/reportes/reportes.routes.js">
+// src/modules/reportes/reportes.routes.js
 import { Router } from "express";
 import { authMiddleware } from "../../middlewares/auth.js";
 import { isAdmin } from "../../middlewares/isAdmin.js";
 import {
   repUsuariosActivosController,
   repUsuariosAbandonadosController,
+  repUsuariosNuevosController,      // 👈 nuevo
   repIngresosCreditosController,
   repCreditosGenConsController,
   repIntercambiosCategoriaController,
   repPublicacionesVsIntercambiosController,
   repImpactoAcumuladoController,
   rankingUsuariosController,
+  repUsuariosPremiumController,
 } from "./reportes.controller.js";
 
 const router = Router();
@@ -21109,14 +24210,239 @@ router.use(authMiddleware, isAdmin);
 
 router.get("/usuarios-activos", repUsuariosActivosController);
 router.get("/usuarios-abandonados", repUsuariosAbandonadosController);
+router.get("/usuarios-nuevos", repUsuariosNuevosController);   // 👈 NUEVO
 router.get("/ingresos-creditos", repIngresosCreditosController);
 router.get("/creditos-generados-consumidos", repCreditosGenConsController);
 router.get("/intercambios-categoria", repIntercambiosCategoriaController);
-router.get("/publicaciones-intercambios", repPublicacionesVsIntercambiosController);
+router.get(
+  "/publicaciones-intercambios",
+  repPublicacionesVsIntercambiosController
+);
 router.get("/impacto-acumulado", repImpactoAcumuladoController);
 router.get("/ranking-usuarios", rankingUsuariosController);
+router.get("/usuarios-premium", repUsuariosPremiumController);
 
 export default router;
+</file>
+
+<file path="digital-barder/backend/src/routes/index.js">
+// src/routes/index.js
+import { Router } from 'express';
+
+import authRoutes from '../modules/auth/auth.routes.js';
+import usuariosRoutes from '../modules/usuarios/usuarios.routes.js';
+import catalogosRoutes from '../modules/catalogos/catalogos.routes.js';
+import walletRoutes from '../modules/wallet/wallet.routes.js';
+import publicacionesRoutes from '../modules/publicaciones/publicaciones.routes.js';
+import intercambiosRoutes from '../modules/intercambios/intercambios.routes.js';
+import actividadesRoutes from '../modules/actividades/actividades.routes.js';
+import promocionesRoutes from '../modules/promociones/promociones.routes.js';
+import publicidadRoutes from '../modules/publicidad/publicidad.routes.js';
+import logrosRoutes from '../modules/logros/logros.routes.js';
+import premiumRoutes from '../modules/premium/premium.routes.js';
+import reportesRoutes from '../modules/reportes/reportes.routes.js';
+import uploadsRoutes from '../modules/uploads/uploads.routes.js';
+
+const router = Router();
+
+// 🔹 Health check (para el Home del frontend)
+router.get("/health", (req, res) => {
+  res.json({
+    ok: true,
+    message: "API Digital Barter OK",
+  });
+});
+
+// Rutas de módulos
+router.use('/auth', authRoutes);
+router.use('/usuarios', usuariosRoutes);
+router.use('/catalogos', catalogosRoutes);
+router.use('/wallet', walletRoutes);
+router.use('/publicaciones', publicacionesRoutes);
+router.use('/intercambios', intercambiosRoutes);
+router.use('/actividades-sostenibles', actividadesRoutes);
+router.use('/promociones', promocionesRoutes);
+router.use('/publicidad', publicidadRoutes);
+router.use('/logros', logrosRoutes);
+router.use('/premium', premiumRoutes);
+router.use('/reportes', reportesRoutes);
+router.use('/uploads', uploadsRoutes);
+
+export default router;
+</file>
+
+<file path="digital-barder/frontend/package.json">
+{
+  "name": "frontend",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "lucide-react": "^0.555.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0",
+    "recharts": "^3.4.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.14",
+    "vite": "^5.4.0"
+  }
+}
+</file>
+
+<file path="digital-barder/frontend/src/pages/Reportes.jsx">
+// frontend/src/pages/Reportes.jsx
+import React from "react";
+import { Link } from "react-router-dom";
+import hoja from "../assets/hoja.png";
+
+const reportesList = [
+  {
+    path: "/reportes/usuarios",
+    title: "Usuarios activos y abandonados",
+    description: "Quiénes están usando la plataforma y quiénes no.",
+    categoria: "Usuarios",
+  },
+  {
+    path: "/reportes/ingresos-creditos",
+    title: "Ingresos por venta de créditos",
+    description: "Créditos vendidos e ingresos en bolivianos.",
+    categoria: "Finanzas",
+  },
+  {
+    path: "/reportes/creditos-generados-consumidos",
+    title: "Créditos generados vs consumidos",
+    description: "Balance global de créditos generados y consumidos.",
+    categoria: "Créditos",
+  },
+  {
+    path: "/reportes/intercambios-categoria",
+    title: "Intercambios por categoría",
+    description: "Qué categorías tienen más movimiento en los intercambios.",
+    categoria: "Intercambios",
+  },
+  {
+    path: "/reportes/publicaciones-intercambios",
+    title: "Publicaciones vs intercambios",
+    description:
+      "Relación entre lo publicado y lo que realmente se intercambia.",
+    categoria: "Intercambios",
+  },
+  {
+    path: "/reportes/impacto-acumulado",
+    title: "Impacto ambiental acumulado",
+    description: "CO₂, agua y energía ahorrados en un período.",
+    categoria: "Impacto ambiental",
+  },
+  {
+    path: "/reportes/ranking-usuarios",
+    title: "Ranking de usuarios por impacto",
+    description: "Top de usuarios según su impacto ambiental.",
+    categoria: "Usuarios",
+  },
+  {
+    path: "/reportes/usuarios-premium",
+    title: "Usuarios Premium",
+    description: "Adopción, actividad e ingresos por suscripciones premium.",
+    categoria: "Premium",
+  },
+  {
+    path: "/reportes/saldos-usuarios",
+    title: "Saldos de créditos por usuario",
+    description: "Créditos disponibles actualmente en las billeteras.",
+    categoria: "Créditos",
+  },
+  {
+    path: "/reportes/actividades-sostenibles",
+    title: "Actividades sostenibles",
+    description: "Acciones ecológicas registradas por los usuarios.",
+    categoria: "Actividades",
+  },
+  {
+    path: "/reportes/impacto-categoria",
+    title: "Impacto ambiental por categoría",
+    description: "Impacto ecológico agrupado por categoría de publicación.",
+    categoria: "Impacto ambiental",
+  },
+];
+
+export default function Reportes() {
+  return (
+    <div className="min-h-screen bg-[#082b1f] text-emerald-50 px-4 py-8 md:px-8">
+      {/* HEADER */}
+      <header className="max-w-6xl mx-auto mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-400/70 flex items-center justify-center overflow-hidden">
+            <img
+              src={hoja}
+              alt="Reportes Digital Barder"
+              className="w-8 h-8 object-contain drop-shadow-[0_0_8px_rgba(16,185,129,0.8)]"
+            />
+          </div>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-emerald-300">
+              Reportes y analíticas
+            </h1>
+            <p className="text-sm text-emerald-100/80">
+              Explora los reportes clave de usuarios, créditos, intercambios e
+              impacto ambiental.
+            </p>
+          </div>
+        </div>
+      </header>
+
+      {/* CONTENIDO */}
+      <main className="max-w-6xl mx-auto">
+        <section>
+          <h2 className="text-lg font-semibold text-emerald-200 mb-1">
+            Tipos de reportes disponibles
+          </h2>
+          <p className="text-sm text-emerald-100/80 mb-4">
+            Haz clic en cualquiera de los reportes para ver tablas detalladas,
+            filtros por fecha y métricas específicas.
+          </p>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {reportesList.map((rep) => (
+              <Link
+                key={rep.path}
+                to={rep.path}
+                className="group rounded-2xl border border-emerald-700 bg-[#0f3f2d] p-4 shadow-lg hover:border-emerald-400 hover:bg-[#14533b] transition flex flex-col justify-between"
+              >
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide text-emerald-300/90 mb-1">
+                    {rep.categoria}
+                  </p>
+                  <h3 className="text-base font-semibold text-emerald-50">
+                    {rep.title}
+                  </h3>
+                  <p className="mt-1 text-sm text-emerald-100/80">
+                    {rep.description}
+                  </p>
+                </div>
+
+                <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-200 group-hover:text-emerald-50">
+                  Ver reporte detallado
+                  <span aria-hidden className="translate-y-[1px]">
+                    →
+                  </span>
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
 </file>
 
 <file path="digital-barder/frontend/src/pages/Home.jsx">
@@ -21241,116 +24567,6 @@ export default function Home() {
 }
 </file>
 
-<file path="digital-barder/frontend/src/pages/Reportes.jsx">
-// frontend/src/pages/Reportes.jsx
-import { Link } from "react-router-dom";
-
-const reportesList = [
-  {
-    path: "/reportes/usuarios",
-    title: "Usuarios activos y abandonados",
-    description: "Quiénes están usando la plataforma y quiénes no.",
-  },
-  {
-    path: "/reportes/ingresos-creditos",
-    title: "Ingresos por venta de créditos",
-    description: "Créditos vendidos e ingresos en bolivianos.",
-  },
-  {
-    path: "/reportes/creditos-generados-consumidos",
-    title: "Créditos generados vs consumidos",
-    description: "Balance global de créditos generados y consumidos.",
-  },
-  {
-    path: "/reportes/intercambios-categoria",
-    title: "Intercambios por categoría",
-    description: "Qué categorías tienen más movimiento en los intercambios.",
-  },
-  {
-    path: "/reportes/publicaciones-intercambios",
-    title: "Publicaciones vs intercambios",
-    description: "Relación entre lo publicado y lo que realmente se intercambia.",
-  },
-  {
-    path: "/reportes/impacto-acumulado",
-    title: "Impacto ambiental acumulado",
-    description: "CO₂, agua y energía ahorrados en un período.",
-  },
-  {
-    path: "/reportes/ranking-usuarios",
-    title: "Ranking de usuarios por impacto",
-    description: "Top de usuarios según su impacto ambiental.",
-  },
-  {
-    path: "/reportes/usuarios-premium",
-    title: "Usuarios Premium",
-    description: "Adopción, actividad e ingresos por suscripciones premium.",
-  },
-  {
-    path: "/reportes/saldos-usuarios",
-    title: "Saldos de créditos por usuario",
-    description: "Créditos disponibles actualmente en las billeteras.",
-  },
-  {
-    path: "/reportes/actividades-sostenibles",
-    title: "Actividades sostenibles",
-    description: "Acciones ecológicas registradas por los usuarios.",
-  },
-  {
-    path: "/reportes/impacto-categoria",
-    title: "Impacto ambiental por categoría",
-    description: "Impacto ecológico agrupado por categoría de publicación.",
-  },
-];
-
-export default function Reportes() {
-  return (
-    <div className="p-4 space-y-6">
-      {/* Header */}
-      <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Reportes</h1>
-          <p className="text-sm text-gray-500">
-            Explora los reportes disponibles o abre el dashboard completo.
-          </p>
-        </div>
-
-        <Link
-          to="/reportes-dashboard"
-          className="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium transition"
-        >
-          Ver dashboard completo
-        </Link>
-      </header>
-
-      {/* Tarjetas de reportes */}
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {reportesList.map((rep, idx) => (
-          <div
-            key={idx}
-            className="border rounded-lg p-4 bg-white shadow-sm flex flex-col justify-between hover:shadow-md transition"
-          >
-            <div>
-              <h2 className="font-semibold text-lg mb-1">{rep.title}</h2>
-              <p className="text-sm text-gray-500 mb-3">{rep.description}</p>
-            </div>
-
-            <div className="flex justify-end">
-              <Link
-                to={rep.path}
-                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-              >
-                Ver detalle →
-              </Link>
-            </div>
-          </div>
-        ))}
-      </section>
-    </div>
-  );
-}
-</file>
-
 <file path="digital-barder/frontend/src/router.jsx">
 // frontend/src/router.jsx
 import React from "react";
@@ -21370,12 +24586,30 @@ import EditarPerfil from "./pages/EditarPerfil.jsx";
 
 // Wallet
 import ComprarCreditos from "./pages/ComprarCreditos.jsx";
+import Movimientos from "./pages/Movimientos.jsx";
+import HistorialCompras from "./pages/HistorialCompras.jsx";
+
+import Wallet from "./pages/Wallet.jsx";
+
+import Publicaciones from "./pages/Publicaciones.jsx";
+import MisPublicaciones from "./pages/MisPublicaciones.jsx";
+
+import PublicacionNueva from "./pages/PublicacionNueva.jsx";
+
+import Intercambios from "./pages/Intercambios.jsx";
+
+import Actividades from "./pages/Actividades.jsx";
+import MisActividades from "./pages/MisActividades.jsx";
+
+import Premium from "./pages/Premium.jsx";
+
+import Logros from "./pages/Logros.jsx";
+import Promociones from "./pages/Promociones.jsx";
 
 // Reportes menú principal
 import Reportes from "./pages/Reportes.jsx";
+import Publicidad from "./pages/Publicidad.jsx";
 
-// Dashboard de reportes
-import ReportesDashboard from "./pages/ReportesDashboard.jsx";
 
 // Reportes individuales
 import ReportesUsuarios from "./pages/ReportesUsuarios.jsx";
@@ -21443,13 +24677,151 @@ export default function AppRouter() {
         }
       />
 
-      {/* WALLET */}
+        <Route
+          path="/wallet"
+          element={
+            <ProtectedRoute>
+              <Wallet />
+            </ProtectedRoute>
+          }
+        />
+            {/* WALLET */}
       <Route
         path="/comprar-creditos"
         element={
           <ProtectedRoute>
             <Layout>
               <ComprarCreditos />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/wallet/movimientos"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Movimientos />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/wallet/compras"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <HistorialCompras />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/publicaciones"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Publicaciones />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/publicaciones/mias"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <MisPublicaciones />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/publicaciones/nueva"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <PublicacionNueva />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/intercambios"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Intercambios />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/actividades"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Actividades />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/actividades/mias"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <MisActividades />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+    <Route
+      path="/premium"
+      element={
+        <ProtectedRoute>
+          <Layout>
+            <Premium />
+          </Layout>
+        </ProtectedRoute>
+      }
+    />
+      <Route
+      path="/logros"
+      element={
+        <ProtectedRoute>
+          <Layout>
+            <Logros />
+          </Layout>
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/promociones"
+      element={
+        <ProtectedRoute>
+          <Layout>
+            <Promociones />
+          </Layout>
+        </ProtectedRoute>
+      }
+    />
+
+      <Route
+        path="/publicidad"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Publicidad />
             </Layout>
           </ProtectedRoute>
         }
@@ -21584,18 +24956,6 @@ export default function AppRouter() {
           <ProtectedRoute>
             <Layout>
               <ReportesImpactoCategoria />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      {/* DASHBOARD DE REPORTES */}
-      <Route
-        path="/reportes-dashboard"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <ReportesDashboard />
             </Layout>
           </ProtectedRoute>
         }
@@ -21848,6 +25208,107 @@ export function crearCompraCreditos({ idPaquete, idTransaccionPago = null }) {
 export function getMisComprasCreditos() {
   return api("/wallet/compras");
 }
+
+// ================= INTERCAMBIOS =================
+
+// Crear un intercambio (comprar una publicación con créditos)
+// body: { id_publicacion, creditos }
+export function crearIntercambio({ id_publicacion, creditos }) {
+  return api("/intercambios", {
+    method: "POST",
+    body: { id_publicacion, creditos },
+  });
+}
+
+// Listar mis compras (donde yo soy el comprador)
+export function getMisComprasIntercambios() {
+  return api("/intercambios/mis-compras");
+}
+
+// Listar mis ventas (donde yo soy el vendedor)
+export function getMisVentasIntercambios() {
+  return api("/intercambios/mis-ventas");
+}
+
+// Detalle de una transacción individual
+export function getDetalleTransaccion(idTransaccion) {
+  return api(`/intercambios/${idTransaccion}`);
+}
+// =============== ACTIVIDADES SOSTENIBLES ===============
+
+// Registrar una nueva actividad sostenible del usuario actual
+export function registrarActividadSostenible({
+  id_tipo_actividad,
+  descripcion,
+  creditos_otorgados,
+  evidencia_url,
+}) {
+  return api("/actividades-sostenibles", {
+    method: "POST",
+    body: {
+      id_tipo_actividad,
+      descripcion,
+      creditos_otorgados,
+      evidencia_url,
+    },
+  });
+}
+
+// Obtener MIS actividades sostenibles (historial)
+export function getMisActividadesSostenibles() {
+  return api("/actividades-sostenibles/mias");
+}
+
+// =============== LOGROS ===============
+
+// Lista de logros ganados por el usuario actual
+export function getMisLogros() {
+  return api("/logros/mios");
+}
+// =============== PROMOCIONES ===============
+
+// Listar todas las promociones (admin)
+export function getPromociones() {
+  return api("/promociones");
+}
+
+// Crear una nueva promoción
+export function crearPromocion(body) {
+  return api("/promociones", {
+    method: "POST",
+    body,
+  });
+}
+
+// Cambiar estado de una promoción (ACTIVA / INACTIVA / etc.)
+export function cambiarEstadoPromocion(id_promocion, estado) {
+  return api(`/promociones/${id_promocion}/estado`, {
+    method: "PATCH",
+    body: { estado },
+  });
+}
+
+// Vincular una publicación a una promoción
+export function vincularPublicacionPromocion(id_promocion, id_publicacion) {
+  return api(`/promociones/${id_promocion}/publicaciones`, {
+    method: "POST",
+    body: { id_publicacion },
+  });
+}
+// =============== PUBLICIDAD ===============
+
+// Listar publicidad activa (usa GET /api/publicidad)
+export function getPublicidadActiva() {
+  return api("/publicidad");          // 👈 AQUÍ EL CAMBIO
+}
+
+// Crear una nueva campaña de publicidad
+export function crearPublicidad(body) {
+  return api("/publicidad", {
+    method: "POST",
+    body,
+  });
+}
 </file>
 
 <file path="digital-barder/backend/src/modules/reportes/reportes.controller.js">
@@ -21861,35 +25322,11 @@ import {
   repPublicacionesVsIntercambiosService,
   repImpactoAcumuladoService,
   rankingUsuariosService,
+  repUsuariosPremiumService,
+  repUsuariosNuevosService,          // 👈 nuevo
 } from "./reportes.service.js";
 
-/**
- * Helper para convertir BigInt / Date / Decimal a tipos serializables
- */
-function toPlain(value) {
-  if (typeof value === "bigint") return Number(value);
-
-  if (value instanceof Date) {
-    return value.toISOString().slice(0, 19).replace("T", " ");
-  }
-
-  if (value && typeof value === "object") {
-    if (typeof value.toNumber === "function") return value.toNumber();
-
-    const prim = value.valueOf?.();
-    if (prim != null && typeof prim !== "object") return prim;
-
-    if (Array.isArray(value)) return value.map((v) => toPlain(v));
-
-    const out = {};
-    for (const [k, v] of Object.entries(value)) {
-      out[k] = toPlain(v);
-    }
-    return out;
-  }
-
-  return value;
-}
+// ... (helper toPlain y rango() igual que ya lo tienes)
 
 function rango(req) {
   return { desde: req.query.desde, hasta: req.query.hasta };
@@ -21907,6 +25344,16 @@ export const repUsuariosActivosController = async (req, res, next) => {
 export const repUsuariosAbandonadosController = async (req, res, next) => {
   try {
     const data = await repUsuariosAbandonadosService(rango(req));
+    res.json(toPlain(data));
+  } catch (e) {
+    next(e);
+  }
+};
+
+// 👇 NUEVO: usuarios nuevos (primer login)
+export const repUsuariosNuevosController = async (req, res, next) => {
+  try {
+    const data = await repUsuariosNuevosService(rango(req));
     res.json(toPlain(data));
   } catch (e) {
     next(e);
@@ -21957,12 +25404,11 @@ export const repImpactoAcumuladoController = async (req, res, next) => {
   try {
     const { id_tipo_reporte, id_periodo } = req.query;
 
-    // Asegurar números (o null)
     const tipoReporte = id_tipo_reporte ? parseInt(id_tipo_reporte, 10) : null;
-    const periodo     = id_periodo ? parseInt(id_periodo, 10) : null;
+    const periodo = id_periodo ? parseInt(id_periodo, 10) : null;
 
     const data = await repImpactoAcumuladoService(tipoReporte, periodo);
-    res.json(data);
+    res.json(toPlain(data));
   } catch (e) {
     next(e);
   }
@@ -21976,6 +25422,16 @@ export const rankingUsuariosController = async (req, res, next) => {
     const limit = req.query.limit ? parseInt(req.query.limit, 10) : null;
 
     const data = await rankingUsuariosService(idPeriodo, limit);
+    res.json(toPlain(data));
+  } catch (e) {
+    next(e);
+  }
+};
+
+// 👇 NUEVO: controlador de usuarios premium
+export const repUsuariosPremiumController = async (req, res, next) => {
+  try {
+    const data = await repUsuariosPremiumService(rango(req));
     res.json(toPlain(data));
   } catch (e) {
     next(e);

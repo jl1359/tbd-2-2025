@@ -65,7 +65,26 @@ export default function Navbar() {
         >
           Intercambios
         </a>
-
+        {/* PROMOCIONES (solo admin) */}
+        <a
+          href="/promociones"
+          className="text-white hover:text-emerald-400 transition font-semibold"
+        >
+          Promociones
+        </a>
+        {/* 🔎 NUEVO: REPORTES */}
+        <a
+          href="/reportes"
+          className="px-3 py-1.5 rounded-full border border-emerald-400/70 bg-emerald-500/10 text-emerald-100 text-xs font-semibold tracking-wide uppercase hover:bg-emerald-500/20 hover:border-emerald-300 transition"
+        >
+          Reportes
+        </a>
+        <a
+          href="/publicidad"
+          className="text-white hover:text-emerald-400 transition font-semibold"
+        >
+          Publicidad
+        </a>
 
         {/* CERRAR SESIÓN */}
         <button

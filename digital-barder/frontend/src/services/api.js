@@ -251,3 +251,78 @@ export function getMisVentasIntercambios() {
 export function getDetalleTransaccion(idTransaccion) {
   return api(`/intercambios/${idTransaccion}`);
 }
+// =============== ACTIVIDADES SOSTENIBLES ===============
+
+// Registrar una nueva actividad sostenible del usuario actual
+export function registrarActividadSostenible({
+  id_tipo_actividad,
+  descripcion,
+  creditos_otorgados,
+  evidencia_url,
+}) {
+  return api("/actividades-sostenibles", {
+    method: "POST",
+    body: {
+      id_tipo_actividad,
+      descripcion,
+      creditos_otorgados,
+      evidencia_url,
+    },
+  });
+}
+
+// Obtener MIS actividades sostenibles (historial)
+export function getMisActividadesSostenibles() {
+  return api("/actividades-sostenibles/mias");
+}
+
+// =============== LOGROS ===============
+
+// Lista de logros ganados por el usuario actual
+export function getMisLogros() {
+  return api("/logros/mios");
+}
+// =============== PROMOCIONES ===============
+
+// Listar todas las promociones (admin)
+export function getPromociones() {
+  return api("/promociones");
+}
+
+// Crear una nueva promoción
+export function crearPromocion(body) {
+  return api("/promociones", {
+    method: "POST",
+    body,
+  });
+}
+
+// Cambiar estado de una promoción (ACTIVA / INACTIVA / etc.)
+export function cambiarEstadoPromocion(id_promocion, estado) {
+  return api(`/promociones/${id_promocion}/estado`, {
+    method: "PATCH",
+    body: { estado },
+  });
+}
+
+// Vincular una publicación a una promoción
+export function vincularPublicacionPromocion(id_promocion, id_publicacion) {
+  return api(`/promociones/${id_promocion}/publicaciones`, {
+    method: "POST",
+    body: { id_publicacion },
+  });
+}
+// =============== PUBLICIDAD ===============
+
+// Listar publicidad activa (usa GET /api/publicidad)
+export function getPublicidadActiva() {
+  return api("/publicidad");          // 👈 AQUÍ EL CAMBIO
+}
+
+// Crear una nueva campaña de publicidad
+export function crearPublicidad(body) {
+  return api("/publicidad", {
+    method: "POST",
+    body,
+  });
+}

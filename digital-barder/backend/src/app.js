@@ -1,25 +1,63 @@
 // src/app.js
-import express from 'express'
-import cors from 'cors'
-import helmet from 'helmet'
-import morgan from 'morgan'
-import apiRouter from './routes/index.js'
-import { errorHandler } from './middlewares/errorHandler.js'
 
-const app = express()
+// 🔧 Parche global para que JSON.stringify soporte BigInt en todas las respuestas
+if (typeof BigInt !== "undefined" && !BigInt.prototype.toJSON) {
+  // eslint-disable-next-line no-extend-native
+  BigInt.prototype.toJSON = function () {
+    return Number(this);
+  };
+}
 
-app.use(helmet())
-app.use(cors({ origin: true }))
-app.use(express.json())
-app.use(morgan('dev'))
+import express from "express";
+import cors from "cors";
+import morgan from "morgan";
+import routes from "./routes/index.js";
+import { errorHandler } from "./middlewares/errorHandler.js";
 
-app.get('/api/health', (_req, res) => {
-    res.json({ ok: true })
-})
+import path from "path";
+import { fileURLToPath } from "url";
 
-app.use('/api', apiRouter)
+const app = express();
 
-// middleware de errores al final
-app.use(errorHandler)
+// -------------------------------------------------------------
+// Necesario para rutas absolutas (uploads y archivos estáticos)
+// -------------------------------------------------------------
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-export default app
+// -------------------------------------------------------------
+// Middlewares globales
+// -------------------------------------------------------------
+app.use(cors());                // permitir peticiones de tu frontend
+app.use(morgan("dev"));         // logs en consola
+app.use(express.json());        // permite JSON en body
+app.use(express.urlencoded({ extended: true })); // formularios
+
+// -------------------------------------------------------------
+// Servir archivos estáticos (subidas de imágenes)
+// Ruta final: http://localhost:4000/uploads/<nombre-archivo>
+// -------------------------------------------------------------
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "..", "uploads_storage"))
+);
+
+// -------------------------------------------------------------
+// Registrar todas las rutas del backend
+// -------------------------------------------------------------
+app.use("/api", routes);
+
+// -------------------------------------------------------------
+// Middleware para rutas no encontradas
+// -------------------------------------------------------------
+app.use((req, res, next) => {
+  res.status(404).json({ message: "Ruta no encontrada" });
+});
+
+// -------------------------------------------------------------
+// Middleware global de manejo de errores
+// (Siempre debe ir al final)
+// -------------------------------------------------------------
+app.use(errorHandler);
+
+export default app;

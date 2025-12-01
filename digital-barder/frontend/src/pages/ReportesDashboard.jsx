@@ -49,9 +49,7 @@ export default function ReportesDashboard() {
   const [loadingImpacto, setLoadingImpacto] = useState(false);
   const [error, setError] = useState("");
 
-  /* ====
-     Carga de datos
-     ==== */
+/*     Carga de datos*/
 
   async function cargarDatosBasicos() {
     try {
@@ -113,9 +111,7 @@ export default function ReportesDashboard() {
     cargarDatosBasicos();
   }, []);
 
-  /* ====
-     Datos preparados para gráficos
-     ==== */
+  /* Datos preparados para gráficos */
 
   // Ingresos por día
   const ingresosChartData = useMemo(
@@ -559,10 +555,10 @@ export default function ReportesDashboard() {
                   radius={[6, 6, 0, 0]}
                   barSize={30}
                 />
-                {/* Si luego quieres mostrar agua/energía:
+                
                 <Bar dataKey="agua" name="Agua (L)" fill="#0ea5e9" radius={[6,6,0,0]} />
                 <Bar dataKey="energia" name="Energía (kWh)" fill="#eab308" radius={[6,6,0,0]} />
-                */}
+                
               </BarChart>
             </ResponsiveContainer>
           ) : (

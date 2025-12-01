@@ -1,26 +1,25 @@
 // src/middlewares/errorHandler.js
-export function errorHandler(err, req, res, _next) {
-  console.error("❌ Error en la API:", err);
 
-  // Errores de negocio levantados con SIGNAL o validaciones
-  if (err?.errno === 1644 || err?.code === "P2010") {
-    return res.status(400).json({
-      ok: false,
-      message: err.message ?? "Error de negocio en la base de datos",
-    });
+// Middleware de manejo global de errores (SIEMPRE 4 parámetros)
+export function errorHandler(err, req, res, next) {
+  console.error("❌ Error:", err);
+
+  // Si ya se empezó a enviar la respuesta, delega a Express
+  if (res.headersSent) {
+    return next(err);
   }
 
-  // Errores de Prisma en consultas RAW
-  if (err?.code && err?.clientVersion) {
-    return res.status(500).json({
-      ok: false,
-      message: err.message || "Error de base de datos (Prisma)",
-    });
+  const status = err.status || err.statusCode || 500;
+  const message =
+    err.message || "Ocurrió un error inesperado en el servidor";
+
+  const response = { message };
+
+  // En desarrollo podemos enviar más detalles
+  if (process.env.NODE_ENV !== "production") {
+    response.stack = err.stack;
+    if (err.code) response.code = err.code;
   }
 
-  // Genérico
-  return res.status(500).json({
-    ok: false,
-    message: err.message || "Error interno del servidor",
-  });
+  res.status(status).json(response);
 }

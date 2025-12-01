@@ -258,6 +258,7 @@ CREATE TABLE CALIFICACION (
 ) ENGINE=InnoDB;
 
 -- 4) BILLETERA / MOVIMIENTOS / COMPRAS
+
 CREATE TABLE BILLETERA (
   id_billetera INT PRIMARY KEY AUTO_INCREMENT,
   id_usuario INT NOT NULL UNIQUE,
@@ -530,6 +531,7 @@ CREATE INDEX ix_compra_estado  ON COMPRA_CREDITOS (estado);
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- 9) FUNCIONES
+
 -- Busca el id_tipo_movimiento dado su nombre (RECARGA, INTERCAMBIO_IN, etc.).
 -- Se usa en varios SP y triggers para no quemar IDs a mano.
 DROP FUNCTION IF EXISTS fn_get_tipo_mov;
@@ -563,6 +565,7 @@ END$$
 DELIMITER ;
 
 -- 10) PROCEDIMIENTOS
+
 /*Flujo completo de aprobación de compra de créditos:
 Valida usuario y paquete.
 Verifica que el id_transaccion_pago no esté repetido.
@@ -570,8 +573,16 @@ Inserta la billetera si no existe.
 Inserta la compra como APROBADO con el precio del paquete.
 Obtiene el tipo de movimiento RECARGA.
 Inserta un MOVIMIENTO_CREDITOS por la cantidad de créditos del paquete.*/
+
+-- Tipos de movimiento para bonos de compras
+INSERT IGNORE INTO TIPO_MOVIMIENTO (nombre, descripcion) VALUES
+  ('BONO_PRIMERA_COMPRA','Bono por primera compra de créditos'),
+  ('BONO_RECOMPRAS','Bono por compras recurrentes de créditos'),
+  ('BONO_BIENVENIDA','Bono de bienvenida por registro de usuario');
+
 DROP PROCEDURE IF EXISTS sp_compra_creditos_aprobar;
 DELIMITER $$
+
 CREATE PROCEDURE sp_compra_creditos_aprobar(
   IN p_id_usuario INT,
   IN p_id_paquete INT,
@@ -579,52 +590,158 @@ CREATE PROCEDURE sp_compra_creditos_aprobar(
 )
 BEGIN
   DECLARE v_creditos BIGINT;
-  DECLARE v_id_tipo_mov INT;
+  DECLARE v_id_tipo_mov_recarga INT;
+  DECLARE v_id_tiporef_compra INT;
+  DECLARE v_id_tiporef_ajuste INT;
+  DECLARE v_id_compra INT;
+
+  DECLARE v_total_compras INT DEFAULT 0;
+  DECLARE v_mov_bono_primera INT;
+  DECLARE v_mov_bono_frec INT;
+  DECLARE v_monto_bono BIGINT;
 
   DECLARE EXIT HANDLER FOR SQLEXCEPTION
-  BEGIN ROLLBACK; RESIGNAL; END;
+  BEGIN
+    ROLLBACK;
+    RESIGNAL;
+  END;
 
+  -- Validaciones básicas
   IF p_id_usuario IS NULL OR p_id_paquete IS NULL THEN
-    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Usuario y paquete son obligatorios';
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Usuario y paquete son obligatorios';
   END IF;
 
-  IF p_id_transaccion_pago IS NOT NULL AND
-     EXISTS (SELECT 1 FROM COMPRA_CREDITOS WHERE id_transaccion_pago = p_id_transaccion_pago) THEN
-    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Pago ya registrado';
+  IF p_id_transaccion_pago IS NOT NULL
+     AND EXISTS (SELECT 1 FROM COMPRA_CREDITOS WHERE id_transaccion_pago = p_id_transaccion_pago) THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Pago ya registrado';
   END IF;
 
+  -- Créditos del paquete
   SELECT cantidad_creditos INTO v_creditos
   FROM PAQUETE_CREDITOS
   WHERE id_paquete = p_id_paquete;
 
   IF v_creditos IS NULL THEN
-    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Paquete no existe';
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Paquete no existe';
+  END IF;
+
+  -- Tipos de referencia usados: COMPRA y AJUSTE
+  SELECT id_tipo_referencia
+  INTO v_id_tiporef_compra
+  FROM TIPO_REFERENCIA
+  WHERE nombre = 'COMPRA'
+  LIMIT 1;
+
+  IF v_id_tiporef_compra IS NULL THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'TIPO_REFERENCIA COMPRA no existe';
+  END IF;
+
+  SELECT id_tipo_referencia
+  INTO v_id_tiporef_ajuste
+  FROM TIPO_REFERENCIA
+  WHERE nombre = 'AJUSTE'
+  LIMIT 1;
+
+  IF v_id_tiporef_ajuste IS NULL THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'TIPO_REFERENCIA AJUSTE no existe';
+  END IF;
+
+  -- Tipo de movimiento principal: RECARGA
+  SET v_id_tipo_mov_recarga = fn_get_tipo_mov('RECARGA');
+  IF v_id_tipo_mov_recarga IS NULL THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'TIPO_MOVIMIENTO RECARGA no existe';
   END IF;
 
   START TRANSACTION;
 
+    -- Asegurar billetera
     INSERT IGNORE INTO BILLETERA (id_usuario, estado, saldo_creditos, saldo_bs, cuenta_bancaria)
     VALUES (p_id_usuario, 'ACTIVA', 0, 0.00, NULL);
 
+    -- Registrar la compra como APROBADA
     INSERT INTO COMPRA_CREDITOS (id_usuario, id_paquete, monto_bs, estado, id_transaccion_pago)
     SELECT p_id_usuario, p_id_paquete, precio_bs, 'APROBADO', p_id_transaccion_pago
-    FROM PAQUETE_CREDITOS WHERE id_paquete = p_id_paquete;
+    FROM PAQUETE_CREDITOS
+    WHERE id_paquete = p_id_paquete;
 
-    SET v_id_tipo_mov = fn_get_tipo_mov('RECARGA');
-    IF v_id_tipo_mov IS NULL THEN
-      SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'TIPO_MOVIMIENTO RECARGA no existe';
+    SET v_id_compra = LAST_INSERT_ID();
+
+    -- Movimiento de RECARGA normal
+    INSERT INTO MOVIMIENTO_CREDITOS
+      (id_usuario, id_tipo_movimiento, id_tipo_referencia,
+       cantidad, descripcion, saldo_anterior, saldo_posterior, id_referencia)
+    VALUES
+      (p_id_usuario, v_id_tipo_mov_recarga, v_id_tiporef_compra,
+       v_creditos, 'Recarga por compra de paquete', 0, 0, v_id_compra);
+
+    -- Total de compras APROBADAS del usuario (después de esta)
+    SELECT COUNT(*)
+    INTO v_total_compras
+    FROM COMPRA_CREDITOS
+    WHERE id_usuario = p_id_usuario
+      AND estado = 'APROBADO';
+
+    -- BONO 1: primera compra de créditos
+    IF v_total_compras = 1 THEN
+      SET v_mov_bono_primera = fn_get_tipo_mov('BONO_PRIMERA_COMPRA');
+
+      IF v_mov_bono_primera IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+          SET MESSAGE_TEXT = 'TIPO_MOVIMIENTO BONO_PRIMERA_COMPRA no existe';
+      END IF;
+
+      -- cantidad de bono para la primera compra (ajústalo a tu gusto)
+      SET v_monto_bono = 10;
+
+      INSERT INTO MOVIMIENTO_CREDITOS
+        (id_usuario, id_tipo_movimiento, id_tipo_referencia,
+         cantidad, descripcion, saldo_anterior, saldo_posterior, id_referencia)
+      VALUES
+        (p_id_usuario, v_mov_bono_primera, v_id_tiporef_ajuste,
+         v_monto_bono,
+         'Bono por primera compra de créditos',
+         0, 0, v_id_compra);
     END IF;
 
-    INSERT INTO MOVIMIENTO_CREDITOS
-      (id_usuario, id_tipo_movimiento, id_tipo_referencia, cantidad, descripcion, saldo_anterior, saldo_posterior, id_referencia)
-    VALUES
-      (p_id_usuario, v_id_tipo_mov,
-       (SELECT id_tipo_referencia FROM TIPO_REFERENCIA WHERE nombre='COMPRA' LIMIT 1),
-       v_creditos, 'Recarga por compra de paquete', 0, 0, LAST_INSERT_ID());
+    -- BONO 2: fidelidad por 5, 10 y 25 compras de créditos
+    IF v_total_compras IN (5, 10, 25) THEN
+      SET v_mov_bono_frec = fn_get_tipo_mov('BONO_RECOMPRAS');
+
+      IF v_mov_bono_frec IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+          SET MESSAGE_TEXT = 'TIPO_MOVIMIENTO BONO_RECOMPRAS no existe';
+      END IF;
+
+      -- Monto según el hito alcanzado
+      IF v_total_compras = 5 THEN
+        SET v_monto_bono = 20;
+      ELSEIF v_total_compras = 10 THEN
+        SET v_monto_bono = 40;
+      ELSEIF v_total_compras = 25 THEN
+        SET v_monto_bono = 100;
+      END IF;
+
+      INSERT INTO MOVIMIENTO_CREDITOS
+        (id_usuario, id_tipo_movimiento, id_tipo_referencia,
+         cantidad, descripcion, saldo_anterior, saldo_posterior, id_referencia)
+      VALUES
+        (p_id_usuario, v_mov_bono_frec, v_id_tiporef_ajuste,
+         v_monto_bono,
+         CONCAT('Bono por ', v_total_compras, ' compras de créditos'),
+         0, 0, v_id_compra);
+    END IF;
 
   COMMIT;
 END$$
+
 DELIMITER ;
+
 /*Flujo completo de aprobación de compra de créditos:
 Valida usuario y paquete.
 Verifica que el id_transaccion_pago no esté repetido.
@@ -634,76 +751,127 @@ Obtiene el tipo de movimiento RECARGA.
 Inserta un MOVIMIENTO_CREDITOS por la cantidad de créditos del paquete.*/
 DROP PROCEDURE IF EXISTS sp_realizar_intercambio;
 DELIMITER $$
+
 CREATE PROCEDURE sp_realizar_intercambio(
   IN p_id_comprador INT,
   IN p_id_publicacion INT,
-  IN p_creditos BIGINT
+  IN p_creditos BIGINT       -- lo usamos como validación, pero NO para calcular
 )
 BEGIN
-  DECLARE v_id_vendedor INT;
+  DECLARE v_id_vendedor   INT;
   DECLARE v_valor_creditos BIGINT;
-  DECLARE v_id_tx INT;
-  DECLARE v_mov_in INT;
-  DECLARE v_mov_out INT;
-  DECLARE v_saldo_comp BIGINT;
+  DECLARE v_creditos_tx   BIGINT;
+  DECLARE v_id_tx         INT;
+  DECLARE v_mov_in        INT;
+  DECLARE v_mov_out       INT;
+  DECLARE v_saldo_comp    BIGINT;
 
   DECLARE EXIT HANDLER FOR SQLEXCEPTION
-  BEGIN ROLLBACK; RESIGNAL; END;
+  BEGIN
+    ROLLBACK;
+    RESIGNAL;
+  END;
 
-  SELECT id_usuario, valor_creditos INTO v_id_vendedor, v_valor_creditos
-  FROM PUBLICACION WHERE id_publicacion = p_id_publicacion;
+  -- Obtener vendedor y valor de la publicación
+  SELECT id_usuario, valor_creditos
+  INTO v_id_vendedor, v_valor_creditos
+  FROM PUBLICACION
+  WHERE id_publicacion = p_id_publicacion;
 
   IF v_id_vendedor IS NULL THEN
-    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Publicación no existe';
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Publicación no existe';
   END IF;
+
   IF p_id_comprador = v_id_vendedor THEN
-    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No puedes intercambiar con tu propia publicación';
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'No puedes intercambiar con tu propia publicación';
+  END IF;
+
+  -- Validar valor de la publicación
+  IF v_valor_creditos IS NULL OR v_valor_creditos <= 0 THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'La publicación no tiene un valor de créditos válido';
+  END IF;
+
+  -- Créditos que realmente usará la transacción (siempre el valor de la publicación)
+  SET v_creditos_tx = v_valor_creditos;
+
+  -- Validar que lo que mande el backend coincida (defensa extra)
+  IF p_creditos IS NOT NULL AND p_creditos <> v_creditos_tx THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'La cantidad de créditos debe coincidir con el valor de la publicación';
   END IF;
 
   START TRANSACTION;
 
+    -- Asegurar billeteras
     INSERT IGNORE INTO BILLETERA (id_usuario, estado, saldo_creditos, saldo_bs, cuenta_bancaria)
     VALUES (p_id_comprador, 'ACTIVA', 0, 0.00, NULL);
+
     INSERT IGNORE INTO BILLETERA (id_usuario, estado, saldo_creditos, saldo_bs, cuenta_bancaria)
     VALUES (v_id_vendedor, 'ACTIVA', 0, 0.00, NULL);
 
-    SELECT saldo_creditos INTO v_saldo_comp
-    FROM BILLETERA WHERE id_usuario = p_id_comprador
+    -- Verificar saldo del comprador con EL VALOR DE LA PUBLICACIÓN
+    SELECT saldo_creditos
+    INTO v_saldo_comp
+    FROM BILLETERA
+    WHERE id_usuario = p_id_comprador
     FOR UPDATE;
 
-    IF v_saldo_comp < p_creditos THEN
-      SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Saldo insuficiente';
+    IF v_saldo_comp < v_creditos_tx THEN
+      SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Saldo insuficiente';
     END IF;
 
+    -- Crear la transacción con el valor real de la publicación
     INSERT INTO TRANSACCION (id_comprador, id_vendedor, id_publicacion, cantidad_creditos, estado)
-    VALUES (p_id_comprador, v_id_vendedor, p_id_publicacion, p_creditos, 'ACEPTADA');
+    VALUES (p_id_comprador, v_id_vendedor, p_id_publicacion, v_creditos_tx, 'ACEPTADA');
+
     SET v_id_tx = LAST_INSERT_ID();
 
+    -- Tipos de movimiento de intercambio
     SET v_mov_in  = fn_get_tipo_mov('INTERCAMBIO_IN');
     SET v_mov_out = fn_get_tipo_mov('INTERCAMBIO_OUT');
+
     IF v_mov_in IS NULL OR v_mov_out IS NULL THEN
-      SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Tipos de movimiento de intercambio no configurados';
+      SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Tipos de movimiento de intercambio no configurados';
     END IF;
 
+    -- Movimientos de créditos: comprador (OUT) y vendedor (IN)
     INSERT INTO MOVIMIENTO_CREDITOS
-      (id_usuario, id_tipo_movimiento, id_tipo_referencia, cantidad, descripcion, saldo_anterior, saldo_posterior, id_referencia)
+      (id_usuario, id_tipo_movimiento, id_tipo_referencia,
+       cantidad, descripcion, saldo_anterior, saldo_posterior, id_referencia)
     VALUES
+      -- Comprador: egreso
       (p_id_comprador, v_mov_out,
        (SELECT id_tipo_referencia FROM TIPO_REFERENCIA WHERE nombre='TRANSACCION' LIMIT 1),
-       p_creditos, CONCAT('Pago por transacción #', v_id_tx), 0, 0, v_id_tx),
+       v_creditos_tx,
+       CONCAT('Pago por transacción #', v_id_tx),
+       0, 0, v_id_tx),
+
+      -- Vendedor: ingreso
       (v_id_vendedor, v_mov_in,
        (SELECT id_tipo_referencia FROM TIPO_REFERENCIA WHERE nombre='TRANSACCION' LIMIT 1),
-       p_creditos, CONCAT('Crédito recibido por transacción #', v_id_tx), 0, 0, v_id_tx);
+       v_creditos_tx,
+       CONCAT('Crédito recibido por transacción #', v_id_tx),
+       0, 0, v_id_tx);
 
+    -- Bitácora de intercambio (acción principal)
     INSERT INTO BITACORA_INTERCAMBIO
       (id_transaccion, id_usuario_origen, id_usuario_destino, cantidad_creditos, descripcion)
-    VALUES (v_id_tx, p_id_comprador, v_id_vendedor, p_creditos, 'Intercambio realizado');
+    VALUES
+      (v_id_tx, p_id_comprador, v_id_vendedor, v_creditos_tx, 'Intercambio realizado');
 
+    -- Impacto ambiental de la transacción
     CALL sp_calcular_e_insertar_impacto(v_id_tx);
 
   COMMIT;
 END$$
+
 DELIMITER ;
+
 /*Genera un reporte agregado en la tabla REPORTE_IMPACTO:
 Suma CO₂, agua, energía, número de transacciones y usuarios activos,
 para un período y opcionalmente un usuario.
@@ -758,6 +926,7 @@ BEGIN
      v_total_co2, v_total_ag, v_total_en, v_total_tx, v_total_users);
 END$$
 DELIMITER ;
+
 /*Registra una actividad sostenible y otorga un bono de créditos:
 Inserta la actividad en ACTIVIDAD_SOSTENIBLE.
 Se asegura de que el usuario tenga billetera.
@@ -794,6 +963,7 @@ BEGIN
      p_creditos_otorgados, 'Bono por actividad sostenible', 0, 0, LAST_INSERT_ID());
 END$$
 DELIMITER ;
+
 /*sp_obtener_historial_usuario
 Devuelve un historial mixto de:
 Movimientos de créditos
@@ -820,6 +990,7 @@ BEGIN
   WHERE t.id_comprador = p_id_usuario OR t.id_vendedor = p_id_usuario;
 END$$
 DELIMITER ;
+
 /*Calcula y guarda el impacto ambiental de una transacción:
 Obtiene comprador, vendedor, publicación y créditos usados.
 Lee categoría y valor_creditos de la publicación.
@@ -884,6 +1055,7 @@ END$$
 DELIMITER ;
 
 -- 11) TRIGGERS
+
 /*Antes de insertar un MOVIMIENTO_CREDITOS:
 Garantiza que el usuario tenga billetera.
 Obtiene su saldo actual.
@@ -927,6 +1099,7 @@ BEGIN
   END IF;
 END$$
 DELIMITER ;
+
 /*Después de insertar el movimiento:
 Actualiza la BILLETERA con el nuevo saldo_posterior.*/
 DROP TRIGGER IF EXISTS trg_movcred_after_ins;
@@ -940,6 +1113,7 @@ BEGIN
   WHERE id_usuario = NEW.id_usuario;
 END$$
 DELIMITER ;
+
 /*Antes de insertar una TRANSACCION:
 Llama a fn_verificar_saldo para revisar si el comprador tiene créditos suficientes.
 Si no, lanza error.*/
@@ -954,6 +1128,7 @@ BEGIN
   END IF;
 END$$
 DELIMITER ;
+
 /*Después de insertar una TRANSACCION:
 Inserta un registro en BITACORA_INTERCAMBIO (“Transacción creada”).*/
 DROP TRIGGER IF EXISTS trg_trans_after_ins;
@@ -966,6 +1141,7 @@ BEGIN
   VALUES (NEW.id_transaccion, NEW.id_comprador, NEW.id_vendedor, NEW.cantidad_creditos, 'Transacción creada');
 END$$
 DELIMITER ;
+
 /*Después de actualizar una TRANSACCION:
 Si cambió de estado, inserta en BITACORA_INTERCAMBIO un historial del cambio*/
 DROP TRIGGER IF EXISTS trg_trans_after_upd;
@@ -981,6 +1157,7 @@ BEGIN
   END IF;
 END$$
 DELIMITER ;
+
 /*Cuando se crea una PUBLICACION:
 Suma los créditos de promociones ACTIVAS asociadas a esa publicación.
 Si hay bono:
@@ -1077,9 +1254,10 @@ ALTER TABLE PUBLICACION
   ADD FULLTEXT ft_pub_titulo_desc (titulo, descripcion);
 
 -- 13) SEED FUNCIONAL (deja datos de demo listos)
+
 -- Roles, permisos mínimos (permiso útil para admin si lo usas)
 INSERT IGNORE INTO ROL (nombre, descripcion) VALUES
-  ('ADMIN','Administrador'),('COMPRADOR','Comprador'),('VENDEDOR','Vendedor'),('ONG','Organización');
+  ('ADMIN','Administrador'),('USUARIO','usuario normal'),('ONG','Organización');
 
 INSERT IGNORE INTO PERMISO (nombre, descripcion) VALUES
   ('GESTION_USUARIOS','CRUD usuarios'),('VER_REPORTES','Acceso a reportes');
@@ -1118,6 +1296,14 @@ INSERT IGNORE INTO TIPO_MOVIMIENTO (nombre, descripcion) VALUES
 
 INSERT IGNORE INTO SIGNO_MOVIMIENTO (nombre) VALUES ('POSITIVO'),('NEGATIVO');
 
+-- Ambos son POSITIVOS: bonos por compras y bienvenida
+INSERT IGNORE INTO SIGNO_TIPO_MOV (id_tipo_movimiento, id_signo, creado_en)
+SELECT tm.id_tipo_movimiento, sm.id_signo, NOW()
+FROM TIPO_MOVIMIENTO tm
+JOIN SIGNO_MOVIMIENTO sm ON sm.id_signo = sm.id_signo
+WHERE sm.nombre = 'POSITIVO'
+  AND tm.nombre IN ('BONO_PRIMERA_COMPRA','BONO_RECOMPRAS','BONO_BIENVENIDA');
+
 INSERT IGNORE INTO SIGNO_TIPO_MOV (id_tipo_movimiento, id_signo, creado_en)
 SELECT tm.id_tipo_movimiento, sm.id_signo, NOW()
 FROM TIPO_MOVIMIENTO tm
@@ -1142,8 +1328,8 @@ VALUES ('CO2','Dióxido de carbono','kg','CO2 evitado'),
 -- Usuarios demo
 INSERT IGNORE INTO USUARIO (id_rol, estado, nombre, apellido, correo, telefono, url_perfil)
 VALUES
-  ((SELECT id_rol FROM ROL WHERE nombre='COMPRADOR'),'ACTIVO','Ana','Rojas','ana@demo.com','70000001','/p/ana'),
-  ((SELECT id_rol FROM ROL WHERE nombre='VENDEDOR'),'ACTIVO','Luis','Quispe','luis@demo.com','70000002','/p/luis');
+  ((SELECT id_rol FROM ROL WHERE nombre='USUARIO'),'ACTIVO','Ana','Rojas','ana@demo.com','70000001','/p/ana'),
+  ((SELECT id_rol FROM ROL WHERE nombre='USUARIO'),'ACTIVO','Luis','Quispe','luis@demo.com','70000002','/p/luis');
 
 INSERT IGNORE INTO BILLETERA (id_usuario, estado, saldo_creditos, saldo_bs, cuenta_bancaria)
 SELECT id_usuario, 'ACTIVA', 0, 0.00, NULL FROM USUARIO;
@@ -1242,7 +1428,6 @@ UPDATE TRANSACCION
 SET estado = 'COMPLETADA'
 WHERE id_transaccion = @id_last_tx;
 
-
 -- 14.3 Actividad sostenible (bono)
 CALL sp_registrar_actividad_sostenible(
   (SELECT id_usuario FROM USUARIO WHERE correo='ana@demo.com'),
@@ -1258,7 +1443,7 @@ CALL sp_generar_reporte_impacto(
   NULL
 );
 
--- Crear sp_obtener_ranking_usuarios (faltaba en el script)
+-- Crear sp_obtener_ranking_usuarios
 
 DROP PROCEDURE IF EXISTS sp_obtener_ranking_usuarios;
 DELIMITER $$
@@ -1298,7 +1483,6 @@ BEGIN
 END$$
 DELIMITER ;
 
-
 -- Ranking top 10 por CO2
 CALL sp_obtener_ranking_usuarios(
   (SELECT id_periodo FROM PERIODO WHERE nombre='2025-11'), 10
@@ -1322,7 +1506,6 @@ WHERE u.correo IN ('ana@demo.com','luis@demo.com');
 SELECT '✔ Esquema + triggers + seed + prueba listos.' AS status;
 
 -- A) CAMPOS DE FECHA MÍNIMOS PARA REPORTES
-
 
 ALTER TABLE PUBLICACION
   ADD COLUMN creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;
@@ -1579,38 +1762,127 @@ BEGIN
 END$$
 DELIMITER ;
 
-
 -- C7) Impacto acumulado por período (lectura directa)
 --     Asume que ya corriste sp_generar_reporte_impacto antes
 
-DROP PROCEDURE IF EXISTS sp_rep_impacto_acumulado;
+DROP PROCEDURE IF EXISTS sp_generar_reporte_impacto;
 DELIMITER $$
-CREATE PROCEDURE sp_rep_impacto_acumulado(
+
+CREATE PROCEDURE sp_generar_reporte_impacto(
   IN p_id_tipo_reporte INT,
-  IN p_id_periodo INT
+  IN p_id_periodo      INT,   -- NULL = usar último período
+  IN p_id_usuario      INT    -- NULL = global, no NULL = por usuario
 )
 BEGIN
-  SELECT
+  DECLARE v_total_co2      DECIMAL(12,6) DEFAULT 0;
+  DECLARE v_total_ag       DECIMAL(12,6) DEFAULT 0;
+  DECLARE v_total_en       DECIMAL(12,6) DEFAULT 0;
+  DECLARE v_total_tx       BIGINT        DEFAULT 0;
+  DECLARE v_total_users    BIGINT        DEFAULT 0;
+  DECLARE v_id_reporte_new INT;
+  DECLARE v_periodo        INT;
+
+  -- 0) Resolver período: usar argumento o último PERIODO
+  SET v_periodo = p_id_periodo;
+
+  IF v_periodo IS NULL THEN
+    SELECT id_periodo
+    INTO v_periodo
+    FROM PERIODO
+    ORDER BY fecha_inicio DESC, id_periodo DESC
+    LIMIT 1;
+
+    IF v_periodo IS NULL THEN
+      SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'No existe ningún PERIODO definido para generar reporte';
+    END IF;
+  END IF;
+
+  -- 1) Calcular totales desde IMPACTO_AMBIENTAL
+
+  IF p_id_usuario IS NULL THEN
+    -- GLOBAL (todos los usuarios)
+    SELECT
+      IFNULL(SUM(co2_ahorrado), 0),
+      IFNULL(SUM(agua_ahorrada), 0),
+      IFNULL(SUM(energia_ahorrada), 0),
+      COUNT(DISTINCT id_transaccion),
+      COUNT(DISTINCT id_usuario)
+    INTO
+      v_total_co2,
+      v_total_ag,
+      v_total_en,
+      v_total_tx,
+      v_total_users
+    FROM IMPACTO_AMBIENTAL
+    WHERE id_periodo = v_periodo;
+  ELSE
+    -- SOLO UN USUARIO
+    SELECT
+      IFNULL(SUM(co2_ahorrado), 0),
+      IFNULL(SUM(agua_ahorrada), 0),
+      IFNULL(SUM(energia_ahorrada), 0),
+      COUNT(DISTINCT id_transaccion),
+      COUNT(DISTINCT id_usuario)
+    INTO
+      v_total_co2,
+      v_total_ag,
+      v_total_en,
+      v_total_tx,
+      v_total_users
+    FROM IMPACTO_AMBIENTAL
+    WHERE id_periodo = v_periodo
+      AND id_usuario = p_id_usuario;
+  END IF;
+
+  -- 2) Limpiar reporte anterior (si existe)
+  DELETE FROM REPORTE_IMPACTO
+  WHERE id_tipo_reporte = p_id_tipo_reporte
+    AND id_periodo      = v_periodo
+    AND (
+         (p_id_usuario IS NULL AND id_usuario IS NULL)
+         OR id_usuario = p_id_usuario
+        );
+
+  -- 3) Insertar nuevo registro de reporte
+  INSERT INTO REPORTE_IMPACTO (
     id_usuario,
+    id_tipo_reporte,
+    id_periodo,
     total_co2_ahorrado,
     total_agua_ahorrada,
     total_energia_ahorrada,
     total_transacciones,
     total_usuarios_activos
+  )
+  VALUES (
+    p_id_usuario,
+    p_id_tipo_reporte,
+    v_periodo,           -- período resuelto
+    v_total_co2,
+    v_total_ag,
+    v_total_en,
+    v_total_tx,
+    v_total_users
+  );
+
+  SET v_id_reporte_new = LAST_INSERT_ID();
+
+  -- 4) Devolver el registro insertado
+  SELECT *
   FROM REPORTE_IMPACTO
-  WHERE id_tipo_reporte = p_id_tipo_reporte
-    AND id_periodo = p_id_periodo;
+  WHERE id_reporte = v_id_reporte_new;
+
 END$$
+
 DELIMITER ;
 
 ALTER TABLE USUARIO
   ADD COLUMN password_hash VARCHAR(255) NOT NULL DEFAULT ''
   AFTER correo;
   
-  ALTER TABLE BITACORA_ACCESO
+ALTER TABLE BITACORA_ACCESO
   MODIFY fecha DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;
-
-USE CREDITOS_VERDES2;
 
 DROP PROCEDURE IF EXISTS sp_rep_creditos_generados_vs_consumidos;
 
@@ -1637,3 +1909,307 @@ BEGIN
   WHERE creado_en BETWEEN p_desde AND p_hasta;
 END$$
 DELIMITER ;
+
+USE CREDITOS_VERDES2;
+
+-- TABLA: SUSCRIPCION_PREMIUM
+CREATE TABLE IF NOT EXISTS SUSCRIPCION_PREMIUM (
+  id_suscripcion INT PRIMARY KEY AUTO_INCREMENT,
+  id_usuario INT NOT NULL,
+  fecha_inicio DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  fecha_fin DATETIME NULL,
+  estado ENUM('ACTIVA','CANCELADA','VENCIDA') NOT NULL DEFAULT 'ACTIVA',
+  monto_bs DECIMAL(12,2) NOT NULL,
+  CONSTRAINT fk_suscrip_usuario
+    FOREIGN KEY (id_usuario) REFERENCES USUARIO(id_usuario)
+    ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE INDEX ix_suscrip_usuario_estado
+  ON SUSCRIPCION_PREMIUM (id_usuario, estado);
+
+CREATE INDEX ix_suscrip_fechas
+  ON SUSCRIPCION_PREMIUM (fecha_inicio, fecha_fin);
+
+DROP PROCEDURE IF EXISTS sp_rep_usuarios_premium;
+DELIMITER $$
+CREATE PROCEDURE sp_rep_usuarios_premium(
+  IN p_desde DATETIME,
+  IN p_hasta DATETIME
+)
+BEGIN
+  DECLARE v_total_usuarios BIGINT DEFAULT 0;
+  DECLARE v_nuevos_premium BIGINT DEFAULT 0;
+  DECLARE v_premium_activos BIGINT DEFAULT 0;
+  DECLARE v_ingresos_bs DECIMAL(12,2) DEFAULT 0.00;
+
+  -- Total de usuarios activos en el sistema
+  SELECT COUNT(*) INTO v_total_usuarios
+  FROM USUARIO
+  WHERE estado = 'ACTIVO';
+
+  -- Usuarios que ADQUIRIERON la suscripción en el rango (alta)
+  SELECT COUNT(DISTINCT id_usuario) INTO v_nuevos_premium
+  FROM SUSCRIPCION_PREMIUM
+  WHERE fecha_inicio BETWEEN p_desde AND p_hasta;
+
+  -- Usuarios con suscripción ACTIVA en el rango
+  SELECT COUNT(DISTINCT id_usuario) INTO v_premium_activos
+  FROM SUSCRIPCION_PREMIUM
+  WHERE estado = 'ACTIVA'
+    AND fecha_inicio <= p_hasta
+    AND (fecha_fin IS NULL OR fecha_fin >= p_desde);
+
+  -- Ingresos por suscripción en el rango
+  SELECT IFNULL(SUM(monto_bs), 0.00) INTO v_ingresos_bs
+  FROM SUSCRIPCION_PREMIUM
+  WHERE fecha_inicio BETWEEN p_desde AND p_hasta;
+
+  -- Resultado del reporte
+  SELECT
+    p_desde AS desde,
+    p_hasta AS hasta,
+    v_total_usuarios        AS total_usuarios_activos,
+    v_nuevos_premium        AS usuarios_nuevos_premium,
+    v_premium_activos       AS usuarios_premium_activos,
+    v_ingresos_bs           AS ingresos_suscripcion_bs,
+    CASE
+      WHEN v_total_usuarios = 0 THEN NULL
+      ELSE ROUND(100 * v_premium_activos / v_total_usuarios, 2)
+    END AS porcentaje_adopcion_premium;
+END$$
+DELIMITER ;
+
+USE CREDITOS_VERDES2;
+
+DROP TRIGGER IF EXISTS trg_usuario_after_ins_bono_bienvenida;
+DELIMITER $$
+
+CREATE TRIGGER trg_usuario_after_ins_bono_bienvenida
+AFTER INSERT ON USUARIO
+FOR EACH ROW
+BEGIN
+  DECLARE v_mov_bono   INT;
+  DECLARE v_id_tiporef INT;
+  DECLARE v_bono       BIGINT DEFAULT 5;  -- bono de bienvenida (5 créditos)
+
+  -- 1) Asegurar billetera
+  INSERT IGNORE INTO BILLETERA (id_usuario, estado, saldo_creditos, saldo_bs, cuenta_bancaria)
+  VALUES (NEW.id_usuario, 'ACTIVA', 0, 0.00, NULL);
+
+  -- 2) Tipo de movimiento BONO_BIENVENIDA
+  SET v_mov_bono = fn_get_tipo_mov('BONO_BIENVENIDA');
+  IF v_mov_bono IS NULL THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'TIPO_MOVIMIENTO BONO_BIENVENIDA no existe';
+  END IF;
+
+  -- 3) Tipo de referencia AJUSTE
+  SELECT id_tipo_referencia
+  INTO v_id_tiporef
+  FROM TIPO_REFERENCIA
+  WHERE nombre = 'AJUSTE'
+  LIMIT 1;
+
+  IF v_id_tiporef IS NULL THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'TIPO_REFERENCIA AJUSTE no existe';
+  END IF;
+
+  -- 4) Movimiento de bono de bienvenida
+  INSERT INTO MOVIMIENTO_CREDITOS
+    (id_usuario, id_tipo_movimiento, id_tipo_referencia,
+     cantidad, descripcion, saldo_anterior, saldo_posterior, id_referencia)
+  VALUES
+    (NEW.id_usuario, v_mov_bono, v_id_tiporef,
+     v_bono,
+     CONCAT('Bono de bienvenida para el usuario #', NEW.id_usuario),
+     0, 0, NEW.id_usuario);
+END$$
+
+DELIMITER ;
+
+INSERT IGNORE INTO PAQUETE_CREDITOS (nombre, cantidad_creditos, precio_bs, activo) VALUES
+('Pack 50', 50, 25.00, true ),
+('Pack 250', 250, 250.00, true ),
+('Pack 1000', 1000, 450.00, TRUE),
+('Pack 2000', 2000, 850.00, TRUE),
+('Pack 5000', 5000, 2000.00, TRUE);
+
+INSERT IGNORE INTO CATEGORIA (nombre, descripcion) VALUES
+('Ropa', 'Prendas de vestir reutilizables'),
+('Electrodomésticos', 'Equipos del hogar en buen estado'),
+('Muebles', 'Muebles reciclados o restaurados'),
+('Libros', 'Libros usados en buen estado'),
+('Juguetes', 'Juguetes reutilizables'),
+('Accesorios', 'Accesorios personales y de moda'),
+('Tecnología Reacondicionada', 'Equipos electrónicos restaurados'),
+('Hogar', 'Artículos del hogar reutilizables'),
+('Deportes', 'Equipos deportivos de segunda mano'),
+('Oficina', 'Material y mobiliario de oficina reciclado');
+
+INSERT IGNORE INTO UNIDAD_MEDIDA (nombre, simbolo) VALUES
+('Pieza', 'pz'),
+('Metro', 'm'),
+('Metro cuadrado', 'm2'),
+('Metro cúbico', 'm3'),
+('Gramo', 'g'),
+('Tonelada', 't'),
+('Kilómetro', 'km'),
+('Paquete', 'paq'),
+('Servicio', 'srv'),
+('Unidad de reciclaje', 'urc');
+
+INSERT IGNORE INTO TIPO_ACTIVIDAD (nombre, descripcion) VALUES
+('Reciclaje de Plástico', 'Separación y entrega de plástico reciclable'),
+('Reciclaje de Papel', 'Recolección y entrega de papel'),
+('Reciclaje de Electrónicos', 'Entrega de RAEE'),
+('Limpieza de Parques', 'Participación en brigada de limpieza'),
+('Limpieza de Calles', 'Jornadas de limpieza urbana'),
+('Reforestación', 'Plantación de árboles'),
+('Educación Ambiental', 'Talleres o charlas ambientales'),
+('Compostaje', 'Generación de abono mediante materia orgánica'),
+('Transporte Sostenible', 'Uso de bicicleta o transporte público'),
+('Reciclaje de Vidrio', 'Entrega de botellas y frascos reciclables');
+
+INSERT IGNORE INTO TIPO_LOGRO (nombre, descripcion) VALUES
+('PRIMERA_COMPRA', 'Realizó su primera compra en la plataforma'),
+('DIEZ_COMPRAS', 'Realizó 10 compras'),
+('CINCUENTA_COMPRAS', 'Realizó 50 compras'),
+('PRIMERA_ACTIVIDAD', 'Completó su primera actividad sostenible'),
+('RECICLADOR_EXPERTO', 'Completó 20 actividades de reciclaje'),
+('VENDENDOR_NIVEL_1', 'Realizó 5 ventas exitosas'),
+('VENDENDOR_NIVEL_2', 'Realizó 20 ventas exitosas'),
+('REFERIDOR', 'Invitó a 3 nuevos usuarios'),
+('SUPER_VERDE', 'Ahorró más de 50 kg de CO₂'),
+('CAMPEON_AMBIENTAL', 'Ahorró más de 200 kg de CO₂');
+
+INSERT IGNORE INTO TIPO_PROMOCION (nombre, descripcion) VALUES
+('BONO_BIENVENIDA', 'Promoción para nuevos usuarios'),
+('TEMPORADA', 'Promoción por fechas especiales'),
+('EVENTO_AMBIENTAL', 'Promoción por el Día de la Tierra u otros'),
+('FIN_DE_SEMANA', 'Descuentos del fin de semana'),
+('PRIMERA_PUBLICACION', 'Promoción por primera publicación'),
+('ACTIVIDAD_PREMIUM', 'Promociones para usuarios premium'),
+('BONO_REFERIDOS', 'Promoción por referir amigos'),
+('PROMO_LIMITADA', 'Promoción por tiempo limitado'),
+('BONO_RECICLAJE', 'Promoción por actividades de reciclaje'),
+('EVENTO_CIUDAD', 'Promoción especial para tu ciudad');
+
+INSERT IGNORE INTO TIPO_REPORTE (nombre, descripcion) VALUES
+('DIARIO', 'Reporte del día'),
+('SEMANAL', 'Reporte semanal'),
+('TRIMESTRAL', 'Reporte del trimestre'),
+('SEMESTRAL', 'Reporte semestral'),
+('ANUAL', 'Reporte anual'),
+('RANGO_PERSONALIZADO', 'Reporte para rangos definidos por usuario'),
+('IMPACTO_GENERAL', 'Reporte general de impacto'),
+('MOVIMIENTOS', 'Reporte de movimientos por usuario'),
+('INTERCAMBIOS', 'Reporte de intercambios por categoría'),
+('PUBLICACIONES', 'Reporte de publicaciones del período');
+
+INSERT IGNORE INTO DIMENSION_AMBIENTAL (codigo, nombre, unidad_base, descripcion) VALUES
+('RESIDUOS', 'Residuos evitados', 'kg', 'Cantidad de residuos que no llegan a vertederos'),
+('ARBOLES_EQ', 'Árboles equivalentes', 'unidad', 'Equivalencia en árboles'),
+('KM_NO_AUTO', 'Kilómetros sin auto', 'km', 'Kilómetros que no se hicieron en auto'),
+('PLASTICO_REC', 'Plástico reciclado', 'kg', 'Kilos de plástico reciclado'),
+('VIDRIO_REC', 'Vidrio reciclado', 'kg', 'Kilos de vidrio reciclado'),
+('PAPEL_REC', 'Papel reciclado', 'kg', 'Kilos de papel reciclado'),
+('ENERGIA_SOLAR', 'Energía solar aprovechada', 'kWh', 'Energía fotovoltaica generada'),
+('AGUA_REUTIL', 'Agua reutilizada', 'L', 'Litros de agua reutilizada'),
+('BIOCOMPOST', 'Compost generado', 'kg', 'Materia orgánica convertida en compost'),
+('RAEE_REC', 'Electrónicos reciclados', 'kg', 'Residuos electrónicos gestionados');
+
+INSERT IGNORE INTO UBICACION_PUBLICIDAD (nombre, descripcion, precio_base) VALUES
+('HOME_MIDDLE', 'Banner medio en home', 90.00),
+('HOME_BOTTOM', 'Banner inferior en home', 80.00),
+('SIDEBAR_TOP', 'Publicidad arriba del sidebar', 70.00),
+('SIDEBAR_MIDDLE', 'Publicidad en el centro del sidebar', 60.00),
+('SIDEBAR_BOTTOM', 'Publicidad inferior del sidebar', 50.00),
+('PUBLICACIONES_TOP', 'Banner superior en listado de publicaciones', 110.00),
+('PUBLICACIONES_MIDDLE', 'Banner medio del listado', 95.00),
+('PERFIL_TOP', 'Banner en perfil de usuario', 75.00),
+('CARRITO_TOP', 'Banner en la vista de transacciones', 85.00),
+('BUSQUEDA_TOP', 'Banner en resultados de búsqueda', 120.00);
+
+INSERT IGNORE INTO TIPO_PUBLICACION (nombre, descripcion) VALUES
+('DONACION', 'Publicación gratuita sin intercambio'),
+('TRUEQUE', 'Intercambio directo entre usuarios'),
+('SUBASTA', 'Publicación estilo subasta'),
+('ALQUILER', 'Renta temporal de artículos'),
+('CLASE', 'Clases o tutorías ofrecidas'),
+('EVENTO', 'Eventos sostenibles o comunitarios'),
+('TALLER', 'Talleres educativos'),
+('REPARACION', 'Servicios de reparación y mantenimiento'),
+('PAQUETE', 'Paquetes combinados de productos/servicios'),
+('OFERTA_DESTACADA', 'Publicaciones destacadas por tiempo limitado');
+
+INSERT IGNORE INTO TIPO_MOVIMIENTO (nombre, descripcion) VALUES
+('AJUSTE_ADMIN_POSITIVO', 'Ajuste manual por parte de administración (ingreso)'),
+('AJUSTE_ADMIN_NEGATIVO', 'Ajuste manual por parte de administración (egreso)'),
+('REVERSO_RECARGA', 'Reversión de una recarga fallida o revertida'),
+('REVERSO_INTERCAMBIO', 'Reversión de un intercambio cancelado'),
+('PENALIZACION', 'Penalización por mal uso de la plataforma'),
+('RECOMPENSA_REFERIDO', 'Bonificación por referir usuarios'),
+('BONO_EVENTO', 'Bono otorgado por evento especial'),
+('BONO_TEMPORADA', 'Bono por temporada (Navidad, Año Nuevo, etc.)'),
+('BONO_METAS_LOGRO', 'Recompensa por alcanzar ciertos logros'),
+('CREDITO_DE_PROMOCION', 'Créditos otorgados totalmente por promociones');
+
+INSERT IGNORE INTO TIPO_REFERENCIA (nombre) VALUES
+('BONO'),
+('PREMIO'),
+('PENALIZACION'),
+('REVERSO'),
+('DEVOLUCION'),
+('REFERIDO'),
+('PUBLICIDAD'),
+('SUSCRIPCION_PREMIUM'),
+('ACTIVIDAD_SOSTENIBLE'),
+('PROMOCION');
+
+INSERT IGNORE INTO EQUIVALENCIA_IMPACTO (id_categoria, id_um, co2_por_unidad, agua_por_unidad, energia_por_unidad)
+VALUES
+((SELECT id_categoria FROM CATEGORIA WHERE nombre='Ropa'), 
+ (SELECT id_um FROM UNIDAD_MEDIDA WHERE simbolo='u'), 3.5, 2400, 1.2),
+
+((SELECT id_categoria FROM CATEGORIA WHERE nombre='Electrodomésticos'),
+ (SELECT id_um FROM UNIDAD_MEDIDA WHERE simbolo='u'), 22.1, 1200, 14.3),
+
+((SELECT id_categoria FROM CATEGORIA WHERE nombre='Libros'),
+ (SELECT id_um FROM UNIDAD_MEDIDA WHERE simbolo='u'), 1.1, 900, 0.5),
+
+((SELECT id_categoria FROM CATEGORIA WHERE nombre='Juguetes'),
+ (SELECT id_um FROM UNIDAD_MEDIDA WHERE simbolo='u'), 2.8, 1500, 0.9),
+
+((SELECT id_categoria FROM CATEGORIA WHERE nombre='Muebles'),
+ (SELECT id_um FROM UNIDAD_MEDIDA WHERE simbolo='u'), 40.0, 5000, 25.2),
+
+((SELECT id_categoria FROM CATEGORIA WHERE nombre='Hogar'),
+ (SELECT id_um FROM UNIDAD_MEDIDA WHERE simbolo='u'), 4.1, 1600, 3.3),
+
+((SELECT id_categoria FROM CATEGORIA WHERE nombre='Tecnología Reacondicionada'),
+ (SELECT id_um FROM UNIDAD_MEDIDA WHERE simbolo='u'), 55.3, 4000, 40.7),
+
+((SELECT id_categoria FROM CATEGORIA WHERE nombre='Deportes'),
+ (SELECT id_um FROM UNIDAD_MEDIDA WHERE simbolo='u'), 6.0, 2000, 4.0),
+
+((SELECT id_categoria FROM CATEGORIA WHERE nombre='Reciclaje de Papel'),
+ (SELECT id_um FROM UNIDAD_MEDIDA WHERE simbolo='kg'), 0.9, 4000, 0.2),
+
+((SELECT id_categoria FROM CATEGORIA WHERE nombre='Reciclaje de Electrónicos'),
+ (SELECT id_um FROM UNIDAD_MEDIDA WHERE simbolo='kg'), 10.5, 2000, 8.0);
+
+INSERT IGNORE INTO PERIODO (nombre, descripcion, fecha_inicio, fecha_fin) VALUES
+('2025-01', 'Enero 2025',     '2025-01-01', '2025-01-31'),
+('2025-02', 'Febrero 2025',   '2025-02-01', '2025-02-28'),
+('2025-03', 'Marzo 2025',     '2025-03-01', '2025-03-31'),
+('2025-04', 'Abril 2025',     '2025-04-01', '2025-04-30'),
+('2025-05', 'Mayo 2025',      '2025-05-01', '2025-05-31'),
+('2025-06', 'Junio 2025',     '2025-06-01', '2025-06-30'),
+('2025-07', 'Julio 2025',     '2025-07-01', '2025-07-31'),
+('2025-08', 'Agosto 2025',    '2025-08-01', '2025-08-31'),
+('2025-09', 'Septiembre 2025','2025-09-01', '2025-09-30'),
+('2025-10', 'Octubre 2025',   '2025-10-01', '2025-10-31'),
+('2025-11', 'Noviembre 2025', '2025-11-01', '2025-11-30'),
+('2025-12', 'Diciembre 2025', '2025-12-01', '2025-12-31');

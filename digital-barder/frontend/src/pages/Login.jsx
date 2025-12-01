@@ -1,9 +1,10 @@
 // frontend/src/pages/Login.jsx
 import React, { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { login } from "../services/api";
 import hojaLogo from "../assets/hoja.png";
 
+// Carrusel interno (sin componente externo)
 const SLIDES = [
   {
     id: 1,
@@ -28,24 +29,27 @@ const SLIDES = [
   },
 ];
 
-export default function Login() {
+const Login = () => {
   const [correo, setCorreo] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [cargando, setCargando] = useState(false);
 
   const [slideIndex, setSlideIndex] = useState(0);
-
   const navigate = useNavigate();
 
+  // Carrusel automático (igual que en tu login anterior)
   useEffect(() => {
-    const id = setInterval(() => {
+    const interval = setInterval(() => {
       setSlideIndex((prev) => (prev + 1) % SLIDES.length);
     }, 5000);
-    return () => clearInterval(id);
+    return () => clearInterval(interval);
   }, []);
 
-  async function handleSubmit(e) {
+  const currentSlide = SLIDES[slideIndex];
+
+  // 👉 Aquí va la funcionalidad REAL de login (no setTimeout)
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
@@ -55,7 +59,8 @@ export default function Login() {
     }
 
     try {
-      setLoading(true);
+      setCargando(true);
+
       const data = await login({ correo, password });
 
       if (!data?.token) {
@@ -63,152 +68,218 @@ export default function Login() {
         return;
       }
 
-      // Después del login te llevo a tu flujo de reportes
+      // Login correcto → navega a /home
       navigate("/home");
     } catch (err) {
       console.error(err);
       setError(err.message || "Credenciales inválidas");
     } finally {
-      setLoading(false);
+      setCargando(false);
     }
-  }
-
-  const currentSlide = SLIDES[slideIndex];
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#012b20] via-[#013726] to-[#011711] text-white flex flex-col">
-      {/* NAVBAR SUPERIOR */}
-      <header className="flex items-center justify-between px-10 py-4">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white/10">
+    <div
+  className="min-h-screen w-full flex flex-col items-center py-2 px-6 overflow-x-hidden"
+  style={{
+    background: "radial-gradient(circle at center, #024023 0%, #005B30 100%)",
+  }}
+>
+
+      {/* HEADER: título + botón Crear Cuenta (igual al del .zip) */}
+      <header className="w-full max-w-6xl flex items-center justify-between mb-2">
+        <div className="text-center flex-1 lg:translate-x-12 lg:translate-y-[-0px]">
+          {/* Digital Barter */}
+          <h1
+            className="text-[#06B060] leading-tight mb-2"
+            style={{
+              fontFamily: '"Berlin Sans FB Demi", system-ui, sans-serif',
+              fontSize: "3.7rem",
+              fontWeight: 700,
+              marginTop: "0.2rem",
+            }}
+          >
+            Digital Barter
+          </h1>
+
+          {/* green credits + imagen hoja */}
+          <div className="flex items-center justify-center gap-2 -mt-1">
+            <h2
+              className="text-[#06B060]"
+              style={{
+                fontFamily: '"Jaro", system-ui, sans-serif',
+                fontSize: "2.0rem",
+                fontWeight: 400,
+              }}
+            >
+              green credits
+            </h2>
+            {/* Usamos tu hoja importada, no /images/hoja.png */}
             <img
               src={hojaLogo}
-              alt="Logo Digital Barter"
-              className="w-7 h-7 object-contain"
+              alt="leaf icon"
+              className="w-8 h-8 object-contain"
             />
-          </div>
-          <div>
-            <h1 className="text-2xl font-black leading-tight tracking-tight">
-              Digital Barter
-            </h1>
-            <p className="text-sm text-green-300 font-semibold flex items-center gap-1">
-              green credits
-              <span className="inline-block w-2 h-2 rounded-full bg-green-400" />
-            </p>
           </div>
         </div>
 
-        <Link
-          to="/register"
-          className="px-5 py-2 rounded-full bg-white text-green-900 font-semibold text-sm hover:bg-gray-100 transition"
-        >
-          Crear Cuenta
+        {/* Botón Crear Cuenta arriba a la derecha */}
+        <Link to="/register" className="absolute top-4 right-4">
+          <button
+            type="button"
+            className="bg-[#005B30] text-white text-lg rounded-lg hover:bg-[#047645] flex items-center justify-center"
+            style={{
+              fontFamily: '"Berlin Sans FB Demi", system-ui, sans-serif',
+              fontWeight: 700,
+              height: "45px",
+              width: "200px",
+            }}
+          >
+            Crear Cuenta
+          </button>
         </Link>
       </header>
 
       {/* CONTENIDO PRINCIPAL */}
-      <main className="flex-1 flex flex-col lg:flex-row items-center justify-center gap-10 px-6 lg:px-16 pb-10">
-        {/* PANEL IZQUIERDO: CARRUSEL */}
-        <section className="w-full max-w-md bg-black/20 rounded-3xl overflow-hidden shadow-2xl">
-          <div className="relative h-80">
-            <img
-              src={currentSlide.image}
-              alt={currentSlide.title}
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-            <div className="absolute inset-0 flex flex-col justify-end p-6">
-              <h2 className="text-xl font-bold mb-2">{currentSlide.title}</h2>
-              <p className="text-sm text-gray-200 mb-4">{currentSlide.text}</p>
+      <main className="w-full max-w-6xl flex flex-col lg:flex-row items-start lg:items-start gap-4 mt-0">
+        {/* Columna izquierda: carrusel (sustituye <Carousel /> del .zip, pero con tu lógica) */}
+        <div className="flex justify-start w-full lg:w-2/5 lg:-translate-x-12 lg:-translate-y-25">
+          <div
+            className="w-full max-w-[500px] transform scale-90 lg:scale-100 overflow-hidden rounded-2xl shadow-2xl"
+            style={{
+              height: "450px", // misma altura que en el diseño
+              clipPath:
+                "polygon(0 0, 100% 0, 100% 100%, 0 100%)", // recorte inferior como en el .zip
+            }}
+          >
+            <div className="relative w-full h-full">
+              <img
+                src={currentSlide.image}
+                alt={currentSlide.title}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+              <div className="absolute inset-0 flex flex-col justify-end p-6">
+                <h2 className="text-xl font-bold mb-2">
+                  {currentSlide.title}
+                </h2>
+                <p className="text-sm text-gray-200 mb-4">
+                  {currentSlide.text}
+                </p>
 
-              {/* Puntos del carrusel */}
-              <div className="flex gap-2">
-                {SLIDES.map((s, idx) => (
-                  <button
-                    key={s.id}
-                    onClick={() => setSlideIndex(idx)}
-                    className={`w-2.5 h-2.5 rounded-full ${
-                      idx === slideIndex ? "bg-white" : "bg-white/40"
-                    }`}
-                    aria-label={`Ir al slide ${idx + 1}`}
-                  />
-                ))}
+                {/* Puntos del carrusel */}
+                <div className="flex gap-2">
+                  {SLIDES.map((s, idx) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setSlideIndex(idx)}
+                      className={`w-3 h-3 rounded-full ${
+                        idx === slideIndex
+                          ? "bg-[#034828]"
+                          : "bg-white/70"
+                      }`}
+                      aria-label={`Ir al slide ${idx + 1}`}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
           </div>
-        </section>
+        </div>
 
-        {/* PANEL DERECHO: FORM LOGIN */}
-        <section className="w-full max-w-md bg-white/5 backdrop-blur-md rounded-3xl p-8 shadow-2xl">
-          <h2 className="text-2xl font-bold mb-2 text-center">
-            Iniciar sesión
-          </h2>
-          <p className="text-sm text-gray-200 mb-6 text-center">
-            Ingresa para gestionar tus Green Credits.
-          </p>
-
-          {error && (
-            <div className="mb-4 bg-red-500/20 border border-red-400 text-sm px-3 py-2 rounded-lg">
-              {error}
-            </div>
-          )}
-
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            <div>
-              <label className="block text-sm mb-1">
-                Correo electrónico o número de teléfono
-              </label>
+        {/* Columna derecha: formulario (mismo layout del .zip, con tu lógica de login) */}
+        <div className="flex-1 flex flex-col items-center lg:items-start mt-32 lg:ml-20 lg:translate-x-20">
+          <form
+            onSubmit={handleSubmit}
+            className="w-full space-y-4 flex flex-col items-center"
+          >
+            {/* Campo correo/teléfono */}
+            <div className="space-y-3">
               <input
                 type="text"
                 value={correo}
                 onChange={(e) => setCorreo(e.target.value)}
-                className="w-full rounded-lg px-3 py-2 bg-white/10 border border-white/20 text-sm placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-green-400"
-                placeholder="tucorreo@email.com"
+                placeholder="Correo electrónico o número de teléfono"
+                className="w-[445px] rounded-xl px-4 py-3 bg-[#E9FFD9]/50 border border-[#B6E4A3] text-[#013726] placeholder:text-[#6C8A6E]"
+                style={{
+                  fontSize: "20px",
+                  fontWeight: 500,
+                }}
               />
             </div>
 
-            <div>
-              <label className="block text-sm mb-1">Contraseña</label>
+            {/* Campo contraseña */}
+            <div className="space-y-3">
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg px-3 py-2 bg-white/10 border border-white/20 text-sm placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-green-400"
-                placeholder="••••••••"
+                placeholder="Contraseña"
+                className="w-[445px] rounded-xl px-4 py-3 bg-[#E9FFD9]/50 border border-[#B6E4A3] text-[#013726] placeholder:text-[#6C8A6E]"
+                style={{
+                  fontSize: "20px",
+                  fontWeight: 500,
+                }}
               />
             </div>
 
-            <div className="flex justify-end text-xs text-gray-300 mb-1">
-              <button
-                type="button"
-                className="hover:underline"
-                onClick={() => alert("En el futuro aquí irá el flujo de recuperar contraseña.")}
+            {/* ¿Has olvidado tu contraseña? centrado (como en el .zip, usando <a>) */}
+            <div className="text-center w-full">
+              <a
+                href="#"
+                className="text-sm hover:text-[#06B060] font-medium"
+                style={{ fontFamily: "Inter, system-ui, sans-serif" }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  alert(
+                    "En el futuro aquí irá el flujo de recuperar contraseña."
+                  );
+                }}
               >
                 ¿Has olvidado tu contraseña?
-              </button>
+              </a>
             </div>
 
+            {/* Mensaje de error (igual lógica, estilo simple) */}
+            {error && (
+              <p className="text-red-400 text-center text-sm font-medium">
+                {error}
+              </p>
+            )}
+
+            {/* Botón Iniciar Sesión */}
             <button
               type="submit"
-              disabled={loading}
-              className="w-full mt-2 bg-[#0a8f44] hover:bg-[#0cb652] disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-full text-sm transition"
+              disabled={cargando}
+              className="w-[445px] py-4 text-lg bg-[#005B30] text-white hover:bg-[#047645] flex items-center justify-center disabled:opacity-60 disabled:cursor-not-allowed"
+              style={{
+                fontFamily:
+                  '"Berlin Sans FB Demi", "Arial Black", sans-serif',
+                fontWeight: 700,
+                fontSize: "22px",
+                height: "50px",
+                letterSpacing: "0.5px",
+              }}
             >
-              {loading ? "Ingresando..." : "Iniciar sesión"}
+              {cargando ? "Iniciando sesión..." : "Iniciar sesión"}
             </button>
           </form>
-
-          <p className="mt-6 text-xs text-center text-gray-200">
-            ¿No tienes cuenta?{" "}
-            <Link to="/register" className="font-semibold underline">
-              Crear una cuenta
-            </Link>
-          </p>
-        </section>
+        </div>
       </main>
 
-      <footer className="text-xs text-gray-300 text-center pb-4">
-        ¡Un poco más sobre nosotros!
-      </footer>
+      {/* Enlace en la esquina inferior derecha (como en el .zip) */}
+      <div className="absolute bottom-4 right-4 w-full text-right">
+        <a
+          href="#"
+          className="text-base hover:text-[#06B060] font-medium"
+          style={{ fontFamily: "Inter, system-ui, sans-serif" }}
+          onClick={(e) => e.preventDefault()}
+        >
+          ¡Un poco más sobre nosotros!
+        </a>
+      </div>
     </div>
   );
-}
+};
+
+export default Login;

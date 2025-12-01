@@ -4,7 +4,7 @@ import { api } from "../services/api";
 import hoja from "../assets/hoja.png";
 
 export default function PublicacionNueva() {
-  const [tipo, setTipo] = useState("PRODUCTO"); // PRODUCTO | SERVICIO
+  const [tipo, setTipo] = useState("PRODUCTO");
   const [titulo, setTitulo] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [idCategoria, setIdCategoria] = useState("");
@@ -19,8 +19,15 @@ export default function PublicacionNueva() {
   const [mensajeError, setMensajeError] = useState("");
   const [mensajeOk, setMensajeOk] = useState("");
 
+  // SOLO CAMBIA ESTOS NOMBRES por los que tienes en tu BD
+  const categorias = [
+    { id: 1, nombre: "Bicicletas" },  // Cambia este nombre
+    { id: 2, nombre: "Ropa" }         // Cambia este nombre
+  ];
+
   const navigate = useNavigate();
 
+  // El resto del código PERMANECE EXACTAMENTE IGUAL...
   async function manejarSubmit(e) {
     e.preventDefault();
     setMensajeError("");
@@ -48,12 +55,12 @@ export default function PublicacionNueva() {
         imagenURL = resUpload.url || resUpload.imagen_url || null;
       }
 
-      // 2) Construir body según tipo (usando nombres EXACTOS del backend)
+      // 2) Construir body según tipo
       const base = {
         titulo: titulo.trim(),
         descripcion: descripcion.trim(),
         id_categoria: Number(idCategoria),
-        valor_creditos: Number(costoCreditos), // nombre del campo en PUBLICACION
+        valor_creditos: Number(costoCreditos),
         imagen_url: imagenURL,
       };
 
@@ -71,8 +78,8 @@ export default function PublicacionNueva() {
             precio: null,
             peso: null,
           },
-          cantidad: Number(cantidad || 1), // requerido
-          id_um: 1, // unidad genérica; en tu BD será la UM con id=1
+          cantidad: Number(cantidad || 1),
+          id_um: 1,
         };
       } else {
         endpoint = "/publicaciones/servicio";
@@ -85,7 +92,7 @@ export default function PublicacionNueva() {
             precio: null,
             duracion_min: null,
           },
-          horario: horario || "A convenir", // requerido por el backend
+          horario: horario || "A convenir",
         };
       }
 
@@ -224,19 +231,24 @@ export default function PublicacionNueva() {
           />
         </div>
 
-        {/* Categoría + Créditos */}
+        {/* Categoría + Créditos - YA ESTÁ MOSTRANDO EL NOMBRE */}
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label className="block text-sm text-emerald-200 mb-1">
-              ID categoría *
+              Categoría *
             </label>
-            <input
-              type="number"
+            <select
               value={idCategoria}
               onChange={(e) => setIdCategoria(e.target.value)}
               className="w-full bg-[#0e4330] border border-emerald-600 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-400"
-              placeholder="Ej. 1 (Ropa), 2 (Servicios)..."
-            />
+            >
+              <option value="">Selecciona una categoría</option>
+              {categorias.map((categoria) => (
+                <option key={categoria.id} value={categoria.id}>
+                  {categoria.nombre} {/* ← AQUÍ SE MUESTRA "Bicicletas", "Ropa", etc. */}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

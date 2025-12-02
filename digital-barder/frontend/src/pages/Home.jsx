@@ -78,7 +78,7 @@ export default function Home() {
             href="/wallet"
             className="bg-[#0e4330] p-6 rounded-xl border border-emerald-500 shadow-md hover:bg-[#14694c] hover:scale-[1.02] transition transform cursor-pointer"
           >
-            <h3 className="text-lg font-bold text-emerald-300">Mi Wallet</h3>
+            <h3 className="text-lg font-bold text-emerald-300">Mi Billetera</h3>
             <p className="opacity-80 mt-1">Ver movimientos y saldo</p>
           </a>
         </div>

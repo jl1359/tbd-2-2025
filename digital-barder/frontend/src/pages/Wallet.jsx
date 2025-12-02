@@ -54,7 +54,7 @@ export default function Wallet() {
   if (cargando) {
     return (
       <div className="min-h-screen bg-[#082b1f] text-white flex items-center justify-center">
-        Cargando wallet...
+        Cargando billetera...
       </div>
     );
   }
@@ -123,7 +123,7 @@ export default function Wallet() {
 
         {movimientos.length === 0 ? (
           <p className="text-sm text-emerald-100/80">
-            Aún no tienes movimientos en tu wallet.
+            Aún no tienes movimientos en tu billetera.
           </p>
         ) : (
           <div className="flex flex-col gap-3">

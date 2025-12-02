@@ -9,6 +9,7 @@ import {
   CalendarRange,
   ExternalLink,
   Coins,
+  ChevronDown, // 👈 añadido para el botón desplegable
 } from "lucide-react";
 import hoja from "../assets/hoja.png";
 
@@ -29,9 +30,25 @@ export default function Publicidad() {
   const [fechaFin, setFechaFin] = useState("");
   const [costoCreditos, setCostoCreditos] = useState("");
 
+  // media
+  const [tipoMedia, setTipoMedia] = useState("imagen"); // "imagen" | "video"
+  const [archivoMedia, setArchivoMedia] = useState(null);
+  const [previewMediaUrl, setPreviewMediaUrl] = useState("");
+
+  // 👇 NUEVO: controlar si se muestra u oculta el bloque de "Publicidad activa"
+  const [mostrarPublicidadActiva, setMostrarPublicidadActiva] = useState(false);
+
   useEffect(() => {
     cargarPublicidad();
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (previewMediaUrl) {
+        URL.revokeObjectURL(previewMediaUrl);
+      }
+    };
+  }, [previewMediaUrl]);
 
   async function cargarPublicidad() {
     try {
@@ -41,11 +58,24 @@ export default function Publicidad() {
       setAnuncios(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
-      setError(
-        err.message || "No se pudo cargar la publicidad activa."
-      );
+      setError(err.message || "No se pudo cargar la publicidad activa.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  function handleArchivoMediaChange(e) {
+    const file = e.target.files?.[0];
+    setArchivoMedia(file || null);
+
+    if (previewMediaUrl) {
+      URL.revokeObjectURL(previewMediaUrl);
+      setPreviewMediaUrl("");
+    }
+
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setPreviewMediaUrl(url);
     }
   }
 
@@ -57,7 +87,13 @@ export default function Publicidad() {
     const id_ubicacion = Number(idUbicacion || 0);
     const costo_creditos = Number(costoCreditos || 0);
 
-    if (!id_ubicacion || !titulo.trim() || !fechaInicio || !fechaFin || !costo_creditos) {
+    if (
+      !id_ubicacion ||
+      !titulo.trim() ||
+      !fechaInicio ||
+      !fechaFin ||
+      !costo_creditos
+    ) {
       setError(
         "id_ubicacion, título, fecha inicio, fecha fin y costo en créditos son obligatorios."
       );
@@ -73,6 +109,7 @@ export default function Publicidad() {
         fecha_inicio: fechaInicio,
         fecha_fin: fechaFin,
         costo_creditos,
+        // aquí en el futuro puedes mandar tipo_media o media_url si el backend lo soporta
       });
 
       setMensajeOk("Publicidad creada correctamente.");
@@ -84,13 +121,16 @@ export default function Publicidad() {
       setFechaInicio("");
       setFechaFin("");
       setCostoCreditos("");
+      setArchivoMedia(null);
+      if (previewMediaUrl) {
+        URL.revokeObjectURL(previewMediaUrl);
+        setPreviewMediaUrl("");
+      }
 
       await cargarPublicidad();
     } catch (err) {
       console.error(err);
-      setError(
-        err.message || "Ocurrió un error al crear la publicidad."
-      );
+      setError(err.message || "Ocurrió un error al crear la publicidad.");
     }
   }
 
@@ -143,81 +183,139 @@ export default function Publicidad() {
       <div className="grid gap-6 lg:grid-cols-[2fr,1.5fr]">
         {/* LISTADO DE PUBLICIDAD ACTIVA */}
         <section className="bg-[#0f3f2d] border border-emerald-700 rounded-2xl p-4 md:p-5 shadow-md">
-          <h2 className="text-lg font-semibold text-emerald-200 flex items-center gap-2 mb-3">
-            <Monitor size={18} className="text-emerald-300" />
-            Publicidad activa
-          </h2>
+          <div className="flex items-center justify-between mb-3">
+            {/* 👇 BOTÓN QUE ABRE / CIERRA EL BLOQUE */}
+            <button
+              type="button"
+              onClick={() => setMostrarPublicidadActiva((prev) => !prev)}
+              className="inline-flex items-center gap-2 text-lg font-semibold text-emerald-200 hover:text-emerald-100 hover:translate-y-[1px] transition-all"
+            >
+              <Monitor size={18} className="text-emerald-300" />
+              <span>Publicidad activa</span>
+              <ChevronDown
+                size={16}
+                className={`transition-transform ${
+                  mostrarPublicidadActiva ? "rotate-0" : "-rotate-90"
+                }`}
+              />
+            </button>
 
-          {loading ? (
-            <p className="text-emerald-100/80 text-sm">
-              Cargando anuncios...
-            </p>
-          ) : anuncios.length === 0 ? (
-            <p className="text-emerald-100/80 text-sm">
-              No hay publicidad activa en este momento.
-            </p>
-          ) : (
-            <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
-              {anuncios.map((ad) => (
-                <article
-                  key={ad.id_publicidad}
-                  className="rounded-xl border border-emerald-700/70 bg-emerald-900/30 p-3 text-sm flex flex-col gap-2"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs text-emerald-300/80">
-                        ID #{ad.id_publicidad} · {ad.usuario || "Usuario"}
-                      </p>
-                      <h3 className="font-semibold text-emerald-100">
-                        {ad.titulo}
-                      </h3>
+            {/* CUADRO PUBLICIDAD LLAMATIVO */}
+            <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-emerald-400 via-lime-300 to-emerald-500 text-xs font-extrabold text-emerald-900 shadow-[0_0_12px_rgba(34,197,94,0.6)] animate-pulse">
+              PUBLICIDAD
+            </div>
+          </div>
+
+          {/* CONTENIDO MOSTRADO/OCULTO SEGÚN EL BOTÓN */}
+          {mostrarPublicidadActiva ? (
+            loading ? (
+              <p className="text-emerald-100/80 text-sm">
+                Cargando anuncios...
+              </p>
+            ) : anuncios.length === 0 ? (
+              <p className="text-emerald-100/80 text-sm">
+                No hay publicidad activa en este momento.
+              </p>
+            ) : (
+              <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+                {anuncios.map((ad) => (
+                  <article
+                    key={ad.id_publicidad}
+                    className="rounded-2xl border border-emerald-700/70 bg-emerald-900/30 p-3 text-sm flex flex-col gap-2 shadow-sm"
+                  >
+                    {/* Badge PUBLICIDAD pequeño arriba de cada card */}
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-500/90 text-[10px] font-bold text-emerald-950 shadow-sm">
+                        PUBLICIDAD
+                      </span>
+
+                      {typeof ad.costo_creditos === "number" && (
+                        <div className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-emerald-800/70 border border-emerald-500/70">
+                          <Coins size={14} className="text-emerald-300" />
+                          <span>{ad.costo_creditos} cr.</span>
+                        </div>
+                      )}
                     </div>
 
-                    {typeof ad.costo_creditos === "number" && (
-                      <div className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-emerald-800/70 border border-emerald-500/70">
-                        <Coins size={14} className="text-emerald-300" />
-                        <span>{ad.costo_creditos} cr.</span>
+                    {/* MEDIA con h-40 (video o imagen) */}
+                    <div className="w-full h-40 rounded-xl overflow-hidden bg-black/30 mb-2 flex items-center justify-center">
+                      {ad.media_url ? (
+                        ad.tipo_media === "video" ? (
+                          <video
+                            src={ad.media_url}
+                            className="w-full h-full object-cover"
+                            autoPlay
+                            muted
+                            loop
+                          />
+                        ) : (
+                          <img
+                            src={ad.media_url}
+                            alt={ad.titulo}
+                            className="w-full h-full object-cover"
+                          />
+                        )
+                      ) : (
+                        <span className="text-[11px] text-emerald-200/70">
+                          Sin media asociada
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs text-emerald-300/80">
+                          ID #{ad.id_publicidad} · {ad.usuario || "Usuario"}
+                        </p>
+                        <h3 className="font-semibold text-emerald-100">
+                          {ad.titulo}
+                        </h3>
                       </div>
-                    )}
-                  </div>
+                    </div>
 
-                  {ad.descripcion && (
-                    <p className="text-emerald-100/80 text-xs">
-                      {ad.descripcion}
-                    </p>
-                  )}
+                    {ad.descripcion && (
+                      <p className="text-emerald-100/80 text-xs">
+                        {ad.descripcion}
+                      </p>
+                    )}
 
-                  <div className="flex flex-wrap gap-3 text-[11px] text-emerald-200/80 mt-1">
-                    {ad.fecha_inicio && (
-                      <span>
-                        Inicio:{" "}
-                        {new Date(ad.fecha_inicio).toLocaleDateString()}
-                      </span>
-                    )}
-                    {ad.fecha_fin && (
-                      <span>
-                        Fin: {new Date(ad.fecha_fin).toLocaleDateString()}
-                      </span>
-                    )}
-                    {ad.id_ubicacion && (
-                      <span>Ubicación #{ad.id_ubicacion}</span>
-                    )}
-                  </div>
+                    <div className="flex flex-wrap gap-3 text-[11px] text-emerald-200/80 mt-1">
+                      {ad.fecha_inicio && (
+                        <span>
+                          Inicio:{" "}
+                          {new Date(ad.fecha_inicio).toLocaleDateString()}
+                        </span>
+                      )}
+                      {ad.fecha_fin && (
+                        <span>
+                          Fin: {new Date(ad.fecha_fin).toLocaleDateString()}
+                        </span>
+                      )}
+                      {ad.id_ubicacion && (
+                        <span>Ubicación #{ad.id_ubicacion}</span>
+                      )}
+                    </div>
 
-                  {ad.url_destino && (
-                    <a
-                      href={ad.url_destino}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-2 inline-flex items-center gap-1 text-xs text-emerald-300 hover:text-emerald-100"
-                    >
-                      <ExternalLink size={14} />
-                      Ver destino
-                    </a>
-                  )}
-                </article>
-              ))}
-            </div>
+                    {ad.url_destino && (
+                      <a
+                        href={ad.url_destino}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-flex items-center gap-1 text-xs text-emerald-300 hover:text-emerald-100"
+                      >
+                        <ExternalLink size={14} />
+                        Ver destino
+                      </a>
+                    )}
+                  </article>
+                ))}
+              </div>
+            )
+          ) : (
+            <p className="text-xs text-emerald-100/70 mt-1">
+              Pulsa en <span className="font-semibold">“Publicidad activa”</span> para
+              ver u ocultar los anuncios.
+            </p>
           )}
         </section>
 
@@ -237,15 +335,18 @@ export default function Publicidad() {
             {/* id_ubicacion */}
             <div>
               <label className="block text-xs mb-1">
-                ID de ubicación (id_ubicacion) *
+                Ubicación donde se mostrará *
               </label>
-              <input
-                type="number"
+              <select
                 value={idUbicacion}
                 onChange={(e) => setIdUbicacion(e.target.value)}
                 className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
-                placeholder="Ej. 1 (header), 2 (sidebar), 3 (dashboard)..."
-              />
+              >
+                <option value="">Selecciona una ubicación</option>
+                <option value="1">Banner superior (inicio)</option>
+                <option value="2">Lateral derecha</option>
+                <option value="3">Panel principal del dashboard</option>
+              </select>
             </div>
 
             {/* título */}
@@ -284,6 +385,67 @@ export default function Publicidad() {
                 className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
                 placeholder="https://ejemplo.com/mi-campaña"
               />
+            </div>
+
+            {/* MEDIA: tipo + archivo + preview */}
+            <div>
+              <label className="block text-xs mb-1">
+                Media de la campaña (imagen o video)
+              </label>
+
+              <div className="flex gap-2 mb-2">
+                <button
+                  type="button"
+                  onClick={() => setTipoMedia("imagen")}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold border ${
+                    tipoMedia === "imagen"
+                      ? "bg-emerald-500 text-emerald-950 border-emerald-400"
+                      : "bg-emerald-950/60 text-emerald-100 border-emerald-700"
+                  }`}
+                >
+                  Imagen
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTipoMedia("video")}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold border ${
+                    tipoMedia === "video"
+                      ? "bg-emerald-500 text-emerald-950 border-emerald-400"
+                      : "bg-emerald-950/60 text-emerald-100 border-emerald-700"
+                  }`}
+                >
+                  Video
+                </button>
+              </div>
+
+              <input
+                type="file"
+                accept={tipoMedia === "imagen" ? "image/*" : "video/*"}
+                onChange={handleArchivoMediaChange}
+                className="w-full text-xs text-emerald-100 file:mr-3 file:rounded-md file:border-0 file:bg-emerald-500 file:px-3 file:py-1 file:text-xs file:font-semibold file:text-emerald-950 hover:file:bg-emerald-600"
+              />
+
+              <div className="mt-2 w-full h-40 rounded-xl overflow-hidden bg-black/30 flex items-center justify-center">
+                {previewMediaUrl ? (
+                  tipoMedia === "video" ? (
+                    <video
+                      src={previewMediaUrl}
+                      className="w-full h-full object-cover"
+                      controls
+                    />
+                  ) : (
+                    <img
+                      src={previewMediaUrl}
+                      alt="preview"
+                      className="w-full h-full object-cover"
+                    />
+                  )
+                ) : (
+                  <span className="text-[11px] text-emerald-200/70">
+                    Aquí verás una vista previa del anuncio
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* costo_creditos */}

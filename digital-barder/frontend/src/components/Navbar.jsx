@@ -32,7 +32,7 @@ export default function Navbar() {
           href="/wallet"
           className="text-white hover:text-emerald-400 transition font-semibold"
         >
-          Wallet
+          Billetera
         </a>
 
         {/* PUBLICACIONES */}

@@ -214,6 +214,17 @@ export default function AppRouter() {
           </ProtectedRoute>
         }
       />
+            <Route
+        path="/mis-publicaciones"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <MisPublicaciones />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
 
     <Route
       path="/premium"

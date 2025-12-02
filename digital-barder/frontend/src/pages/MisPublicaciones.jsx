@@ -1,4 +1,3 @@
-// frontend/src/pages/MisPublicaciones.jsx
 import { useEffect, useState } from "react";
 import { api } from "../services/api";
 import hoja from "../assets/hoja.png";
@@ -7,6 +6,12 @@ export default function MisPublicaciones() {
   const [publicaciones, setPublicaciones] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
+
+  // Mapa de categorías (ID -> Nombre) - Mismo que usaste en PublicacionNueva
+  const categorias = {
+    1: "Bicicletas",  // Cambia por los nombres reales de tu BD
+    2: "Ropa"        // Cambia por los nombres reales de tu BD
+  };
 
   useEffect(() => {
     cargarMisPublicaciones();
@@ -27,20 +32,25 @@ export default function MisPublicaciones() {
     }
   }
 
+  // Función para obtener el nombre de la categoría por su ID
+  function obtenerNombreCategoria(idCategoria) {
+    return categorias[idCategoria] || `ID: ${idCategoria}`;
+  }
+
   return (
     <div className="min-h-screen bg-[#082b1f] text-white p-6 md:p-10">
       {/* HEADER */}
       <div className="flex items-center justify-between gap-3 mb-8">
         <div className="flex items-center gap-3">
           <img src={hoja} alt="logo" className="w-10 h-10 drop-shadow-lg" />
-        <div>
-          <h1 className="text-3xl font-bold text-emerald-400">
-            Mis publicaciones
-          </h1>
-          <p className="text-sm text-emerald-100/80">
-            Aquí ves todo lo que has publicado en el marketplace.
-          </p>
-        </div>
+          <div>
+            <h1 className="text-3xl font-bold text-emerald-400">
+              Mis publicaciones
+            </h1>
+            <p className="text-sm text-emerald-100/80">
+              Aquí ves todo lo que has publicado en el marketplace.
+            </p>
+          </div>
         </div>
 
         <a
@@ -85,7 +95,8 @@ export default function MisPublicaciones() {
                 >
                   <td className="py-2 px-4">{p.titulo}</td>
                   <td className="py-2 px-4">
-                    {p.categoria || p.id_categoria}
+                    {/* Aquí cambiamos: mostramos el nombre, no el ID */}
+                    {obtenerNombreCategoria(p.id_categoria)}
                   </td>
                   <td className="py-2 px-4">{p.valor_creditos} cr.</td>
                   <td className="py-2 px-4">

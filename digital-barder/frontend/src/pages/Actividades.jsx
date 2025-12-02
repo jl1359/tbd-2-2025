@@ -1,4 +1,3 @@
-// digital-barder/frontend/src/pages/Actividades.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { registrarActividadSostenible } from "../services/api";
@@ -11,11 +10,18 @@ export default function Actividades() {
   const [idTipoActividad, setIdTipoActividad] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [creditos, setCreditos] = useState("");
-  const [evidenciaUrl, setEvidenciaUrl] = useState("");
+  const [archivoEvidencia, setArchivoEvidencia] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [mensajeOk, setMensajeOk] = useState("");
   const [ultimaActividad, setUltimaActividad] = useState(null);
+
+  const tiposActividad = [
+    { id: "1", nombre: "Reciclaje" },
+    { id: "2", nombre: "Movilidad sostenible" },
+    { id: "3", nombre: "Voluntariado" },
+    // Agrega más tipos de actividades aquí
+  ];
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -29,10 +35,11 @@ export default function Actividades() {
     if (
       Number.isNaN(id_tipo_actividad) ||
       Number.isNaN(creditos_otorgados) ||
-      !descripcion.trim()
+      !descripcion.trim() ||
+      !archivoEvidencia
     ) {
       setError(
-        "id_tipo_actividad, descripción y créditos otorgados son obligatorios y deben ser válidos."
+        "Tipo de actividad, descripción, créditos otorgados y evidencia (archivo) son obligatorios."
       );
       return;
     }
@@ -40,20 +47,22 @@ export default function Actividades() {
     try {
       setLoading(true);
 
-      const act = await registrarActividadSostenible({
-        id_tipo_actividad,
-        descripcion,
-        creditos_otorgados,
-        evidencia_url: evidenciaUrl || null,
-      });
+      const formData = new FormData();
+      formData.append("id_tipo_actividad", id_tipo_actividad);
+      formData.append("descripcion", descripcion);
+      formData.append("creditos_otorgados", creditos_otorgados);
+      formData.append("evidencia", archivoEvidencia);
+
+      const act = await registrarActividadSostenible(formData);
 
       setMensajeOk("Actividad registrada correctamente 🌱");
       setUltimaActividad(act);
 
-      // limpiar parcialmente
+      // Limpiar el formulario
       setDescripcion("");
       setCreditos("");
-      setEvidenciaUrl("");
+      setArchivoEvidencia(null);
+      setIdTipoActividad(""); // Limpiar el tipo de actividad seleccionado
     } catch (err) {
       console.error(err);
       setError(
@@ -62,6 +71,11 @@ export default function Actividades() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleArchivoEvidenciaChange(e) {
+    const file = e.target.files?.[0];
+    setArchivoEvidencia(file || null);
   }
 
   return (
@@ -127,24 +141,24 @@ export default function Actividades() {
         onSubmit={handleSubmit}
         className="max-w-3xl bg-[#0f3f2d] border border-emerald-700 rounded-2xl p-5 shadow-md space-y-4"
       >
-        {/* id_tipo_actividad */}
+        {/* Tipo de actividad */}
         <div>
-          <label className="block text-xs mb-1">
-            ID tipo de actividad (id_tipo_actividad) *
-          </label>
-          <input
-            type="number"
+          <label className="block text-xs mb-1">Tipo de actividad *</label>
+          <select
             value={idTipoActividad}
             onChange={(e) => setIdTipoActividad(e.target.value)}
             className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
-            placeholder="Ej. 1 (Reciclaje), 2 (Movilidad sostenible), etc."
-          />
-          <p className="text-[11px] text-emerald-100/70 mt-1">
-            Usa los IDs definidos en la tabla TIPO_ACTIVIDAD_SOSTENIBLE.
-          </p>
+          >
+            <option value="">Selecciona un tipo de actividad</option>
+            {tiposActividad.map((tipo) => (
+              <option key={tipo.id} value={tipo.id}>
+                {tipo.nombre}
+              </option>
+            ))}
+          </select>
         </div>
 
-        {/* descripción */}
+        {/* Descripción */}
         <div>
           <label className="block text-xs mb-1">Descripción *</label>
           <textarea
@@ -156,11 +170,9 @@ export default function Actividades() {
           />
         </div>
 
-        {/* créditos */}
+        {/* Créditos */}
         <div>
-          <label className="block text-xs mb-1">
-            Créditos otorgados (creditos_otorgados) *
-          </label>
+          <label className="block text-xs mb-1">Créditos otorgados *</label>
           <input
             type="number"
             value={creditos}
@@ -170,17 +182,13 @@ export default function Actividades() {
           />
         </div>
 
-        {/* evidencia_url */}
+        {/* Subir archivo de evidencia */}
         <div>
-          <label className="block text-xs mb-1">
-            URL de evidencia (opcional)
-          </label>
+          <label className="block text-xs mb-1">Evidencia (archivo) *</label>
           <input
-            type="url"
-            value={evidenciaUrl}
-            onChange={(e) => setEvidenciaUrl(e.target.value)}
-            className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
-            placeholder="Link a foto, drive, formulario, etc."
+            type="file"
+            onChange={handleArchivoEvidenciaChange}
+            className="w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-emerald-500 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-emerald-950 hover:file:bg-emerald-600"
           />
         </div>
 

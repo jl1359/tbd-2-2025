@@ -74,6 +74,14 @@ export default function Wallet() {
         </div>
       )}
 
+      {/* BOTÓN VOLVER ATRÁS */}
+      <button
+        onClick={() => navigate(-1)}
+        className="mb-4 px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-sm text-white"
+      >
+        Volver atrás
+      </button>
+
       {/* TARJETAS RESUMEN */}
       <div className="grid gap-6 md:grid-cols-3 mb-10">
         {/* Créditos disponibles */}

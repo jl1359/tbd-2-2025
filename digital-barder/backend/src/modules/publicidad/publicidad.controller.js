@@ -1,46 +1,45 @@
 // src/modules/publicidad/publicidad.controller.js
-
-// Servicios propios del módulo PUBLICIDAD
 import {
   crearPublicidadService,
   listarPublicidadActivaService,
   listarPublicidadAdminService,
+  cambiarEstadoPublicidadService,
+  eliminarPublicidadService,
 } from "./publicidad.service.js";
 
-// Servicio del módulo PUBLICACIONES (ruta correcta)
 import { buscarPublicacionesService } from "../publicaciones/publicaciones.service.js";
 
-/**
- * Convierte BigInt, Date, Prisma.Decimal, etc. en tipos JSON-safe
- */
 function toPlain(value) {
   if (typeof value === "bigint") return Number(value);
-
   if (value instanceof Date)
     return value.toISOString().slice(0, 19).replace("T", " ");
 
   if (value && typeof value === "object") {
-    if (typeof value.toNumber === "function") {
-      return value.toNumber();
-    }
-
-    const prim = value.valueOf?.();
-    if (prim != null && typeof prim !== "object") return prim;
-
-    if (Array.isArray(value)) return value.map((v) => toPlain(v));
+    if (typeof value.toNumber === "function") return value.toNumber();
+    if (Array.isArray(value)) return value.map(toPlain);
 
     const out = {};
     for (const [k, v] of Object.entries(value)) out[k] = toPlain(v);
     return out;
   }
-
   return value;
 }
 
-/**
- * POST /api/publicidad
- * Crear anuncio publicitario (solo admin)
- */
+/* =====================================================
+   PUBLICAS
+===================================================== */
+export const listarPublicidadActivaController = async (req, res, next) => {
+  try {
+    const data = await listarPublicidadActivaService();
+    res.json(toPlain(data));
+  } catch (err) {
+    next(err);
+  }
+};
+
+/* =====================================================
+   ADMIN
+===================================================== */
 export const crearPublicidadController = async (req, res, next) => {
   try {
     const idUsuario = req.user.id_usuario;
@@ -51,23 +50,6 @@ export const crearPublicidadController = async (req, res, next) => {
   }
 };
 
-/**
- * GET /api/publicidad/activa
- * Publicidad visible para el FRONT (solo activas y en rango)
- */
-export const listarPublicidadActivaController = async (req, res, next) => {
-  try {
-    const data = await listarPublicidadActivaService();
-    res.json(toPlain(data));
-  } catch (err) {
-    next(err);
-  }
-};
-
-/**
- * GET /api/publicidad/admin
- * Lista TODA la publicidad (panel administrador)
- */
 export const listarPublicidadAdminController = async (req, res, next) => {
   try {
     const data = await listarPublicidadAdminService();
@@ -77,10 +59,6 @@ export const listarPublicidadAdminController = async (req, res, next) => {
   }
 };
 
-/**
- * GET /api/publicidad/buscar-publicaciones?q=
- * Buscar publicaciones para vincularlas a un banner
- */
 export const buscarPublicacionesParaPublicidadController = async (
   req,
   res,
@@ -90,6 +68,41 @@ export const buscarPublicacionesParaPublicidadController = async (
     const q = req.query.q || "";
     const data = await buscarPublicacionesService(q);
     res.json(toPlain(data));
+  } catch (err) {
+    next(err);
+  }
+};
+
+/* =====================================================
+   NUEVO: CAMBIAR ESTADO
+===================================================== */
+export const cambiarEstadoPublicidadController = async (req, res, next) => {
+  try {
+    const idPublicidad = Number(req.params.id);
+    const { estado } = req.body;
+
+    const data = await cambiarEstadoPublicidadService(idPublicidad, estado);
+    res.json({
+      message: "Estado actualizado correctamente",
+      publicidad: toPlain(data),
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/* =====================================================
+   NUEVO: ELIMINAR (LOGICO)
+===================================================== */
+export const eliminarPublicidadController = async (req, res, next) => {
+  try {
+    const idPublicidad = Number(req.params.id);
+    const data = await eliminarPublicidadService(idPublicidad);
+
+    res.json({
+      message: "Publicidad eliminada (estado = 'ELIMINADA')",
+      publicidad: toPlain(data),
+    });
   } catch (err) {
     next(err);
   }

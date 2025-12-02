@@ -10,11 +10,19 @@ import {
 
 const router = Router();
 
+// Todo el módulo de promociones es solo ADMIN
 router.use(authMiddleware, isAdmin);
 
+// Listar promociones
 router.get("/", listarPromocionesController);
+
+// Crear nueva promoción
 router.post("/", crearPromocionController);
+
+// Cambiar estado de promoción
 router.patch("/:id/estado", actualizarEstadoPromocionController);
+
+// Vincular publicación a promoción (dispara bono vía trigger)
 router.post("/:id/publicaciones", vincularPublicacionController);
 
 export default router;

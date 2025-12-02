@@ -6,14 +6,22 @@ import {
 
 export const miPlanPremiumController = async (req, res, next) => {
   try {
-    res.json(await miPlanPremiumService(req.user.id_usuario));
-  } catch (e) { next(e); }
+    const idUsuario = req.user.id_usuario;
+    const plan = await miPlanPremiumService(idUsuario);
+    res.json(plan);
+  } catch (e) {
+    next(e);
+  }
 };
 
 export const activarPremiumController = async (req, res, next) => {
   try {
     const idUsuario = req.user.id_usuario;
     const data = await activarPremiumService(idUsuario);
-    res.status(201).json(data);
-  } catch (e) { next(e); }
+    res
+      .status(201)
+      .json({ message: "Suscripción premium activada correctamente", data });
+  } catch (e) {
+    next(e);
+  }
 };

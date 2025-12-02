@@ -8,11 +8,13 @@ import {
 
 const router = Router();
 
+// Todas las rutas requieren estar logueado
 router.use(authMiddleware);
 
+// Ver mis logros (usuario normal)
 router.get("/mios", misLogrosController);
 
-// sólo admin ve catálogo completo
+// Catálogo completo de logros (solo admin, con filtro opcional)
 router.get("/", isAdmin, listarLogrosController);
 
 export default router;

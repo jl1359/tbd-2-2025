@@ -1,16 +1,40 @@
 import { prisma } from "../../config/prisma.js";
 
-export const listarLogrosService = () =>
-  prisma.$queryRaw`
+/**
+ * Listar catálogo de logros (opcionalmente filtrado por tipo)
+ * @param {number | undefined} idTipoLogro
+ */
+export const listarLogrosService = (idTipoLogro) => {
+  if (idTipoLogro) {
+    return prisma.$queryRaw`
+      SELECT l.*, tl.nombre AS tipo_logro
+      FROM LOGRO l
+      JOIN TIPO_LOGRO tl ON tl.id_tipo_logro = l.id_tipo_logro
+      WHERE l.id_tipo_logro = ${idTipoLogro}
+      ORDER BY l.id_logro
+    `;
+  }
+
+  // Sin filtro
+  return prisma.$queryRaw`
     SELECT l.*, tl.nombre AS tipo_logro
     FROM LOGRO l
     JOIN TIPO_LOGRO tl ON tl.id_tipo_logro = l.id_tipo_logro
     ORDER BY l.id_logro
   `;
+};
 
+/**
+ * Logros del usuario actual (catálogo + progreso)
+ */
 export const misLogrosService = (idUsuario) =>
   prisma.$queryRaw`
-    SELECT ul.*, l.nombre, l.descripcion, l.meta_requerida, l.creditos_recompensa
+    SELECT
+      ul.*,
+      l.nombre,
+      l.descripcion,
+      l.meta_requerida,
+      l.creditos_recompensa
     FROM USUARIO_LOGRO ul
     JOIN LOGRO l ON l.id_logro = ul.id_logro
     WHERE ul.id_usuario = ${idUsuario}

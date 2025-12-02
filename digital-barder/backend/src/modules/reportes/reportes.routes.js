@@ -1,5 +1,6 @@
-// src/modules/reportes/reportes.routes.js
 import { Router } from "express";
+import { authMiddleware } from "../../middlewares/auth.js";
+import { isAdmin } from "../../middlewares/isAdmin.js";
 import {
   getUsuariosActivos,
   getUsuariosAbandonados,
@@ -17,6 +18,9 @@ import {
 } from "./reportes.controller.js";
 
 const router = Router();
+
+// Todo el módulo de reportes SOLO para admins
+router.use(authMiddleware, isAdmin);
 
 /*  REPORTES PRINCIPALES */
 
@@ -40,7 +44,6 @@ router.get("/publicaciones-vs-intercambios", getPublicacionesVsIntercambios);
 
 // ✔ Impacto ecológico acumulado
 router.get("/impacto-acumulado", getImpactoAcumulado);
-
 
 /* REPORTES AVANZADOS */
 

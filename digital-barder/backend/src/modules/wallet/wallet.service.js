@@ -1,6 +1,6 @@
 import { prisma } from "../../config/prisma.js";
 
-// Helper para convertir BigInt / Decimal a Number
+// Helper: convertir BigInt / Decimal / strings numéricas a Number
 function toNumberSafe(value, def = 0) {
   if (value == null) return def;
 
@@ -25,6 +25,29 @@ function normalizeBilleteraRow(row) {
   return {
     saldo_creditos: toNumberSafe(row.saldo_creditos, 0),
     saldo_bs: toNumberSafe(row.saldo_bs, 0),
+  };
+}
+
+// Normalizar un movimiento (para evitar BigInt en JSON)
+function normalizeMovimientoRow(row) {
+  if (!row) return row;
+  return {
+    ...row,
+    cantidad: toNumberSafe(row.cantidad, 0),
+    saldo_anterior: toNumberSafe(row.saldo_anterior, 0),
+    saldo_posterior: toNumberSafe(row.saldo_posterior, 0),
+    // creado_en queda como Date y Express lo serializa a ISO
+  };
+}
+
+// Normalizar una compra
+function normalizeCompraRow(row) {
+  if (!row) return row;
+  return {
+    ...row,
+    cantidad_creditos: toNumberSafe(row.cantidad_creditos, 0),
+    monto_bs: toNumberSafe(row.monto_bs, 0),
+    // creado_en queda como Date
   };
 }
 
@@ -56,8 +79,7 @@ export async function obtenerMisMovimientosService(idUsuario) {
     ORDER BY m.creado_en DESC, m.id_movimiento DESC
   `;
 
-  // si quieres, aquí también podrías normalizar BigInt, pero por ahora lo dejamos
-  return rows;
+  return rows.map(normalizeMovimientoRow);
 }
 
 export async function comprarCreditosService({
@@ -65,7 +87,7 @@ export async function comprarCreditosService({
   idPaquete,
   idTransaccionPago,
 }) {
-  // Llamar al SP
+  // Llamar al SP (coincide con sp_compra_creditos_aprobar(p_id_usuario, p_id_paquete, p_id_transaccion_pago))
   await prisma.$executeRawUnsafe(
     "CALL sp_compra_creditos_aprobar(?, ?, ?)",
     idUsuario,
@@ -98,5 +120,6 @@ export async function obtenerMisComprasService(idUsuario) {
     WHERE c.id_usuario = ${idUsuario}
     ORDER BY c.creado_en DESC, c.id_compra DESC
   `;
-  return rows;
+
+  return rows.map(normalizeCompraRow);
 }

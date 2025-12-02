@@ -1,3 +1,4 @@
+// src/modules/usuarios/usuarios.service.js
 import bcrypt from "bcryptjs";
 import { prisma } from "../../config/prisma.js";
 
@@ -58,12 +59,18 @@ export async function crearUsuarioAdminService({
 export async function actualizarUsuarioService(idUsuario, data) {
   const { nombre, apellido, telefono, id_rol } = data;
 
+  // Normalizar undefined → null para que COALESCE funcione como "no cambiar"
+  const nombreParam = nombre === undefined ? null : nombre;
+  const apellidoParam = apellido === undefined ? null : apellido;
+  const telefonoParam = telefono === undefined ? null : telefono;
+  const rolParam = id_rol === undefined ? null : id_rol;
+
   await prisma.$queryRaw`
     UPDATE USUARIO
-    SET nombre = COALESCE(${nombre}, nombre),
-        apellido = COALESCE(${apellido}, apellido),
-        telefono = COALESCE(${telefono}, telefono),
-        id_rol = COALESCE(${id_rol}, id_rol)
+    SET nombre  = COALESCE(${nombreParam}, nombre),
+        apellido = COALESCE(${apellidoParam}, apellido),
+        telefono = COALESCE(${telefonoParam}, telefono),
+        id_rol   = COALESCE(${rolParam}, id_rol)
     WHERE id_usuario = ${idUsuario}
   `;
 
@@ -114,10 +121,10 @@ export async function cambiarEstadoUsuarioService(idUsuario, estado) {
 
 export async function obtenerHistorialUsuarioService(idUsuario) {
   // Llama a tu SP sp_obtener_historial_usuario
-  const result = await prisma.$queryRawUnsafe(
+  const [rows] = await prisma.$queryRawUnsafe(
     "CALL sp_obtener_historial_usuario(?)",
     idUsuario
   );
-  // En MySQL, CALL devuelve [rows, meta]; nos quedamos con rows[0]
-  return result[0] || result;
+  // rows ya es el primer resultset del CALL
+  return rows;
 }

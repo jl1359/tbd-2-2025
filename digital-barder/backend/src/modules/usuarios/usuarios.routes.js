@@ -1,15 +1,33 @@
 // src/modules/usuarios/usuarios.routes.js
-import { Router } from 'express'
+import { Router } from "express";
+import { authMiddleware } from "../../middlewares/auth.js";
+import { isAdmin } from "../../middlewares/isAdmin.js";
 import {
-    listarUsuarios,
-    crearUsuario,
-    obtenerUsuario,
-} from './usuarios.controller.js'
+  listarUsuariosController,
+  crearUsuarioAdminController,
+  actualizarUsuarioController,
+  cambiarEstadoUsuarioController,
+  obtenerHistorialUsuarioController,
+} from "./usuarios.controller.js";
 
-const router = Router()
+const router = Router();
 
-router.get('/', listarUsuarios)
-router.get('/:id', obtenerUsuario)
-router.post('/', crearUsuario)
+// Todo lo de aquí requiere admin
+router.use(authMiddleware, isAdmin);
 
-export default router
+// GET /api/usuarios
+router.get("/", listarUsuariosController);
+
+// POST /api/usuarios
+router.post("/", crearUsuarioAdminController);
+
+// PUT /api/usuarios/:id
+router.put("/:id", actualizarUsuarioController);
+
+// PATCH /api/usuarios/:id/estado
+router.patch("/:id/estado", cambiarEstadoUsuarioController);
+
+// GET /api/usuarios/:id/historial
+router.get("/:id/historial", obtenerHistorialUsuarioController);
+
+export default router;

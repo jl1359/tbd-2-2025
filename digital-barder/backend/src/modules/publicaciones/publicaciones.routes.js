@@ -1,17 +1,46 @@
-// src/modules/publicaciones/publicaciones.routes.js
-import { Router } from 'express'
+import { Router } from "express";
+import { authMiddleware } from "../../middlewares/auth.js";
 import {
-    listarPublicaciones,
-    crearPublicacion,
-    obtenerPublicacion,
-    cambiarEstadoPublicacion,
-} from './publicaciones.controller.js'
+  listarPublicacionesController,
+  obtenerPublicacionController,
+  crearPublicacionProductoController,
+  crearPublicacionServicioController,
+  misPublicacionesController,
+  buscarPublicacionesController,
+  crearCalificacionController,
+  listarCalificacionesController,
+  actualizarPublicacionController,
+  cambiarEstadoPublicacionController,
+  eliminarPublicacionController,
+} from "./publicaciones.controller.js";
 
-const router = Router()
+const router = Router();
 
-router.get('/', listarPublicaciones)
-router.get('/:id', obtenerPublicacion)
-router.post('/', crearPublicacion)
-router.patch('/:id/estado', cambiarEstadoPublicacion)
+/* ====== RUTAS PÚBLICAS ====== */
+// Paginación opcional: ?page=1&pageSize=12
+router.get("/", listarPublicacionesController);
+router.get("/busqueda", buscarPublicacionesController);
 
-export default router
+// OJO: la más específica primero
+router.get("/:id/calificaciones", listarCalificacionesController);
+router.get("/:id", obtenerPublicacionController);
+
+/* ====== RUTAS PROTEGIDAS (requieren login) ====== */
+router.use(authMiddleware);
+
+// Mis publicaciones
+router.get("/mias/listado", misPublicacionesController);
+
+// Crear publicaciones
+router.post("/producto", crearPublicacionProductoController);
+router.post("/servicio", crearPublicacionServicioController);
+
+// Calificar publicación
+router.post("/:id/calificaciones", crearCalificacionController);
+
+// NUEVOS: editar / estado / eliminar
+router.put("/:id", actualizarPublicacionController);
+router.patch("/:id/estado", cambiarEstadoPublicacionController);
+router.delete("/:id", eliminarPublicacionController);
+
+export default router;

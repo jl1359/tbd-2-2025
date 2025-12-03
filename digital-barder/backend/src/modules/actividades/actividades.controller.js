@@ -1,7 +1,10 @@
+// backend/src/modules/actividades/actividades.controller.js
 import {
   registrarActividadService,
   misActividadesService,
   listarActividadesAdminService,
+  aprobarActividadService,
+  rechazarActividadService,
 } from "./actividades.service.js";
 
 /**
@@ -73,6 +76,54 @@ export const listarActividadesAdminController = async (req, res, next) => {
       message: "Listado de actividades sostenibles",
       filtros,
       data: actividades,
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+
+/**
+ * Aprobar actividad sostenible (ADMIN)
+ * PATCH /api/actividades-sostenibles/:id/aprobar
+ */
+export const aprobarActividadController = async (req, res, next) => {
+  try {
+    const idAdmin = req.user.id_usuario;
+    const idActividad = Number(req.params.id);
+
+    if (!idActividad || Number.isNaN(idActividad)) {
+      return res.status(400).json({ message: "ID de actividad inválido" });
+    }
+
+    const actividad = await aprobarActividadService({ idActividad, idAdmin });
+
+    res.json({
+      message: "Actividad aprobada correctamente",
+      actividad,
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+
+/**
+ * Rechazar actividad sostenible (ADMIN)
+ * PATCH /api/actividades-sostenibles/:id/rechazar
+ */
+export const rechazarActividadController = async (req, res, next) => {
+  try {
+    const idAdmin = req.user.id_usuario;
+    const idActividad = Number(req.params.id);
+
+    if (!idActividad || Number.isNaN(idActividad)) {
+      return res.status(400).json({ message: "ID de actividad inválido" });
+    }
+
+    const actividad = await rechazarActividadService({ idActividad, idAdmin });
+
+    res.json({
+      message: "Actividad rechazada correctamente",
+      actividad,
     });
   } catch (e) {
     next(e);

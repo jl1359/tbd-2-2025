@@ -25,7 +25,6 @@ export default function Wallet() {
         api("/wallet/mis-movimientos"),
       ]);
 
-      // 👇 AQUÍ usamos saldo_creditos que viene del backend
       const saldoDisponible =
         resCreditos?.saldo_creditos ??
         resCreditos?.saldo ??
@@ -44,8 +43,8 @@ export default function Wallet() {
         Array.isArray(resMovs) ? resMovs.slice(0, 10) : []
       );
     } catch (err) {
-      console.error("Error cargando wallet:", err);
-      setError(err.message || "Error al cargar la información de la wallet.");
+      console.error("Error cargando billetera:", err);
+      setError(err.message || "Error al cargar la información de la billetera.");
     } finally {
       setCargando(false);
     }
@@ -54,7 +53,7 @@ export default function Wallet() {
   if (cargando) {
     return (
       <div className="min-h-screen bg-[#082b1f] text-white flex items-center justify-center">
-        Cargando wallet...
+        Cargando billeterat.
       </div>
     );
   }
@@ -64,7 +63,7 @@ export default function Wallet() {
       {/* HEADER */}
       <div className="flex items-center gap-3 mb-8">
         <img src={hoja} alt="logo" className="w-10 h-10 drop-shadow-lg" />
-        <h1 className="text-3xl font-bold text-emerald-400">Mi Wallet</h1>
+        <h1 className="text-3xl font-bold text-emerald-400">Mi Billetera</h1>
       </div>
 
       {/* ERROR */}
@@ -89,78 +88,99 @@ export default function Wallet() {
         </div>
 
         {/* Acciones rápidas */}
-        <div className="rounded-2xl border border-emerald-700 bg-[#0f3f2d] p-6 shadow-lg flex flex-col gap-3">
-          <p className="text-emerald-200 text-sm mb-2">Acciones rápidas</p>
-
-          <button
-            onClick={() => navigate("/comprar-creditos")}
-            className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-600 py-2 text-sm font-semibold"
-          >
-            Comprar créditos
-          </button>
-
-          <button
-            onClick={() => navigate("/wallet/movimientos")}
-            className="w-full rounded-xl bg-[#0f3f2d] border border-emerald-500 hover:bg-emerald-700 py-2 text-sm font-semibold"
-          >
-            Ver movimientos
-          </button>
-
-          <button
-            onClick={() => navigate("/wallet/compras")}
-            className="w-full rounded-xl bg-[#0f3f2d] border border-emerald-500 hover:bg-emerald-700 py-2 text-sm font-semibold"
-          >
-            Historial de compras
-          </button>
+        <div className="rounded-2xl border border-emerald-700 bg-[#0f3f2d] p-6 shadow-lg flex flex-col justify-between">
+          <div>
+            <p className="text-emerald-200 text-sm mb-2">
+              Acciones rápidas
+            </p>
+            <p className="text-xs text-emerald-100/80 mb-3">
+              Compra créditos, revisa movimientos o historial de compras.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs">
+            <button
+              className="bg-emerald-500 hover:bg-emerald-600 text-emerald-950 px-3 py-1.5 rounded-lg font-semibold"
+              onClick={() => navigate("/wallet/compra-creditos")}
+            >
+              Comprar créditos
+            </button>
+            <button
+              className="bg-emerald-500 hover:bg-emerald-600 text-emerald-950 px-3 py-1.5 rounded-lg font-semibold"
+              onClick={() => navigate("/wallet/movimientos")}
+            >
+              Ver movimientos
+            </button>
+            <button
+              className="bg-emerald-500 hover:bg-emerald-600 text-emerald-950 px-3 py-1.5 rounded-lg font-semibold"
+              onClick={() => navigate("/wallet/historial-compras")}
+            >
+              Historial de compras
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* ÚLTIMOS MOVIMIENTOS */}
-      <section className="rounded-2xl border border-emerald-700 bg-[#0f3f2d] p-6 shadow-lg">
-        <h2 className="text-xl font-semibold text-emerald-300 mb-4">
-          Últimos movimientos
-        </h2>
+      {/* LISTA MOVIMIENTOS RECIENTES */}
+      <section className="bg-[#0f3f2d] rounded-2xl border border-emerald-700 p-6 shadow-lg">
+        <div className="flex items-center justify-between mb  -4">
+          <h2 className="text-lg font-semibold text-emerald-300">
+            Movimientos recientes
+          </h2>
+          <button
+            className="text-xs text-emerald-200 underline"
+            onClick={() => navigate("/wallet/movimientos")}
+          >
+            Ver todos
+          </button>
+        </div>
 
         {movimientos.length === 0 ? (
-          <p className="text-sm text-emerald-100/80">
-            Aún no tienes movimientos en tu wallet.
+          <p className="text-sm text-emerald-100/70 mt-2">
+            Aún no tienes movimientos registrados.
           </p>
         ) : (
-          <div className="flex flex-col gap-3">
-            {movimientos.map((m) => (
-              <div
-                key={m.id_movimiento}
-                className="flex items-center justify-between rounded-xl border border-emerald-700 bg-[#0e3a2a] px-4 py-3"
-              >
-                <div>
-                  <p className="font-semibold text-emerald-200">
-                    {m.tipo_movimiento || "MOVIMIENTO"}
-                  </p>
-                  <p className="text-xs text-emerald-100/70">
-                    {m.tipo_referencia || "Sin descripción"}
-                  </p>
-                  <p className="text-[11px] text-emerald-100/60 mt-1">
-                    {m.creado_en
-                      ? new Date(m.creado_en).toLocaleString()
-                      : ""}
-                  </p>
-                </div>
+          <div className="mt-3 space-y-3 text-sm">
+            {movimientos.map((m) => {
+              const fecha =
+                m.creado_en || m.fecha || m.fecha_movimiento || null;
 
-                <div className="text-right">
-                  <p
-                    className={`font-semibold ${
-                      m.cantidad >= 0 ? "text-emerald-300" : "text-red-300"
-                    }`}
-                  >
-                    {m.cantidad >= 0 ? "+" : ""}
-                    {m.cantidad} cr.
-                  </p>
-                  <p className="text-[11px] text-emerald-100/60 mt-1">
-                    Saldo: {m.saldo_posterior ?? m.saldo_posterior ?? "-"} cr.
-                  </p>
+              return (
+                <div
+                  key={m.id_movimiento}
+                  className="flex items-center justify-between border-b border-emerald-800/70 pb-2 last:border-0"
+                >
+                  <div>
+                    <p className="font-semibold text-emerald-100">
+                      {m.tipo_movimiento || "Movimiento"}
+                      {m.tipo_referencia ? ` (${m.tipo_referencia})` : ""}
+                    </p>
+                    <p className="text-[11px] text-emerald-100/70">
+                      {fecha ? new Date(fecha).toLocaleString() : ""}
+                    </p>
+                  </div>
+
+                  <div className="text-right">
+                    <p
+                      className={`font-semibold ${
+                        (m.cantidad ?? 0) >= 0
+                          ? "text-emerald-300"
+                          : "text-red-300"
+                      }`}
+                    >
+                      {(m.cantidad ?? 0) >= 0 ? "+" : ""}
+                      {m.cantidad ?? m.creditos ?? 0} cr.
+                    </p>
+                    <p className="text-[11px] text-emerald-100/60 mt-1">
+                      Saldo:{" "}
+                      {m.saldo_posterior ??
+                        m.saldo ??
+                        "-"}{" "}
+                      cr.
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>

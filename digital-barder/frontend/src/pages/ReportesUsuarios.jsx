@@ -117,91 +117,106 @@ export default function ReportesUsuarios() {
         backgroundSize: "160px",
       }}
     >
-      <div className="max-w-6xl mx-auto space-y-8">
-        {/* HEADER */}
-        <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-white shadow-md flex items-center justify-center border border-emerald-700/20">
-              <img src={hoja} alt="Hoja" className="w-10 h-10" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-extrabold text-emerald-800 drop-shadow">
-                Reporte de usuarios
-              </h1>
-              <p className="text-sm text-emerald-700/80">
-                Usuarios activos, abandonados y nuevos (primer login) en el
-                rango seleccionado.
-              </p>
-            </div>
-          </div>
+      <div className="max-w-6xl mx-auto bg-emerald-900/90 rounded-2xl shadow-xl text-white p-6 md:p-8">
+        <header className="mb-6 border-b border-emerald-500/40 pb-4">
+          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3">
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/20 border border-emerald-400/60">
+              📊
+            </span>
+            Reporte de usuarios activos, abandonados y nuevos (primer login)
+          </h1>
+          <p className="mt-2 text-sm text-emerald-100/80">
+            Analiza el comportamiento de los usuarios en un rango de fechas:
+            quiénes se mantienen activos, quiénes abandonan y quiénes ingresan
+            por primera vez a la plataforma.
+          </p>
+        </header>
 
+        {/* Filtros */}
+        <section className="mb-6 bg-emerald-800/80 rounded-xl p-4 border border-emerald-500/40">
           <form
             onSubmit={handleSubmit}
-            className="flex flex-wrap gap-4 items-end bg-white/70 px-4 py-3 rounded-xl shadow backdrop-blur text-sm"
+            className="flex flex-col md:flex-row md:items-end gap-4"
           >
-            <div className="flex flex-col">
-              <label className="mb-1 font-semibold text-emerald-900">
+            <div className="flex-1">
+              <label className="block text-xs font-semibold text-emerald-200 mb-1">
                 Desde
               </label>
               <input
                 type="date"
                 value={desde}
                 onChange={(e) => setDesde(e.target.value)}
-                className="border rounded px-2 py-1 text-sm shadow-sm"
+                className="w-full rounded-lg bg-emerald-900/60 border border-emerald-500/60 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
               />
             </div>
-            <div className="flex flex-col">
-              <label className="mb-1 font-semibold text-emerald-900">
+            <div className="flex-1">
+              <label className="block text-xs font-semibold text-emerald-200 mb-1">
                 Hasta
               </label>
               <input
                 type="date"
                 value={hasta}
                 onChange={(e) => setHasta(e.target.value)}
-                className="border rounded px-2 py-1 text-sm shadow-sm"
+                className="w-full rounded-lg bg-emerald-900/60 border border-emerald-500/60 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
               />
             </div>
+
             <button
               type="submit"
-              className="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-lg font-semibold shadow-md"
+              className="inline-flex items-center justify-center rounded-lg bg-emerald-500 hover:bg-emerald-400 px-4 py-2 text-sm font-semibold shadow-md transition-colors"
             >
-              {loading ? "Cargando…" : "Actualizar"}
+              Actualizar reporte
             </button>
           </form>
-        </header>
 
-        {error && (
-          <div className="bg-red-100 border border-red-300 text-red-700 text-sm px-4 py-2 rounded-lg shadow-sm">
-            {error}
-          </div>
-        )}
+          {error && (
+            <p className="mt-3 text-xs text-red-300 bg-red-900/30 border border-red-400/60 rounded-md px-3 py-2">
+              {error}
+            </p>
+          )}
 
-        {/* KPIs */}
-        <section className="grid md:grid-cols-4 gap-6">
-          <div className="bg-white shadow-md border border-emerald-200/40 rounded-xl p-4">
+          {loading && (
+            <p className="mt-3 text-xs text-emerald-100/80">
+              Cargando datos...
+            </p>
+          )}
+        </section>
+
+        {/* Tarjetas de métricas */}
+        <section className="grid md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-white shadow-md border border-emerald-200/60 rounded-xl p-4">
             <p className="text-xs font-semibold text-emerald-700 uppercase">
               Usuarios activos
             </p>
             <p className="mt-2 text-3xl font-extrabold text-emerald-900">
               {metrics.totalActivos}
             </p>
+            <p className="text-[11px] text-emerald-700/80 mt-1">
+              Usuarios con actividad reciente en el período.
+            </p>
           </div>
 
-          <div className="bg-white shadow-md border border-slate-200/60 rounded-xl p-4">
-            <p className="text-xs font-semibold text-slate-700 uppercase">
+          <div className="bg-white shadow-md border border-emerald-200/60 rounded-xl p-4">
+            <p className="text-xs font-semibold text-emerald-700 uppercase">
               Usuarios abandonados
             </p>
-            <p className="mt-2 text-3xl font-extrabold text-slate-900">
+            <p className="mt-2 text-3xl font-extrabold text-emerald-900">
               {metrics.totalAbandonados}
+            </p>
+            <p className="text-[11px] text-emerald-700/80 mt-1">
+              Usuarios que dejaron de usar la plataforma en el período.
             </p>
           </div>
 
-          <div className="bg-white shadow-md border border-blue-200/60 rounded-xl p-4">
-            <p className="text-xs font-semibold text-blue-700 uppercase">
-              Usuarios nuevos
+          <div className="bg-white shadow-md border border-emerald-200/60 rounded-xl p-4">
+            <p className="text-xs font-semibold text-emerald-700 uppercase">
+              Nuevos usuarios
             </p>
-            <p className="mt-2 text-3xl font-extrabold text-blue-900">
+            <p className="mt-2 text-3xl font-extrabold text-emerald-900">
               {metrics.totalNuevos}
+            </p>
+            <p className="text-[11px] text-emerald-700/80 mt-1">
+              Usuarios cuyo primer login está dentro del rango.
             </p>
           </div>
 
@@ -219,7 +234,7 @@ export default function ReportesUsuarios() {
         </section>
 
         {/* Gráfico resumen */}
-        <section className="grid lg:grid-cols-2 gap-6">
+        <section className="grid lg:grid-cols-2 gap-6 mb-6">
           <div className="bg-white rounded-xl border border-emerald-200/40 shadow p-4">
             <h2 className="text-lg font-semibold text-emerald-900 mb-2">
               Distribución de usuarios por tipo
@@ -237,7 +252,6 @@ export default function ReportesUsuarios() {
                   <Bar
                     dataKey="cantidad"
                     name="Usuarios"
-                    fill="#047857"
                     radius={[8, 8, 0, 0]}
                   />
                 </BarChart>
@@ -251,7 +265,9 @@ export default function ReportesUsuarios() {
             </h2>
             <ul className="text-sm text-emerald-900 space-y-1">
               <li>
-                <span className="font-semibold">Total usuarios en análisis: </span>
+                <span className="font-semibold">
+                  Total usuarios en análisis:{" "}
+                </span>
                 {metrics.totalUsuariosPeriodo}
               </li>
               <li>
@@ -279,7 +295,7 @@ export default function ReportesUsuarios() {
         </section>
 
         {/* Usuarios activos */}
-        <section className="space-y-2 bg-white border border-emerald-200/40 rounded-xl shadow">
+        <section className="space-y-2 bg-white border border-emerald-200/40 rounded-xl shadow mb-6">
           <div className="px-4 py-3 border-b bg-emerald-50 rounded-t-xl">
             <h2 className="font-semibold text-emerald-900">
               Usuarios activos ({activos.length})
@@ -328,7 +344,7 @@ export default function ReportesUsuarios() {
         </section>
 
         {/* Usuarios abandonados */}
-        <section className="space-y-2 bg-white border border-emerald-200/40 rounded-xl shadow">
+        <section className="space-y-2 bg-white border border-emerald-200/40 rounded-xl shadow mb-6">
           <div className="px-4 py-3 border-b bg-emerald-50 rounded-t-xl">
             <h2 className="font-semibold text-emerald-900">
               Usuarios abandonados ({abandonados.length})
@@ -340,7 +356,7 @@ export default function ReportesUsuarios() {
                 <tr>
                   <th className="px-2 py-1 text-left">Usuario</th>
                   <th className="px-2 py-1 text-left">Correo</th>
-                  <th className="px-2 py-1 text-right">Estado</th>
+                  <th className="px-2 py-1 text-right">Última actividad</th>
                 </tr>
               </thead>
               <tbody>
@@ -348,7 +364,9 @@ export default function ReportesUsuarios() {
                   <tr key={i} className="border-t">
                     <td className="px-2 py-1">{u.nombre}</td>
                     <td className="px-2 py-1">{u.correo}</td>
-                    <td className="px-2 py-1 text-right">{u.estado}</td>
+                    <td className="px-2 py-1 text-right">
+                      {u.ultima_actividad || "-"}
+                    </td>
                   </tr>
                 ))}
                 {abandonados.length === 0 && (
@@ -357,7 +375,7 @@ export default function ReportesUsuarios() {
                       className="px-2 py-2 text-center text-gray-400"
                       colSpan={3}
                     >
-                      Sin datos en el rango.
+                      Sin usuarios abandonados en el rango.
                     </td>
                   </tr>
                 )}
@@ -388,7 +406,7 @@ export default function ReportesUsuarios() {
                     <td className="px-2 py-1">{u.nombre}</td>
                     <td className="px-2 py-1">{u.correo}</td>
                     <td className="px-2 py-1 text-right">
-                      {u.fecha_primer_login}
+                      {u.fecha_primer_login || "-"}
                     </td>
                   </tr>
                 ))}

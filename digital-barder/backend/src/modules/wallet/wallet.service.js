@@ -1,6 +1,9 @@
+// backend/src/modules/wallet/wallet.service.js
 import { prisma } from "../../config/prisma.js";
 
-// Helper: convertir BigInt / Decimal / strings numéricas a Number
+// =======================================
+// Helper: convertir BigInt / Decimal a Number
+// =======================================
 function toNumberSafe(value, def = 0) {
   if (value == null) return def;
 
@@ -14,43 +17,78 @@ function toNumberSafe(value, def = 0) {
   return Number.isNaN(num) ? def : num;
 }
 
+// =======================================
+// Normalizadores
+// =======================================
+
+// Saldo de billetera
 function normalizeBilleteraRow(row) {
   if (!row) {
     return {
       saldo_creditos: 0,
       saldo_bs: 0,
+      saldo: 0,
+      creditos: 0,
+      saldo_bloqueado: 0,
+      bloqueado: 0,
     };
   }
 
+  const saldoCreditos = toNumberSafe(row.saldo_creditos, 0);
+  const saldoBs = toNumberSafe(row.saldo_bs, 0);
+  const saldoBloqueado = toNumberSafe(row.saldo_bloqueado ?? 0, 0);
+
   return {
-    saldo_creditos: toNumberSafe(row.saldo_creditos, 0),
-    saldo_bs: toNumberSafe(row.saldo_bs, 0),
+    // nombres originales de la consulta
+    saldo_creditos: saldoCreditos,
+    saldo_bs: saldoBs,
+
+    // alias que usan Home, Perfil y Wallet en el front
+    saldo: saldoCreditos,
+    creditos: saldoCreditos,
+    saldo_bloqueado: saldoBloqueado,
+    bloqueado: saldoBloqueado,
   };
 }
 
-// Normalizar un movimiento (para evitar BigInt en JSON)
+// Movimiento de créditos
 function normalizeMovimientoRow(row) {
   if (!row) return row;
+
+  const cantidad = toNumberSafe(row.cantidad, 0);
+
   return {
     ...row,
-    cantidad: toNumberSafe(row.cantidad, 0),
+    cantidad,
+    creditos: cantidad, // el front muestra a.creditos en Home
     saldo_anterior: toNumberSafe(row.saldo_anterior, 0),
     saldo_posterior: toNumberSafe(row.saldo_posterior, 0),
     // creado_en queda como Date y Express lo serializa a ISO
   };
 }
 
-// Normalizar una compra
+// Compra de paquete de créditos
 function normalizeCompraRow(row) {
   if (!row) return row;
+
+  const cant = toNumberSafe(row.cantidad_creditos, 0);
+  const monto = toNumberSafe(row.monto_bs, 0);
+
   return {
     ...row,
-    cantidad_creditos: toNumberSafe(row.cantidad_creditos, 0),
-    monto_bs: toNumberSafe(row.monto_bs, 0),
-    // creado_en queda como Date
+    cantidad_creditos: cant,
+    creditos: cant,          // para tablas que leen c.creditos
+    creditos_compra: cant,   // para tablas que leen c.creditos_compra
+    monto_bs: monto,
+    monto,                   // alias genérico
   };
 }
 
+// =======================================
+// Servicios públicos del módulo
+// =======================================
+
+// Saldo actual de la billetera del usuario logueado
 export async function obtenerMisCreditosService(idUsuario) {
   const rows = await prisma.$queryRaw`
     SELECT saldo_creditos, saldo_bs
@@ -62,6 +100,7 @@ export async function obtenerMisCreditosService(idUsuario) {
   return normalizeBilleteraRow(rows[0]);
 }
 
+// Movimientos de la billetera del usuario
 export async function obtenerMisMovimientosService(idUsuario) {
   const rows = await prisma.$queryRaw`
     SELECT m.id_movimiento,
@@ -82,12 +121,13 @@ export async function obtenerMisMovimientosService(idUsuario) {
   return rows.map(normalizeMovimientoRow);
 }
 
+// Compra de un paquete de créditos (llama al SP y devuelve la billetera actualizada)
 export async function comprarCreditosService({
   idUsuario,
   idPaquete,
   idTransaccionPago,
 }) {
-  // Llamar al SP (coincide con sp_compra_creditos_aprobar(p_id_usuario, p_id_paquete, p_id_transaccion_pago))
+  // SP: sp_compra_creditos_aprobar(p_id_usuario, p_id_paquete, p_id_transaccion_pago)
   await prisma.$executeRawUnsafe(
     "CALL sp_compra_creditos_aprobar(?, ?, ?)",
     idUsuario,
@@ -105,6 +145,7 @@ export async function comprarCreditosService({
   return normalizeBilleteraRow(rows[0]);
 }
 
+// Historial de compras de paquetes de créditos
 export async function obtenerMisComprasService(idUsuario) {
   const rows = await prisma.$queryRaw`
     SELECT c.id_compra,

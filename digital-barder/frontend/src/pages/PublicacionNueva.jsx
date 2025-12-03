@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../services/api";
 import hoja from "../assets/hoja.png";
@@ -19,8 +19,42 @@ export default function PublicacionNueva() {
   const [mensajeError, setMensajeError] = useState("");
   const [mensajeOk, setMensajeOk] = useState("");
 
+  // CATEGORÍAS
+  const [categorias, setCategorias] = useState([]);
+  const [cargandoCategorias, setCargandoCategorias] = useState(false);
+
   const navigate = useNavigate();
 
+  // ⬇️ CARGAR CATEGORÍAS ORDENADAS
+  useEffect(() => {
+    async function cargarCategorias() {
+      try {
+        setCargandoCategorias(true);
+        const res = await api("/catalogos/categorias");
+
+        const lista = Array.isArray(res)
+          ? res
+          : Array.isArray(res.data)
+          ? res.data
+          : [];
+
+        const ordenadas = [...lista].sort(
+          (a, b) => Number(a.id_categoria) - Number(b.id_categoria)
+        );
+
+        setCategorias(ordenadas);
+      } catch (err) {
+        console.error("Error cargando categorías", err);
+        setCategorias([]);
+      } finally {
+        setCargandoCategorias(false);
+      }
+    }
+
+    cargarCategorias();
+  }, []);
+
+  // ENVIAR FORM
   async function manejarSubmit(e) {
     e.preventDefault();
     setMensajeError("");
@@ -34,7 +68,7 @@ export default function PublicacionNueva() {
     try {
       setLoading(true);
 
-      // 1) Subir imagen si se seleccionó
+      // 1) Subir archivo si existe (PRODUCTO + SERVICIO)
       let imagenURL = null;
       if (imagenFile) {
         const formData = new FormData();
@@ -45,15 +79,21 @@ export default function PublicacionNueva() {
           body: formData,
         });
 
-        imagenURL = resUpload.url || resUpload.imagen_url || null;
+        // ⬇️⬇️ CAMBIO IMPORTANTE: leer la URL real del backend
+        imagenURL =
+          resUpload?.data?.url ||
+          resUpload?.data?.imagen_url ||
+          resUpload?.url ||
+          resUpload?.imagen_url ||
+          null;
       }
 
-      // 2) Construir body según tipo (usando nombres EXACTOS del backend)
+      // 2) Body base para ambos tipos
       const base = {
         titulo: titulo.trim(),
         descripcion: descripcion.trim(),
         id_categoria: Number(idCategoria),
-        valor_creditos: Number(costoCreditos), // nombre del campo en PUBLICACION
+        valor_creditos: Number(costoCreditos),
         imagen_url: imagenURL,
       };
 
@@ -71,8 +111,8 @@ export default function PublicacionNueva() {
             precio: null,
             peso: null,
           },
-          cantidad: Number(cantidad || 1), // requerido
-          id_um: 1, // unidad genérica; en tu BD será la UM con id=1
+          cantidad: Number(cantidad || 1),
+          id_um: 1,
         };
       } else {
         endpoint = "/publicaciones/servicio";
@@ -85,7 +125,7 @@ export default function PublicacionNueva() {
             precio: null,
             duracion_min: null,
           },
-          horario: horario || "A convenir", // requerido por el backend
+          horario: horario || "A convenir",
         };
       }
 
@@ -94,9 +134,9 @@ export default function PublicacionNueva() {
         body,
       });
 
-      setMensajeOk("Publicación creada correctamente 🎉");
+      setMensajeOk("Publicación creada correctamente");
 
-      // limpiar formulario
+      // limpiar
       setTitulo("");
       setDescripcion("");
       setIdCategoria("");
@@ -106,7 +146,6 @@ export default function PublicacionNueva() {
       setImagenFile(null);
       setImagenPreview(null);
 
-      // redirigir a "Mis publicaciones"
       setTimeout(() => {
         navigate("/publicaciones/mias");
       }, 1200);
@@ -158,7 +197,7 @@ export default function PublicacionNueva() {
         </div>
       )}
 
-      {/* FORMULARIO */}
+      {/* FORM */}
       <form
         onSubmit={manejarSubmit}
         className="bg-[#0f3f2d] border border-emerald-700 rounded-xl p-6 md:p-8 max-w-3xl mx-auto space-y-6"
@@ -226,19 +265,31 @@ export default function PublicacionNueva() {
 
         {/* Categoría + Créditos */}
         <div className="grid gap-4 md:grid-cols-2">
+          {/* Categoría */}
           <div>
             <label className="block text-sm text-emerald-200 mb-1">
-              ID categoría *
+              Categoría *
             </label>
-            <input
-              type="number"
+            <select
               value={idCategoria}
               onChange={(e) => setIdCategoria(e.target.value)}
               className="w-full bg-[#0e4330] border border-emerald-600 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-400"
-              placeholder="Ej. 1 (Ropa), 2 (Servicios)..."
-            />
+            >
+              <option value="">
+                {cargandoCategorias
+                  ? "Cargando categorías..."
+                  : "Selecciona una categoría"}
+              </option>
+
+              {categorias.map((cat) => (
+                <option key={cat.id_categoria} value={cat.id_categoria}>
+                  {cat.id_categoria} - {cat.nombre}
+                </option>
+              ))}
+            </select>
           </div>
 
+          {/* Créditos */}
           <div>
             <label className="block text-sm text-emerald-200 mb-1">
               Costo en créditos *
@@ -254,7 +305,7 @@ export default function PublicacionNueva() {
           </div>
         </div>
 
-        {/* Cantidad / Horario */}
+        {/* Producto o Servicio */}
         {tipo === "PRODUCTO" ? (
           <div>
             <label className="block text-sm text-emerald-200 mb-1">
@@ -284,18 +335,22 @@ export default function PublicacionNueva() {
           </div>
         )}
 
-        {/* Imagen */}
+        {/* ARCHIVO (PRODUCTO + SERVICIO) */}
         <div>
           <label className="block text-sm text-emerald-200 mb-1">
-            Imagen (opcional)
+            Archivo (imagen, PDF, etc. — opcional)
           </label>
           <input
             type="file"
-            accept="image/*"
             onChange={(e) => {
               const file = e.target.files?.[0];
               setImagenFile(file || null);
-              setImagenPreview(file ? URL.createObjectURL(file) : null);
+
+              if (file && file.type.startsWith("image/")) {
+                setImagenPreview(URL.createObjectURL(file));
+              } else {
+                setImagenPreview(null);
+              }
             }}
             className="block w-full text-sm text-emerald-100 file:mr-4 file:rounded-lg file:border-0 file:bg-emerald-500 file:px-3 file:py-1 file:text-sm file:font-semibold hover:file:bg-emerald-600"
           />

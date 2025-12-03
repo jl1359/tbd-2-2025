@@ -104,12 +104,28 @@ function mapPublicacionesVsIntercambios(r) {
 
 function mapImpacto(r) {
   return {
+    // si algún día el SP devuelve id_usuario con nombre, lo usas;
+    // si no, cae al f0 o null
     id_usuario: r.id_usuario ?? r.f0 ?? null,
-    total_co2_ahorrado: r.total_co2_ahorrado ?? r.f1 ?? null,
-    total_agua_ahorrada: r.total_agua_ahorrada ?? r.f2 ?? null,
-    total_energia_ahorrada: r.total_energia_ahorrada ?? r.f3 ?? null,
-    total_transacciones: r.total_transacciones ?? r.f4 ?? null,
-    total_usuarios_activos: r.total_usuarios_activos ?? r.f5 ?? null,
+
+    // CO₂, agua y energía
+    total_co2_ahorrado: Number(
+      r.total_co2_ahorrado ?? r.f4 ?? 0
+    ),
+    total_agua_ahorrada: Number(
+      r.total_agua_ahorrada ?? r.f5 ?? 0
+    ),
+    total_energia_ahorrada: Number(
+      r.total_energia_ahorrada ?? r.f6 ?? 0
+    ),
+
+    // transacciones y usuarios activos
+    total_transacciones: Number(
+      r.total_transacciones ?? r.f2 ?? 0
+    ),
+    total_usuarios_activos: Number(
+      r.total_usuarios_activos ?? r.f3 ?? 0
+    ),
   };
 }
 
@@ -283,33 +299,51 @@ export async function getPublicacionesVsIntercambios(req, res, next) {
 }
 
 // C7) Impacto ambiental acumulado (usa sp_generar_reporte_impacto)
+// C7) Impacto ambiental acumulado (TOTAL HISTÓRICO)
 export async function getImpactoAcumulado(req, res, next) {
   try {
-    let { idTipoReporte, idPeriodo } = req.query;
+    let { idTipoReporte } = req.query;
 
-    if (!idTipoReporte || !idPeriodo) {
+    if (!idTipoReporte) {
       return res.status(400).json({
         ok: false,
-        message: "idTipoReporte e idPeriodo son requeridos",
+        message: "idTipoReporte es requerido",
       });
     }
 
     idTipoReporte = Number(idTipoReporte);
-    idPeriodo = Number(idPeriodo);
 
-    // Llama al SP de la BD y devuelve el registro recién insertado de REPORTE_IMPACTO
+    // TOTAL HISTÓRICO: suma TODOS los períodos de ese tipo de reporte
     const raw = await prisma.$queryRawUnsafe(
-      "CALL sp_generar_reporte_impacto(?, ?, NULL)",
-      idTipoReporte,
-      idPeriodo
+      `
+      SELECT
+        NULL AS id_usuario,
+        SUM(total_co2_ahorrado)     AS total_co2_ahorrado,
+        SUM(total_agua_ahorrada)    AS total_agua_ahorrada,
+        SUM(total_energia_ahorrada) AS total_energia_ahorrada,
+        SUM(total_transacciones)    AS total_transacciones,
+        SUM(total_usuarios_activos) AS total_usuarios_activos
+      FROM REPORTE_IMPACTO
+      WHERE id_tipo_reporte = ?
+      `,
+      idTipoReporte
     );
 
-    const rows = normalizeResult(raw).map(mapImpacto);
+    const rows = normalizeResult(raw).map((r) => ({
+      id_usuario: null,
+      total_co2_ahorrado: Number(r.total_co2_ahorrado ?? 0),
+      total_agua_ahorrada: Number(r.total_agua_ahorrada ?? 0),
+      total_energia_ahorrada: Number(r.total_energia_ahorrada ?? 0),
+      total_transacciones: Number(r.total_transacciones ?? 0),
+      total_usuarios_activos: Number(r.total_usuarios_activos ?? 0),
+    }));
+
     res.json(toPlain(rows));
   } catch (err) {
     next(err);
   }
 }
+
 
 // C8) Ranking usuarios
 export async function getRankingUsuarios(req, res, next) {

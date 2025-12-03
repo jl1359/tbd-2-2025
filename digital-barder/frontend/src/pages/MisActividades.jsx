@@ -32,6 +32,18 @@ export default function MisActividades() {
     }
   }
 
+  // pequeña ayuda para formatear fecha si viene como string ISO
+  function formatFecha(fecha) {
+    if (!fecha) return "-";
+    try {
+      const d = new Date(fecha);
+      if (Number.isNaN(d.getTime())) return fecha; // la dejo tal cual
+      return d.toLocaleString();
+    } catch {
+      return fecha;
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#082b1f] text-white p-6 md:p-10">
       {/* HEADER */}
@@ -56,7 +68,7 @@ export default function MisActividades() {
           onClick={() => navigate("/actividades")}
           className="px-4 py-2 rounded-lg border border-emerald-500 text-sm hover:bg-emerald-500/10 font-semibold"
         >
-          Ver actividades disponibles
+          Registrar nueva actividad
         </button>
       </header>
 
@@ -74,7 +86,8 @@ export default function MisActividades() {
         </div>
       ) : actividades.length === 0 ? (
         <div className="text-center text-emerald-100/80">
-          Aún no has registrado actividades sostenibles.  
+          Aún no has registrado actividades sostenibles.
+          <br />
           Participa en alguna para empezar a ganar créditos verdes.
         </div>
       ) : (
@@ -82,39 +95,35 @@ export default function MisActividades() {
           <table className="min-w-full text-sm">
             <thead className="border-b border-emerald-600 text-emerald-300">
               <tr>
-                <th className="text-left py-2 px-4">Actividad</th>
+                <th className="text-left py-2 px-4">Descripción</th>
                 <th className="text-left py-2 px-4">Créditos</th>
+                <th className="text-left py-2 px-4">Estado</th>
                 <th className="text-left py-2 px-4">Fecha</th>
-                <th className="text-left py-2 px-4">Detalle</th>
               </tr>
             </thead>
             <tbody>
               {actividades.map((a, idx) => (
                 <tr
-                  key={a.id_actividad || a.id_participacion || idx}
+                  key={a.id_actividad || idx}
                   className="border-b border-emerald-800/50 last:border-0"
                 >
                   <td className="py-2 px-4">
-                    {a.nombre_actividad || a.nombre || "Actividad"}
-                  </td>
-                  <td className="py-2 px-4">
-                    {a.creditos ||
-                      a.creditos_obtenidos ||
-                      a.valor_creditos ||
-                      "—"}
-                  </td>
-                  <td className="py-2 px-4">
-                    {a.fecha_participacion ||
-                      a.creado_en ||
-                      a.fecha ||
-                      "-"}
-                  </td>
-                  <td className="py-2 px-4">
-                    {a.descripcion || a.detalle || (
+                    {a.descripcion || (
                       <span className="text-emerald-100/70 text-xs">
                         Sin descripción
                       </span>
                     )}
+                  </td>
+                  <td className="py-2 px-4">
+                    {a.creditos_otorgados != null
+                      ? a.creditos_otorgados
+                      : "—"}
+                  </td>
+                  <td className="py-2 px-4">
+                    {a.estado || "PENDIENTE"}
+                  </td>
+                  <td className="py-2 px-4">
+                    {formatFecha(a.creado_en)}
                   </td>
                 </tr>
               ))}

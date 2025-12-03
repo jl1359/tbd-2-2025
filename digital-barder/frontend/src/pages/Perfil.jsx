@@ -18,8 +18,14 @@ export default function Perfil() {
       const datosUsuario = await api("/auth/me");
       const wallet = await api("/wallet/mis-creditos");
 
+      const saldo =
+        wallet?.saldo_creditos ??
+        wallet?.saldo ??
+        wallet?.creditos ??
+        0;
+
       setUsuario(datosUsuario);
-      setCreditos(wallet.saldo);
+      setCreditos(saldo);
     } catch (err) {
       console.error("Error cargando perfil:", err);
     }
@@ -28,14 +34,13 @@ export default function Perfil() {
   if (!usuario) {
     return (
       <div className="min-h-screen bg-[#082b1f] flex items-center justify-center text-white">
-        <p>Cargando perfil...</p>
+        <p>Cargando perfil.</p>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-[#082b1f] text-white p-6 md:p-10">
-
       {/* Header */}
       <div className="flex items-center gap-3 mb-8">
         <img src={hoja} className="w-12 h-12 drop-shadow-lg" />
@@ -45,7 +50,6 @@ export default function Perfil() {
       {/* Tarjeta principal */}
       <div className="bg-[#0e4330] border border-emerald-500 rounded-xl p-6 md:p-8 shadow-xl mb-10">
         <div className="flex flex-col md:flex-row md:items-center gap-6">
-
           {/* Foto */}
           <div>
             <img
@@ -85,10 +89,11 @@ export default function Perfil() {
 
       {/* Tarjetas secundarias */}
       <div className="grid md:grid-cols-3 gap-6">
-
         {/* Créditos */}
         <div className="bg-[#0e4330] border border-emerald-500 p-6 rounded-xl shadow-lg">
-          <h3 className="text-lg font-semibold text-emerald-300">Mis Créditos</h3>
+          <h3 className="text-lg font-semibold text-emerald-300">
+            Mis Créditos
+          </h3>
           <p className="text-4xl font-bold text-emerald-400 mt-2">
             {creditos !== null ? creditos : "—"}
           </p>
@@ -117,10 +122,9 @@ export default function Perfil() {
             Mi impacto positivo registrado
           </p>
         </div>
-
       </div>
 
-      {/* Botón independiente (extra) */}
+      {/* Botón extra */}
       <button
         onClick={() => navigate("/logros")}
         className="mt-6 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl 
@@ -128,7 +132,6 @@ export default function Perfil() {
       >
         Ver logros
       </button>
-
     </div>
   );
 }

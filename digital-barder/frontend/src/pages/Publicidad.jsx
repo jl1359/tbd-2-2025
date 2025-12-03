@@ -191,7 +191,7 @@ export default function Publicidad() {
               className="inline-flex items-center gap-2 text-lg font-semibold text-emerald-200 hover:text-emerald-100 hover:translate-y-[1px] transition-all"
             >
               <Monitor size={18} className="text-emerald-300" />
-              <span>Publicidad activa</span>
+              <span>Publicidades activas</span>
               <ChevronDown
                 size={16}
                 className={`transition-transform ${
@@ -489,7 +489,7 @@ export default function Publicidad() {
                 type="submit"
                 className="px-6 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-sm font-semibold text-emerald-950"
               >
-                Guardar publicidad
+                Publicar publicidad
               </button>
             </div>
           </form>

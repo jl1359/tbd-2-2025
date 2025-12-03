@@ -69,7 +69,7 @@ const Login = () => {
       }
 
       // Login correcto → navega a /home
-      navigate("/publicacion");
+      navigate("/home");
     } catch (err) {
       console.error(err);
       setError(err.message || "Credenciales inválidas");

@@ -314,15 +314,43 @@ export function vincularPublicacionPromocion(id_promocion, id_publicacion) {
 }
 // =============== PUBLICIDAD ===============
 
-// Listar publicidad activa (usa GET /api/publicidad)
+// =============== PUBLICIDAD ===============
+
+// Publica: listar publicidad ACTIVA (sin auth)
 export function getPublicidadActiva() {
-  return api("/publicidad");          // 👈 AQUÍ EL CAMBIO
+  // backend: GET /api/publicidad/activa
+  return api("/publicidad/activa");
 }
 
-// Crear una nueva campaña de publicidad
+// Admin: listar todas las publicidades
+export function getPublicidadAdmin() {
+  // backend: GET /api/publicidad/admin
+  return api("/publicidad/admin");
+}
+
+// Admin: crear una nueva campaña de publicidad
 export function crearPublicidad(body) {
+  // backend: POST /api/publicidad
   return api("/publicidad", {
     method: "POST",
     body,
   });
 }
+
+// Admin: cambiar estado (PROGRAMADA → ACTIVA, etc.)
+export function cambiarEstadoPublicidad(idPublicidad, estado) {
+  // backend: PATCH /api/publicidad/:id/estado
+  return api(`/publicidad/${idPublicidad}/estado`, {
+    method: "PATCH",
+    body: { estado },
+  });
+}
+
+// Admin: eliminar publicidad (lógico)
+export function eliminarPublicidad(idPublicidad) {
+  // backend: DELETE /api/publicidad/:id
+  return api(`/publicidad/${idPublicidad}`, {
+    method: "DELETE",
+  });
+}
+

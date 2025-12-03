@@ -17,6 +17,18 @@ export default function Actividades() {
   const [mensajeOk, setMensajeOk] = useState("");
   const [ultimaActividad, setUltimaActividad] = useState(null);
 
+  // Tipos de actividad como en el primer código
+  const tiposActividad = [
+    { id: "1", nombre: "Reciclaje" },
+    { id: "2", nombre: "Movilidad sostenible" },
+    { id: "3", nombre: "Voluntariado" },
+    { id: "4", nombre: "Ahorro de energía" },
+    { id: "5", nombre: "Consumo responsable" },
+    { id: "6", nombre: "Educación ambiental" },
+    { id: "7", nombre: "Agricultura urbana" },
+    { id: "8", nombre: "Otros" },
+  ];
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
@@ -32,7 +44,7 @@ export default function Actividades() {
       !descripcion.trim()
     ) {
       setError(
-        "id_tipo_actividad, descripción y créditos otorgados son obligatorios y deben ser válidos."
+        "Tipo de actividad, descripción y créditos otorgados son obligatorios."
       );
       return;
     }
@@ -54,6 +66,7 @@ export default function Actividades() {
       setDescripcion("");
       setCreditos("");
       setEvidenciaUrl("");
+      setIdTipoActividad("");
     } catch (err) {
       console.error(err);
       setError(
@@ -67,46 +80,39 @@ export default function Actividades() {
   return (
     <div className="min-h-screen bg-[#082b1f] text-white p-6 md:p-10">
       {/* HEADER */}
-      <header className="flex items-center justify-between gap-3 mb-8">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-2 rounded-full bg-black/30 px-3 py-1 text-sm hover:bg-black/40"
-          >
-            <ArrowLeft size={16} />
-            Volver
-          </button>
-          <div className="flex items-center gap-2 rounded-2xl bg-emerald-900/70 px-3 py-2 text-sm">
-            <Leaf size={18} className="text-emerald-300" />
-            <span className="font-semibold">Actividades sostenibles</span>
+      <div className="flex flex-col gap-4 mb-8">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <img src={hoja} alt="logo" className="w-10 h-10 drop-shadow-lg" />
+            <div>
+              <h1 className="text-3xl font-bold text-emerald-400">
+                Actividades Sostenibles
+              </h1>
+              <p className="text-sm text-emerald-100/80">
+                Registra tus acciones ecológicas y gana créditos verdes.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="px-4 py-2 rounded-lg border border-emerald-500 text-sm hover:bg-emerald-500/10 transition-all"
+            >
+              ← Volver
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/actividades/mias")}
+              className="flex items-center gap-2 bg-[#038547] hover:bg-[#026636] px-4 py-2 rounded-lg font-semibold text-sm shadow-md transition-all"
+            >
+              <span>📋</span>
+              <span>Mis Actividades</span>
+            </button>
           </div>
         </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => navigate("/actividades/mias")}
-            className="px-4 py-2 rounded-lg border border-emerald-500 text-sm hover:bg-emerald-500/10 font-semibold"
-          >
-            Mis actividades
-          </button>
-          <img src={hoja} alt="logo" className="w-9 h-9 drop-shadow-md" />
-        </div>
-      </header>
-
-      {/* DESCRIPCIÓN */}
-      <section className="mb-6 max-w-3xl">
-        <h1 className="text-2xl font-semibold mb-2">
-          Registrar actividad sostenible
-        </h1>
-        <p className="text-sm text-emerald-100/80">
-          Aquí puedes registrar acciones ecológicas que realizaste (reciclaje,
-          voluntariado, movilidad sostenible, etc.). El sistema las guardará en
-          tu historial y te otorgará créditos verdes según las reglas
-          definidas por el administrador.
-        </p>
-      </section>
+      </div>
 
       {/* MENSAJES */}
       {error && (
@@ -122,89 +128,240 @@ export default function Actividades() {
         </div>
       )}
 
+      {/* DESCRIPCIÓN */}
+      <div className="bg-[#0f3f2d] border border-emerald-700 rounded-xl p-6 mb-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-emerald-900/50">
+            <Leaf size={24} className="text-emerald-300" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-emerald-300">
+              ¿Cómo funciona?
+            </h2>
+            <p className="text-sm text-emerald-100/80">
+              Registra acciones ecológicas que realices y recibe créditos verdes como recompensa.
+            </p>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+          <div className="bg-emerald-900/30 border border-emerald-800 rounded-lg p-3">
+            <div className="font-semibold text-emerald-300 mb-1">1. Describe tu acción</div>
+            <p className="text-emerald-100/70">Explica qué actividad realizaste y su impacto ambiental.</p>
+          </div>
+          <div className="bg-emerald-900/30 border border-emerald-800 rounded-lg p-3">
+            <div className="font-semibold text-emerald-300 mb-1">2. Añade evidencia</div>
+            <p className="text-emerald-100/70">Opcionalmente, incluye una URL con fotos o documentos que comprueben tu actividad.</p>
+          </div>
+          <div className="bg-emerald-900/30 border border-emerald-800 rounded-lg p-3">
+            <div className="font-semibold text-emerald-300 mb-1">3. Recibe créditos</div>
+            <p className="text-emerald-100/70">Tu actividad será revisada y recibirás los créditos correspondientes.</p>
+          </div>
+        </div>
+      </div>
+
       {/* FORMULARIO */}
-      <form
-        onSubmit={handleSubmit}
-        className="max-w-3xl bg-[#0f3f2d] border border-emerald-700 rounded-2xl p-5 shadow-md space-y-4"
-      >
-        {/* id_tipo_actividad */}
-        <div>
-          <label className="block text-xs mb-1">
-            ID tipo de actividad (id_tipo_actividad) *
-          </label>
-          <input
-            type="number"
-            value={idTipoActividad}
-            onChange={(e) => setIdTipoActividad(e.target.value)}
-            className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
-            placeholder="Ej. 1 (Reciclaje), 2 (Movilidad sostenible), etc."
-          />
-          <p className="text-[11px] text-emerald-100/70 mt-1">
-            Usa los IDs definidos en la tabla TIPO_ACTIVIDAD_SOSTENIBLE.
-          </p>
-        </div>
+      <div className="bg-[#0f3f2d] border border-emerald-700 rounded-xl p-6 md:p-8 max-w-3xl mx-auto">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Tipo de actividad - SELECT en lugar de input numérico */}
+          <div>
+            <label className="block text-sm font-semibold text-emerald-200 mb-2">
+              Tipo de actividad *
+            </label>
+            <div className="relative">
+              <select
+                value={idTipoActividad}
+                onChange={(e) => setIdTipoActividad(e.target.value)}
+                className="appearance-none w-full bg-[#038547] border border-[#026636] rounded-lg px-3 py-3 text-white outline-none focus:ring-2 focus:ring-emerald-400"
+              >
+                <option value="">Selecciona un tipo de actividad</option>
+                {tiposActividad.map((tipo) => (
+                  <option key={tipo.id} value={tipo.id}>
+                    {tipo.nombre}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none">
+                <svg
+                  className="h-4 w-4 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+            <p className="text-xs text-emerald-300/70 mt-2">
+              Selecciona la categoría que mejor describe tu actividad sostenible.
+            </p>
+          </div>
 
-        {/* descripción */}
-        <div>
-          <label className="block text-xs mb-1">Descripción *</label>
-          <textarea
-            value={descripcion}
-            onChange={(e) => setDescripcion(e.target.value)}
-            rows={3}
-            className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
-            placeholder="Ej. Participé 3 horas en una campaña de reforestación en el parque..."
-          />
-        </div>
+          {/* Descripción */}
+          <div>
+            <label className="block text-sm font-semibold text-emerald-200 mb-2">
+              Descripción detallada *
+            </label>
+            <textarea
+              value={descripcion}
+              onChange={(e) => setDescripcion(e.target.value)}
+              rows={4}
+              className="w-full bg-[#e9ffd9] text-[#454343] border-none rounded-lg px-3 py-3 outline-none focus:ring-2 focus:ring-emerald-400 text-base font-medium placeholder:text-[#666666] resize-y"
+              placeholder="Describe detalladamente la actividad que realizaste, incluyendo:
+• Qué hiciste exactamente
+• Dónde y cuándo fue realizada
+• Duración o cantidad
+• Impacto ambiental estimado
+• Participantes (si aplica)..."
+            />
+          </div>
 
-        {/* créditos */}
-        <div>
-          <label className="block text-xs mb-1">
-            Créditos otorgados (creditos_otorgados) *
-          </label>
-          <input
-            type="number"
-            value={creditos}
-            onChange={(e) => setCreditos(e.target.value)}
-            className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
-            placeholder="Ej. 10"
-          />
-        </div>
+          {/* Créditos */}
+          <div>
+            <label className="block text-sm font-semibold text-emerald-200 mb-2">
+              Créditos solicitados *
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={creditos}
+              onChange={(e) => setCreditos(e.target.value)}
+              className="w-full bg-[#e9ffd9] text-[#454343] border-none rounded-lg px-3 py-3 outline-none focus:ring-2 focus:ring-emerald-400 text-base font-medium placeholder:text-[#666666]"
+              placeholder="Ej. 10, 25, 50..."
+            />
+            <p className="text-xs text-emerald-300/70 mt-2">
+              Los créditos serán revisados y ajustados según las directrices del sistema.
+            </p>
+          </div>
 
-        {/* evidencia_url */}
-        <div>
-          <label className="block text-xs mb-1">
-            URL de evidencia (opcional)
-          </label>
-          <input
-            type="url"
-            value={evidenciaUrl}
-            onChange={(e) => setEvidenciaUrl(e.target.value)}
-            className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
-            placeholder="Link a foto, drive, formulario, etc."
-          />
-        </div>
+          {/* URL de evidencia - Mantenemos el input URL del segundo código */}
+          <div>
+            <label className="block text-sm font-semibold text-emerald-200 mb-2">
+              URL de evidencia (opcional)
+            </label>
+            <input
+              type="url"
+              value={evidenciaUrl}
+              onChange={(e) => setEvidenciaUrl(e.target.value)}
+              className="w-full bg-[#e9ffd9] text-[#454343] border-none rounded-lg px-3 py-3 outline-none focus:ring-2 focus:ring-emerald-400 text-base font-medium placeholder:text-[#666666]"
+              placeholder="https://drive.google.com/... o https://photos.google.com/..."
+            />
+            <p className="text-xs text-emerald-300/70 mt-2">
+              Puedes incluir enlaces a fotos, documentos PDF, formularios de participación, etc.
+            </p>
+          </div>
 
-        <div className="pt-2 flex justify-end">
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-6 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 disabled:cursor-not-allowed text-sm font-semibold text-emerald-950"
-          >
-            {loading ? "Guardando..." : "Registrar actividad"}
-          </button>
-        </div>
-      </form>
+          {/* BOTONES */}
+          <div className="flex justify-end gap-3 pt-6 border-t border-emerald-800">
+            <button
+              type="button"
+              onClick={() => {
+                setDescripcion("");
+                setCreditos("");
+                setEvidenciaUrl("");
+                setIdTipoActividad("");
+                setError("");
+                setMensajeOk("");
+              }}
+              className="px-4 py-2 rounded-lg border border-emerald-500 text-sm hover:bg-emerald-500/10 transition-all"
+            >
+              Limpiar formulario
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className={`px-5 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all
+                ${
+                  loading
+                    ? "bg-gray-500 cursor-not-allowed"
+                    : "bg-[#038547] hover:bg-[#026636] shadow-md"
+                }`}
+            >
+              {loading ? (
+                <>
+                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Registrando...
+                </>
+              ) : (
+                "Registrar Actividad"
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
 
-      {/* ÚLTIMA ACTIVIDAD REGISTRADA (respuesta del backend) */}
+      {/* ÚLTIMA ACTIVIDAD REGISTRADA */}
       {ultimaActividad && (
-        <section className="max-w-3xl mt-6 bg-[#0f3f2d] border border-emerald-700 rounded-2xl p-4 text-sm text-emerald-100/90">
-          <p className="font-semibold mb-1">
-            Última actividad registrada (respuesta del backend):
-          </p>
-          <pre className="text-xs overflow-x-auto">
-            {JSON.stringify(ultimaActividad, null, 2)}
-          </pre>
-        </section>
+        <div className="max-w-3xl mx-auto mt-8 bg-[#0f3f2d] border border-emerald-700 rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-emerald-900/50">
+              <CheckCircle2 size={20} className="text-emerald-300" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-emerald-300">
+                Actividad Registrada Exitosamente
+              </h3>
+              <p className="text-sm text-emerald-100/80">
+                Tu actividad ha sido registrada y está pendiente de revisión.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-[#082b1f] border border-emerald-800 rounded-lg p-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div>
+                <p className="text-xs text-emerald-300/70">ID de Actividad</p>
+                <p className="font-semibold text-emerald-200">
+                  {ultimaActividad.id_actividad || ultimaActividad.id}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-emerald-300/70">Créditos Otorgados</p>
+                <p className="font-semibold text-emerald-200">
+                  {ultimaActividad.creditos_otorgados} cr.
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-emerald-300/70">Estado</p>
+                <span className="inline-flex px-3 py-1 rounded-full bg-emerald-900/50 text-emerald-300 text-xs font-medium border border-emerald-700">
+                  {ultimaActividad.estado || "PENDIENTE"}
+                </span>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-xs text-emerald-300/70 mb-1">Descripción</p>
+              <p className="text-sm text-emerald-100">{ultimaActividad.descripcion}</p>
+            </div>
+
+            {ultimaActividad.evidencia_url && (
+              <div>
+                <p className="text-xs text-emerald-300/70 mb-1">Evidencia</p>
+                <a
+                  href={ultimaActividad.evidencia_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-emerald-300 hover:text-emerald-200 hover:underline"
+                >
+                  {ultimaActividad.evidencia_url}
+                </a>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => navigate("/actividades/mias")}
+              className="mt-4 w-full rounded-lg bg-emerald-700 hover:bg-emerald-600 py-2 text-sm font-semibold transition-all"
+            >
+              Ver todas mis actividades
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -1,27 +1,57 @@
-// src/modules/intercambios/intercambios.controller.js
-import { prisma } from '../../config/prisma.js'
+import {
+  crearIntercambioService,
+  misComprasService,
+  misVentasService,
+  detalleTransaccionService,
+} from "./intercambios.service.js";
 
-export async function realizarIntercambio(req, res, next) {
-    try {
-        const { id_comprador, id_publicacion, creditos } = req.body || {}
+export const crearIntercambioController = async (req, res, next) => {
+  try {
+    const idComprador = req.user.id_usuario;
+    const { id_publicacion, creditos } = req.body;
 
-        if (!id_comprador || !id_publicacion || !creditos) {
-        return res.status(400).json({
-            ok: false,
-            message: 'id_comprador, id_publicacion y creditos son requeridos',
-        })
-        }
+    const tx = await crearIntercambioService({
+      idComprador,
+      id_publicacion,
+      creditos,
+    });
 
-        await prisma.$executeRaw`
-        CALL sp_realizar_intercambio(
-            ${Number(id_comprador)},
-            ${Number(id_publicacion)},
-            ${Number(creditos)}
-        )
-        `
+    res
+      .status(201)
+      .json({ message: "Intercambio creado correctamente", transaccion: tx });
+  } catch (e) {
+    next(e);
+  }
+};
 
-        res.json({ ok: true, message: 'Intercambio realizado' })
-    } catch (err) {
-        next(err)
+export const misComprasController = async (req, res, next) => {
+  try {
+    const compras = await misComprasService(req.user.id_usuario);
+    res.json(compras);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const misVentasController = async (req, res, next) => {
+  try {
+    const ventas = await misVentasService(req.user.id_usuario);
+    res.json(ventas);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const detalleTransaccionController = async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ message: "ID de transacción inválido" });
     }
-}
+
+    const detalle = await detalleTransaccionService(id);
+    res.json(detalle);
+  } catch (e) {
+    next(e);
+  }
+};

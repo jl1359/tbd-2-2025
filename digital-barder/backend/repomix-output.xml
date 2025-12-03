@@ -1,0 +1,5078 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+Dockerfile
+package.json
+prisma/schema.prisma
+prisma/seed.js
+src/app.js
+src/config/env.js
+src/config/prisma.js
+src/middlewares/auth.js
+src/middlewares/errorHandler.js
+src/middlewares/isAdmin.js
+src/modules/actividades/actividades.controller.js
+src/modules/actividades/actividades.routes.js
+src/modules/actividades/actividades.service.js
+src/modules/auth/auth.controller.js
+src/modules/auth/auth.routes.js
+src/modules/auth/auth.service.js
+src/modules/bitacoras/bitacoras.controller.js
+src/modules/bitacoras/bitacoras.routes.js
+src/modules/bitacoras/bitacoras.service.js
+src/modules/catalogos/catalogos.controller.js
+src/modules/catalogos/catalogos.routes.js
+src/modules/catalogos/catalogos.service.js
+src/modules/intercambios/intercambios.controller.js
+src/modules/intercambios/intercambios.routes.js
+src/modules/intercambios/intercambios.service.js
+src/modules/logros/logros.controller.js
+src/modules/logros/logros.routes.js
+src/modules/logros/logros.service.js
+src/modules/premium/premium.controller.js
+src/modules/premium/premium.routes.js
+src/modules/premium/premium.service.js
+src/modules/promociones/promociones.controller.js
+src/modules/promociones/promociones.routes.js
+src/modules/promociones/promociones.service.js
+src/modules/publicaciones/publicaciones.controller.js
+src/modules/publicaciones/publicaciones.routes.js
+src/modules/publicaciones/publicaciones.service.js
+src/modules/publicidad/publicidad.controller.js
+src/modules/publicidad/publicidad.routes.js
+src/modules/publicidad/publicidad.service.js
+src/modules/reportes/reportes.controller.js
+src/modules/reportes/reportes.routes.js
+src/modules/reportes/reportes.service.js
+src/modules/uploads/multer.js
+src/modules/uploads/uploads.controller.js
+src/modules/uploads/uploads.routes.js
+src/modules/uploads/uploads.service.js
+src/modules/usuarios/usuarios.controller.js
+src/modules/usuarios/usuarios.routes.js
+src/modules/usuarios/usuarios.service.js
+src/modules/wallet/wallet.controller.js
+src/modules/wallet/wallet.routes.js
+src/modules/wallet/wallet.service.js
+src/routes/index.js
+src/server.js
+uploads_storage/1717f8c0-ba65-48b3-80da-d06a474dd514.png
+uploads_storage/cb6b319f-881d-4f8a-8a5e-9f8eecd10402.png
+uploads_storage/d6b3b8be-16ba-41bc-b958-7ab0c3e14e38.png
+utils/jsonBigInt.js
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="Dockerfile">
+# simple dev image; optional
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+EXPOSE 4000
+CMD ["npm","run","start"]
+</file>
+
+<file path="package.json">
+{
+  "name": "backend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev --name init",
+    "prisma:deploy": "prisma migrate deploy",
+    "prisma:seed": "node prisma/seed.js",
+    "studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.1",
+    "multer": "^2.0.2",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "prisma": "^6.19.0"
+  }
+}
+</file>
+
+<file path="prisma/schema.prisma">
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model actividad_sostenible {
+  id_actividad       Int      @id @default(autoincrement())
+  id_usuario         Int
+  id_tipo_actividad  Int
+  descripcion        String   @db.Text
+  creditos_otorgados Int
+  evidencia_url      String?  @db.VarChar(500)
+  creado_en          DateTime @default(now()) @db.DateTime(0)
+
+  @@index([id_tipo_actividad], map: "fk_act_tipo")
+  @@index([id_usuario], map: "fk_act_usuario")
+  @@index([creado_en], map: "ix_actsost_creado_en")
+}
+
+model billetera {
+  id_billetera    Int               @id @default(autoincrement())
+  id_usuario      Int               @unique(map: "id_usuario")
+  estado          billetera_estado? @default(ACTIVA)
+  saldo_creditos  BigInt?           @default(0)
+  saldo_bs        Decimal?          @default(0.00) @db.Decimal(12, 2)
+  cuenta_bancaria String?           @db.VarChar(100)
+}
+
+model bitacora_acceso {
+  id_acceso    Int      @id @default(autoincrement())
+  id_usuario   Int
+  fecha        DateTime @default(now()) @db.DateTime(0)
+  direccion_ip String   @db.VarChar(45)
+  user_agent   String?  @db.VarChar(500)
+  id_resultado Int
+
+  @@index([id_resultado], map: "fk_bitacc_resultado")
+  @@index([id_usuario, fecha], map: "ix_bitacceso_usuario_fecha")
+}
+
+model bitacora_intercambio {
+  id_bitacora        Int     @id @default(autoincrement())
+  id_transaccion     Int
+  id_usuario_origen  Int
+  id_usuario_destino Int
+  cantidad_creditos  BigInt
+  descripcion        String? @db.VarChar(500)
+
+  @@index([id_usuario_destino], map: "fk_bi_usr_destino")
+  @@index([id_usuario_origen], map: "fk_bi_usr_origen")
+  @@index([id_transaccion], map: "ix_bitacora_trx")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model calificacion {
+  id_calificacion Int     @id @default(autoincrement())
+  id_usuario      Int
+  id_publicacion  Int
+  estrellas       Int     @db.TinyInt
+  comentario      String? @db.VarChar(300)
+
+  @@unique([id_usuario, id_publicacion], map: "id_usuario")
+  @@index([id_publicacion], map: "fk_calif_publicacion")
+}
+
+model categoria {
+  id_categoria Int     @id @default(autoincrement())
+  nombre       String  @unique(map: "nombre") @db.VarChar(100)
+  descripcion  String? @db.VarChar(255)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model compra_creditos {
+  id_compra           Int                     @id @default(autoincrement())
+  id_usuario          Int
+  id_paquete          Int
+  monto_bs            Decimal                 @db.Decimal(12, 2)
+  estado              compra_creditos_estado? @default(PENDIENTE)
+  id_transaccion_pago String?                 @unique(map: "id_transaccion_pago") @db.VarChar(255)
+  creado_en           DateTime                @default(now()) @db.DateTime(0)
+
+  @@index([id_paquete], map: "fk_compra_paquete")
+  @@index([id_usuario], map: "fk_compra_usuario")
+  @@index([estado], map: "ix_compra_estado")
+  @@index([creado_en], map: "ix_compra_creado_en")
+}
+
+model dimension_ambiental {
+  id_dimension Int     @id @default(autoincrement())
+  codigo       String  @unique(map: "codigo") @db.VarChar(30)
+  nombre       String  @db.VarChar(100)
+  unidad_base  String? @db.VarChar(20)
+  descripcion  String? @db.VarChar(255)
+}
+
+model equivalencia_impacto {
+  id_equivalencia    Int     @id @default(autoincrement())
+  id_categoria       Int
+  id_um              Int?
+  co2_por_unidad     Decimal @db.Decimal(12, 6)
+  agua_por_unidad    Decimal @db.Decimal(12, 6)
+  energia_por_unidad Decimal @db.Decimal(12, 6)
+
+  @@unique([id_categoria, id_um], map: "id_categoria")
+  @@index([id_um], map: "fk_eq_um")
+}
+
+model evento_ambiental {
+  id_evento              Int                     @id @default(autoincrement())
+  id_usuario             Int
+  id_dimension           Int
+  fuente                 evento_ambiental_fuente
+  id_fuente              Int
+  categoria              String?                 @db.VarChar(100)
+  valor                  Decimal                 @db.Decimal(18, 6)
+  id_um                  Int?
+  contaminacion_reducida Decimal?                @db.Decimal(18, 6)
+  descripcion            String?                 @db.VarChar(255)
+
+  @@index([id_dimension], map: "fk_ev_dimension")
+  @@index([id_um], map: "fk_ev_um")
+  @@index([id_usuario], map: "fk_ev_usuario")
+}
+
+model impacto_ambiental {
+  id_impacto       Int     @id @default(autoincrement())
+  id_usuario       Int
+  id_transaccion   Int
+  id_categoria     Int
+  co2_ahorrado     Decimal @db.Decimal(12, 6)
+  agua_ahorrada    Decimal @db.Decimal(12, 6)
+  energia_ahorrada Decimal @db.Decimal(12, 6)
+  id_periodo       Int
+
+  @@index([id_transaccion], map: "fk_imp_tx")
+  @@index([id_categoria], map: "ix_impa_categoria")
+  @@index([id_periodo], map: "ix_impa_periodo")
+  @@index([id_usuario, id_periodo], map: "ix_impa_usuario_periodo")
+}
+
+model logro {
+  id_logro            Int     @id @default(autoincrement())
+  id_tipo_logro       Int
+  nombre              String  @db.VarChar(100)
+  descripcion         String? @db.VarChar(255)
+  meta_requerida      BigInt
+  creditos_recompensa BigInt
+
+  @@index([id_tipo_logro], map: "fk_logro_tipo")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model movimiento_creditos {
+  id_movimiento      Int      @id @default(autoincrement())
+  id_usuario         Int
+  id_tipo_movimiento Int
+  id_tipo_referencia Int
+  cantidad           BigInt
+  descripcion        String?  @db.VarChar(255)
+  saldo_anterior     BigInt
+  saldo_posterior    BigInt
+  id_referencia      Int?
+  creado_en          DateTime @default(now()) @db.DateTime(0)
+
+  @@index([id_tipo_movimiento], map: "fk_mov_tipomov")
+  @@index([id_movimiento], map: "ix_mov_creado")
+  @@index([id_tipo_referencia], map: "ix_mov_tiporef")
+  @@index([id_usuario, id_movimiento], map: "ix_mov_usuario")
+  @@index([creado_en], map: "ix_mov_creado_en")
+}
+
+model paquete_creditos {
+  id_paquete        Int     @id @default(autoincrement())
+  nombre            String  @unique(map: "nombre") @db.VarChar(100)
+  cantidad_creditos BigInt
+  precio_bs         Decimal @db.Decimal(12, 2)
+  activo            Boolean @default(true)
+}
+
+model periodo {
+  id_periodo   Int       @id @default(autoincrement())
+  nombre       String    @unique(map: "nombre") @db.VarChar(50)
+  descripcion  String?   @db.VarChar(255)
+  fecha_inicio DateTime? @db.Date
+  fecha_fin    DateTime? @db.Date
+
+  @@index([fecha_inicio, fecha_fin], map: "ix_periodo_rango")
+}
+
+model permiso {
+  id_permiso  Int     @id @default(autoincrement())
+  nombre      String  @unique(map: "nombre") @db.VarChar(100)
+  descripcion String? @db.VarChar(255)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model producto {
+  id_producto  Int      @id @default(autoincrement())
+  id_categoria Int
+  nombre       String   @db.VarChar(255)
+  descripcion  String?  @db.VarChar(255)
+  precio       Decimal? @db.Decimal(12, 2)
+  peso         Decimal? @db.Decimal(10, 2)
+
+  @@index([id_categoria], map: "fk_producto_categoria")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model promocion {
+  id_promocion       Int               @id @default(autoincrement())
+  id_tipo_promocion  Int
+  nombre             String            @db.VarChar(100)
+  descripcion        String?           @db.VarChar(255)
+  creditos_otorgados BigInt
+  fecha_inicio       DateTime          @db.DateTime(0)
+  fecha_fin          DateTime          @db.DateTime(0)
+  estado             promocion_estado? @default(PROGRAMADA)
+
+  @@index([id_tipo_promocion], map: "fk_promocion_tipo")
+  @@index([estado, fecha_inicio, fecha_fin], map: "ix_promocion_activa")
+}
+
+model promocion_publicacion {
+  id_promocion   Int
+  id_publicacion Int
+
+  @@id([id_promocion, id_publicacion])
+  @@index([id_promocion], map: "ix_promopub_prom")
+  @@index([id_publicacion], map: "ix_promopub_pub")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model publicacion {
+  id_publicacion      Int                 @id @default(autoincrement())
+  id_usuario          Int
+  id_categoria        Int
+  id_tipo_publicacion Int
+  estado              publicacion_estado? @default(PUBLICADA)
+  id_ubicacion        Int?
+  titulo              String              @db.VarChar(200)
+  descripcion         String              @db.Text
+  valor_creditos      BigInt
+  imagen_url          String?             @db.VarChar(500)
+  creado_en           DateTime            @default(now()) @db.DateTime(0)
+
+  @@index([id_tipo_publicacion], map: "fk_publicacion_tipopub")
+  @@index([id_ubicacion], map: "fk_publicacion_ubicacion")
+  @@index([id_categoria, estado], map: "ix_pub_categoria_estado")
+  @@index([id_usuario, estado], map: "ix_pub_usuario_estado")
+  @@index([creado_en], map: "ix_pub_creado_en")
+  @@fulltext([titulo, descripcion], map: "ft_pub_titulo_desc")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model publicacion_producto {
+  id_publicacion Int
+  id_producto    Int
+  cantidad       Decimal @db.Decimal(15, 4)
+  id_um          Int
+
+  @@id([id_publicacion, id_producto])
+  @@index([id_producto], map: "fk_pprd_producto")
+  @@index([id_um], map: "fk_pprd_um")
+}
+
+model publicacion_servicio {
+  id_publicacion Int
+  id_servicio    Int
+  horario        String @db.VarChar(100)
+
+  @@id([id_publicacion, id_servicio])
+  @@index([id_servicio], map: "fk_pserv_servicio")
+}
+
+model publicidad {
+  id_publicidad  Int                @id @default(autoincrement())
+  id_usuario     Int
+  id_ubicacion   Int
+  estado         publicidad_estado? @default(PROGRAMADA)
+  titulo         String             @db.VarChar(200)
+  descripcion    String?            @db.VarChar(255)
+  url_destino    String?            @db.VarChar(500)
+  fecha_inicio   DateTime           @db.DateTime(0)
+  fecha_fin      DateTime           @db.DateTime(0)
+  costo_creditos BigInt
+
+  @@index([id_ubicacion], map: "fk_publicidad_ubipub")
+  @@index([id_usuario], map: "fk_publicidad_usuario")
+}
+
+model reporte_impacto {
+  id_reporte             Int     @id @default(autoincrement())
+  id_usuario             Int?
+  id_tipo_reporte        Int
+  id_periodo             Int
+  total_co2_ahorrado     Decimal @db.Decimal(12, 6)
+  total_agua_ahorrada    Decimal @db.Decimal(12, 6)
+  total_energia_ahorrada Decimal @db.Decimal(12, 6)
+  total_transacciones    BigInt
+  total_usuarios_activos BigInt
+
+  @@index([id_periodo], map: "fk_rep_periodo")
+  @@index([id_usuario], map: "fk_rep_usuario")
+  @@index([id_tipo_reporte, id_periodo, id_usuario], map: "ix_rep_unico_helper")
+}
+
+model resultado_acceso {
+  id_resultado Int     @id @default(autoincrement())
+  nombre       String  @unique(map: "nombre") @db.VarChar(50)
+  descripcion  String? @db.VarChar(255)
+}
+
+model rol {
+  id_rol      Int     @id @default(autoincrement())
+  nombre      String  @unique(map: "nombre") @db.VarChar(50)
+  descripcion String? @db.VarChar(255)
+}
+
+model rol_permiso {
+  id_rol     Int
+  id_permiso Int
+
+  @@id([id_rol, id_permiso])
+  @@index([id_permiso], map: "fk_rp_permiso")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model servicio {
+  id_servicio  Int              @id @default(autoincrement())
+  id_categoria Int
+  estado       servicio_estado? @default(ACTIVO)
+  nombre       String           @db.VarChar(255)
+  descripcion  String?          @db.Text
+  precio       Decimal?         @db.Decimal(12, 2)
+  duracion_min Int?             @db.SmallInt
+
+  @@index([id_categoria], map: "fk_servicio_categoria")
+}
+
+model signo_movimiento {
+  id_signo Int    @id @default(autoincrement())
+  nombre   String @unique(map: "nombre") @db.VarChar(20)
+}
+
+model signo_tipo_mov {
+  id_tipo_movimiento Int
+  id_signo           Int
+  creado_en          DateTime? @db.DateTime(0)
+
+  @@id([id_tipo_movimiento, id_signo])
+  @@index([id_signo], map: "ix_sxtm_signo")
+}
+
+model tipo_actividad {
+  id_tipo_actividad Int     @id @default(autoincrement())
+  nombre            String  @unique(map: "nombre") @db.VarChar(100)
+  descripcion       String? @db.VarChar(255)
+}
+
+model tipo_logro {
+  id_tipo_logro Int     @id @default(autoincrement())
+  nombre        String  @unique(map: "nombre") @db.VarChar(50)
+  descripcion   String? @db.VarChar(255)
+}
+
+model tipo_movimiento {
+  id_tipo_movimiento Int     @id @default(autoincrement())
+  nombre             String  @unique(map: "nombre") @db.VarChar(50)
+  descripcion        String? @db.VarChar(255)
+
+  @@index([nombre], map: "ix_tipomov_nombre")
+}
+
+model tipo_promocion {
+  id_tipo_promocion Int     @id @default(autoincrement())
+  nombre            String  @unique(map: "nombre") @db.VarChar(50)
+  descripcion       String? @db.VarChar(255)
+}
+
+model tipo_publicacion {
+  id_tipo_publicacion Int     @id @default(autoincrement())
+  nombre              String  @unique(map: "nombre") @db.VarChar(50)
+  descripcion         String? @db.VarChar(255)
+}
+
+model tipo_referencia {
+  id_tipo_referencia Int    @id @default(autoincrement())
+  nombre             String @unique(map: "nombre") @db.VarChar(30)
+
+  @@index([nombre], map: "ix_tiporef_nombre")
+}
+
+model tipo_reporte {
+  id_tipo_reporte Int     @id @default(autoincrement())
+  nombre          String  @unique(map: "nombre") @db.VarChar(50)
+  descripcion     String? @db.VarChar(255)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model transaccion {
+  id_transaccion    Int                 @id @default(autoincrement())
+  id_comprador      Int
+  id_vendedor       Int
+  id_publicacion    Int
+  cantidad_creditos BigInt
+  estado            transaccion_estado? @default(SOLICITADA)
+  creado_en         DateTime            @default(now()) @db.DateTime(0)
+
+  @@index([estado], map: "ix_trans_estado")
+  @@index([id_comprador], map: "ix_tx_comprador")
+  @@index([id_publicacion], map: "ix_tx_publicacion")
+  @@index([id_vendedor], map: "ix_tx_vendedor")
+  @@index([creado_en], map: "ix_tx_creado_en")
+}
+
+model ubicacion {
+  id_ubicacion Int      @id @default(autoincrement())
+  direccion    String   @db.VarChar(500)
+  ciudad       String?  @db.VarChar(100)
+  provincia    String?  @db.VarChar(100)
+  latitud      Decimal? @db.Decimal(9, 6)
+  longitud     Decimal? @db.Decimal(9, 6)
+}
+
+model ubicacion_publicidad {
+  id_ubicacion Int     @id @default(autoincrement())
+  nombre       String  @unique(map: "nombre") @db.VarChar(100)
+  descripcion  String? @db.VarChar(255)
+  precio_base  Decimal @db.Decimal(12, 2)
+}
+
+model unidad_medida {
+  id_um   Int    @id @default(autoincrement())
+  nombre  String @unique(map: "nombre") @db.VarChar(100)
+  simbolo String @unique(map: "simbolo") @db.VarChar(20)
+}
+
+model usuario {
+  id_usuario    Int            @id @default(autoincrement())
+  id_rol        Int
+  estado        usuario_estado @default(ACTIVO)
+  nombre        String         @db.VarChar(100)
+  apellido      String?        @db.VarChar(100)
+  correo        String         @unique(map: "correo") @db.VarChar(255)
+  password_hash String         @default("") @db.VarChar(255)
+  telefono      String?        @db.VarChar(25)
+  url_perfil    String?        @unique(map: "url_perfil") @db.VarChar(120)
+
+  @@index([id_rol], map: "fk_usuario_rol")
+}
+
+model usuario_logro {
+  id_usuario_logro Int     @id @default(autoincrement())
+  id_usuario       Int
+  id_logro         Int
+  progreso_actual  BigInt? @default(0)
+
+  @@unique([id_usuario, id_logro], map: "id_usuario")
+  @@index([id_logro], map: "fk_ulogro_logro")
+}
+
+model suscripcion_premium {
+  id_suscripcion Int                        @id @default(autoincrement())
+  id_usuario     Int
+  fecha_inicio   DateTime                   @default(now()) @db.DateTime(0)
+  fecha_fin      DateTime?                  @db.DateTime(0)
+  estado         suscripcion_premium_estado @default(ACTIVA)
+  monto_bs       Decimal                    @db.Decimal(12, 2)
+
+  @@index([fecha_inicio, fecha_fin], map: "ix_suscrip_fechas")
+  @@index([id_usuario, estado], map: "ix_suscrip_usuario_estado")
+}
+
+enum billetera_estado {
+  ACTIVA
+  BLOQUEADA
+  CERRADA
+}
+
+enum servicio_estado {
+  ACTIVO
+  PAUSADO
+  INACTIVO
+  ELIMINADO
+}
+
+enum usuario_estado {
+  ACTIVO
+  SUSPENDIDO
+  BLOQUEADO
+  ELIMINADO
+}
+
+enum evento_ambiental_fuente {
+  PUBLICACION
+  TRANSACCION
+}
+
+enum publicidad_estado {
+  PROGRAMADA
+  ACTIVA
+  PAUSADA
+  FINALIZADA
+  CANCELADA
+}
+
+enum compra_creditos_estado {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
+  FALLIDO
+  REVERTIDO
+}
+
+enum publicacion_estado {
+  BORRADOR
+  PUBLICADA
+  PAUSADA
+  AGOTADA
+  OCULTA
+  ELIMINADA
+}
+
+enum transaccion_estado {
+  SOLICITADA
+  ACEPTADA
+  RECHAZADA
+  CANCELADA
+  COMPLETADA
+  ANULADA
+}
+
+enum promocion_estado {
+  PROGRAMADA
+  ACTIVA
+  PAUSADA
+  FINALIZADA
+  CANCELADA
+}
+
+enum suscripcion_premium_estado {
+  ACTIVA
+  CANCELADA
+  VENCIDA
+}
+</file>
+
+<file path="prisma/seed.js">
+import { PrismaClient } from '@prisma/client'
+import bcrypt from 'bcryptjs'
+const prisma = new PrismaClient()
+
+async function main() {
+  const [adminRole, userRole] = await Promise.all([
+    prisma.role.upsert({ where: { name: 'ADMIN' }, update: {}, create: { name: 'ADMIN' } }),
+    prisma.role.upsert({ where: { name: 'USER' }, update: {}, create: { name: 'USER' } }),
+  ])
+
+  const passwordHash = await bcrypt.hash('demo123', 10)
+  const admin = await prisma.user.upsert({
+    where: { email: 'demo@demo.com' },
+    update: {},
+    create: { email: 'demo@demo.com', name: 'Admin Demo', passwordHash, roleId: adminRole.id }
+  })
+
+  await prisma.wallet.upsert({
+    where: { userId: admin.id },
+    update: {},
+    create: { userId: admin.id, credits: 1000 }
+  })
+
+  console.log('Seed listo:', { admin: admin.email })
+}
+
+main().catch(e=>{console.error(e); process.exit(1)}).finally(()=>prisma.$disconnect())
+</file>
+
+<file path="src/app.js">
+// src/app.js
+
+// 🔧 Parche global para que JSON.stringify soporte BigInt en todas las respuestas
+if (typeof BigInt !== "undefined" && !BigInt.prototype.toJSON) {
+  // eslint-disable-next-line no-extend-native
+  BigInt.prototype.toJSON = function () {
+    return Number(this);
+  };
+}
+
+import express from "express";
+import cors from "cors";
+import morgan from "morgan";
+import routes from "./routes/index.js";
+import { errorHandler } from "./middlewares/errorHandler.js";
+
+import path from "path";
+import { fileURLToPath } from "url";
+
+const app = express();
+
+// -------------------------------------------------------------
+// Necesario para rutas absolutas (uploads y archivos estáticos)
+// -------------------------------------------------------------
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// -------------------------------------------------------------
+// Middlewares globales
+// -------------------------------------------------------------
+app.use(cors());                // permitir peticiones de tu frontend
+app.use(morgan("dev"));         // logs en consola
+app.use(express.json());        // permite JSON en body
+app.use(express.urlencoded({ extended: true })); // formularios
+
+// -------------------------------------------------------------
+// Servir archivos estáticos (subidas de imágenes)
+// Ruta final: http://localhost:4000/uploads/<nombre-archivo>
+// -------------------------------------------------------------
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "..", "uploads_storage"))
+);
+
+// -------------------------------------------------------------
+// Registrar todas las rutas del backend
+// -------------------------------------------------------------
+app.use("/api", routes);
+
+// -------------------------------------------------------------
+// Middleware para rutas no encontradas
+// -------------------------------------------------------------
+app.use((req, res, next) => {
+  res.status(404).json({ message: "Ruta no encontrada" });
+});
+
+// -------------------------------------------------------------
+// Middleware global de manejo de errores
+// (Siempre debe ir al final)
+// -------------------------------------------------------------
+app.use(errorHandler);
+
+export default app;
+</file>
+
+<file path="src/config/env.js">
+// src/config/env.js
+import 'dotenv/config'
+
+export const env = {
+  NODE_ENV: process.env.NODE_ENV ?? 'development',
+  PORT: Number(process.env.PORT ?? 4000),
+  DATABASE_URL: process.env.DATABASE_URL,
+}
+</file>
+
+<file path="src/config/prisma.js">
+// src/config/prisma.js
+import { PrismaClient } from '@prisma/client'
+
+export const prisma = new PrismaClient({
+    log: ['query', 'error', 'warn'],
+})
+</file>
+
+<file path="src/middlewares/auth.js">
+// src/middlewares/auth.js
+import jwt from "jsonwebtoken";
+
+// Middleware principal: requiere token válido
+export function authMiddleware(req, res, next) {
+  const authHeader = req.headers.authorization;
+
+  // Esperamos "Authorization: Bearer <token>"
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "Token de autenticación faltante" });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    // En el payload nosotros pusimos: id_usuario, correo, rol
+    req.user = payload;
+    next();
+  } catch (err) {
+    return res
+      .status(401)
+      .json({ message: "Token inválido o expirado" });
+  }
+}
+
+// Versión opcional: si hay token lo lee, si no, deja pasar
+export function optionalAuth(req, _res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return next();
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = payload;
+  } catch {
+    // si falla, simplemente no ponemos req.user
+  }
+  next();
+}
+</file>
+
+<file path="src/middlewares/errorHandler.js">
+// src/middlewares/errorHandler.js
+
+// Middleware de manejo global de errores (SIEMPRE 4 parámetros)
+export function errorHandler(err, req, res, next) {
+  console.error("❌ Error:", err);
+
+  // Si ya se empezó a enviar la respuesta, delega a Express
+  if (res.headersSent) {
+    return next(err);
+  }
+
+  const status = err.status || err.statusCode || 500;
+  const message =
+    err.message || "Ocurrió un error inesperado en el servidor";
+
+  const response = { message };
+
+  // En desarrollo podemos enviar más detalles
+  if (process.env.NODE_ENV !== "production") {
+    response.stack = err.stack;
+    if (err.code) response.code = err.code;
+  }
+
+  res.status(status).json(response);
+}
+</file>
+
+<file path="src/middlewares/isAdmin.js">
+// src/middlewares/isAdmin.js
+
+// Middleware simple: solo ADMIN
+export function isAdmin(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json({ message: "No autenticado" });
+  }
+
+  if (req.user.rol !== "ADMIN") {
+    return res.status(403).json({ message: "Acceso solo para administradores" });
+  }
+
+  next();
+}
+
+// Middleware más general: aceptar varios roles
+export function hasRole(...rolesPermitidos) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "No autenticado" });
+    }
+
+    if (!rolesPermitidos.includes(req.user.rol)) {
+      return res.status(403).json({ message: "No tienes permisos suficientes" });
+    }
+
+    next();
+  };
+}
+</file>
+
+<file path="src/modules/actividades/actividades.controller.js">
+import {
+  registrarActividadService,
+  misActividadesService,
+  listarActividadesAdminService,
+} from "./actividades.service.js";
+
+/**
+ * Registrar nueva actividad sostenible (usuario logueado)
+ */
+export const registrarActividadController = async (req, res, next) => {
+  try {
+    const idUsuario = req.user.id_usuario;
+    const {
+      id_tipo_actividad,
+      descripcion,
+      creditos_otorgados,
+      evidencia_url,
+    } = req.body;
+
+    const result = await registrarActividadService({
+      idUsuario,
+      id_tipo_actividad,
+      descripcion,
+      creditos_otorgados,
+      evidencia_url,
+    });
+
+    res.status(201).json({
+      message: "Actividad registrada correctamente",
+      actividad: result,
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+
+/**
+ * Listar SOLO mis actividades (usuario logueado)
+ */
+export const misActividadesController = async (req, res, next) => {
+  try {
+    const idUsuario = req.user.id_usuario;
+    const actividades = await misActividadesService(idUsuario);
+    res.json(actividades);
+  } catch (e) {
+    next(e);
+  }
+};
+
+/**
+ * Listar actividades para ADMIN, con filtros opcionales:
+ *  - ?id_usuario=...
+ *  - ?id_tipo_actividad=...
+ *  - ?desde=YYYY-MM-DD
+ *  - ?hasta=YYYY-MM-DD
+ */
+export const listarActividadesAdminController = async (req, res, next) => {
+  try {
+    const { id_usuario, id_tipo_actividad, desde, hasta } = req.query;
+
+    const filtros = {
+      id_usuario: id_usuario ? Number(id_usuario) : undefined,
+      id_tipo_actividad: id_tipo_actividad
+        ? Number(id_tipo_actividad)
+        : undefined,
+      desde: desde || undefined,
+      hasta: hasta || undefined,
+    };
+
+    const actividades = await listarActividadesAdminService(filtros);
+
+    res.json({
+      message: "Listado de actividades sostenibles",
+      filtros,
+      data: actividades,
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+</file>
+
+<file path="src/modules/actividades/actividades.routes.js">
+import { Router } from "express";
+import { authMiddleware } from "../../middlewares/auth.js";
+import { isAdmin } from "../../middlewares/isAdmin.js";
+import {
+  registrarActividadController,
+  misActividadesController,
+  listarActividadesAdminController,
+} from "./actividades.controller.js";
+
+const router = Router();
+
+// Todas las rutas requieren estar logueado
+router.use(authMiddleware);
+
+// Registrar actividad sostenible (usuario)
+router.post("/", registrarActividadController);
+
+// Ver MIS actividades
+router.get("/mias", misActividadesController);
+
+// Listado ADMIN de actividades con filtros
+router.get("/admin", isAdmin, listarActividadesAdminController);
+
+export default router;
+</file>
+
+<file path="src/modules/actividades/actividades.service.js">
+import { prisma } from "../../config/prisma.js";
+
+export async function registrarActividadService({
+  idUsuario,
+  id_tipo_actividad,
+  descripcion,
+  creditos_otorgados,
+  evidencia_url,
+}) {
+  if (!id_tipo_actividad || !descripcion || creditos_otorgados == null) {
+    const err = new Error(
+      "id_tipo_actividad, descripcion y creditos_otorgados son obligatorios"
+    );
+    err.status = 400;
+    throw err;
+  }
+
+  const creditosNum = Number(creditos_otorgados);
+  if (!Number.isFinite(creditosNum) || creditosNum <= 0) {
+    const err = new Error("creditos_otorgados debe ser un número mayor a 0");
+    err.status = 400;
+    throw err;
+  }
+
+  // Llamar SP que encapsula la lógica de negocio
+  await prisma.$executeRawUnsafe(
+    "CALL sp_registrar_actividad_sostenible(?, ?, ?, ?, ?)",
+    idUsuario,
+    id_tipo_actividad,
+    descripcion,
+    creditosNum,
+    evidencia_url || null
+  );
+
+  // devolver la última actividad del usuario (reciente)
+  const [act] = await prisma.$queryRaw`
+    SELECT *
+    FROM ACTIVIDAD_SOSTENIBLE
+    WHERE id_usuario = ${idUsuario}
+    ORDER BY creado_en DESC, id_actividad DESC
+    LIMIT 1
+  `;
+  return act;
+}
+
+export async function misActividadesService(idUsuario) {
+  return prisma.$queryRaw`
+    SELECT *
+    FROM ACTIVIDAD_SOSTENIBLE
+    WHERE id_usuario = ${idUsuario}
+    ORDER BY creado_en DESC
+  `;
+}
+
+/**
+ * Listado ADMIN con filtros opcionales:
+ *  - id_usuario
+ *  - id_tipo_actividad
+ *  - desde / hasta (sobre columna creado_en)
+ *
+ * Versión pro: incluye nombre de usuario y nombre del tipo de actividad.
+ */
+export async function listarActividadesAdminService({
+  id_usuario,
+  id_tipo_actividad,
+  desde,
+  hasta,
+}) {
+  let sql = `
+    SELECT
+      a.*,
+      u.nombre       AS nombre_usuario,
+      u.correo       AS correo_usuario,
+      ta.nombre      AS nombre_tipo_actividad
+    FROM ACTIVIDAD_SOSTENIBLE a
+    JOIN USUARIO u
+      ON u.id_usuario = a.id_usuario
+    JOIN TIPO_ACTIVIDAD ta
+      ON ta.id_tipo_actividad = a.id_tipo_actividad
+    WHERE 1=1
+  `;
+  const params = [];
+
+  if (id_usuario) {
+    sql += " AND a.id_usuario = ?";
+    params.push(id_usuario);
+  }
+
+  if (id_tipo_actividad) {
+    sql += " AND a.id_tipo_actividad = ?";
+    params.push(id_tipo_actividad);
+  }
+
+  if (desde) {
+    sql += " AND DATE(a.creado_en) >= ?";
+    params.push(desde);
+  }
+
+  if (hasta) {
+    sql += " AND DATE(a.creado_en) <= ?";
+    params.push(hasta);
+  }
+
+  sql += " ORDER BY a.creado_en DESC, a.id_actividad DESC";
+
+  return prisma.$queryRawUnsafe(sql, ...params);
+}
+</file>
+
+<file path="src/modules/auth/auth.controller.js">
+import {
+  registrarUsuarioService,
+  loginService,
+  obtenerPerfilService,
+  actualizarPerfilService,
+  cambiarPasswordService,
+} from "./auth.service.js";
+
+/**
+ * POST /api/auth/register
+ * Registro público (rol USUARIO)
+ */
+export async function registerController(req, res, next) {
+  try {
+    const { nombre, apellido, correo, password, telefono } = req.body;
+
+    if (!nombre || !correo || !password) {
+      return res
+        .status(400)
+        .json({ message: "nombre, correo y password son obligatorios" });
+    }
+
+    const usuario = await registrarUsuarioService({
+      nombre,
+      apellido,
+      correo,
+      password,
+      telefono,
+    });
+
+    res.status(201).json({
+      message: "Usuario registrado correctamente",
+      usuario,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /api/auth/login
+ */
+export async function loginController(req, res, next) {
+  try {
+    const { correo, password } = req.body;
+
+    if (!correo || !password) {
+      return res
+        .status(400)
+        .json({ message: "correo y password son obligatorios" });
+    }
+
+    const result = await loginService({
+      correo,
+      password,
+      ip: req.ip,
+      userAgent: req.headers["user-agent"] || "",
+    });
+
+    res.json(result); // { token, usuario }
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * GET /api/auth/me
+ * Perfil del usuario actual
+ */
+export async function meController(req, res, next) {
+  try {
+    const idUsuario = req.user.id_usuario;
+    const perfil = await obtenerPerfilService(idUsuario);
+    res.json(perfil);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * PUT /api/auth/me
+ * Actualizar perfil del usuario logueado
+ * Campos permitidos: nombre, apellido, telefono, url_perfil
+ */
+export async function updateProfileController(req, res, next) {
+  try {
+    const idUsuario = req.user.id_usuario;
+    const { nombre, apellido, telefono, url_perfil } = req.body;
+
+    if (
+      nombre === undefined &&
+      apellido === undefined &&
+      telefono === undefined &&
+      url_perfil === undefined
+    ) {
+      return res
+        .status(400)
+        .json({ message: "No se envió ningún campo para actualizar" });
+    }
+
+    const usuarioActualizado = await actualizarPerfilService(idUsuario, {
+      nombre,
+      apellido,
+      telefono,
+      url_perfil,
+    });
+
+    return res.json({
+      message: "Perfil actualizado correctamente",
+      usuario: usuarioActualizado,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * PATCH /api/auth/me/password
+ * Cambiar contraseña del usuario logueado
+ * Body: { password_actual, password_nueva }
+ */
+export async function changePasswordController(req, res, next) {
+  try {
+    const idUsuario = req.user.id_usuario;
+    const { password_actual, password_nueva } = req.body;
+
+    if (!password_actual || !password_nueva) {
+      return res.status(400).json({
+        message: "password_actual y password_nueva son obligatorios",
+      });
+    }
+
+    if (password_nueva.length < 6) {
+      return res.status(400).json({
+        message: "La nueva contraseña debe tener al menos 6 caracteres",
+      });
+    }
+
+    await cambiarPasswordService(idUsuario, password_actual, password_nueva);
+
+    return res.json({
+      message: "Contraseña actualizada correctamente",
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+</file>
+
+<file path="src/modules/auth/auth.routes.js">
+import { Router } from "express";
+import {
+  registerController,
+  loginController,
+  meController,
+  updateProfileController,
+  changePasswordController,
+} from "./auth.controller.js";
+import { authMiddleware } from "../../middlewares/auth.js";
+
+const router = Router();
+
+// Registro público
+router.post("/register", registerController);
+
+// Login
+router.post("/login", loginController);
+
+// Datos del usuario logueado
+router.get("/me", authMiddleware, meController);
+
+// Actualizar perfil del usuario logueado
+router.put("/me", authMiddleware, updateProfileController);
+
+// Cambiar contraseña del usuario logueado
+router.patch("/me/password", authMiddleware, changePasswordController);
+
+export default router;
+</file>
+
+<file path="src/modules/auth/auth.service.js">
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { prisma } from "../../config/prisma.js";
+
+// Helper: obtener id_rol por nombre
+async function getRolId(nombreRol) {
+  const rows = await prisma.$queryRaw`
+    SELECT id_rol FROM ROL WHERE nombre = ${nombreRol} LIMIT 1
+  `;
+  if (!rows.length) {
+    throw new Error(`No existe el rol ${nombreRol}`);
+  }
+  return rows[0].id_rol;
+}
+
+// Helper: obtener id_resultado de BITACORA_ACCESO (OK / FAIL)
+async function getResultadoAccesoId(nombre) {
+  const rows = await prisma.$queryRaw`
+    SELECT id_resultado FROM RESULTADO_ACCESO WHERE nombre = ${nombre} LIMIT 1
+  `;
+  if (!rows.length) {
+    throw new Error(`No existe RESULTADO_ACCESO '${nombre}'`);
+  }
+  return rows[0].id_resultado;
+}
+
+/**
+ * Registro de usuario
+ */
+export async function registrarUsuarioService({
+  nombre,
+  apellido,
+  correo,
+  password,
+  telefono,
+}) {
+  // ¿Correo ya existe?
+  const existente = await prisma.$queryRaw`
+    SELECT id_usuario FROM USUARIO WHERE correo = ${correo} LIMIT 1
+  `;
+  if (existente.length) {
+    const error = new Error("El correo ya está registrado");
+    error.status = 409;
+    throw error;
+  }
+
+  const hash = await bcrypt.hash(password, 10);
+  const idRolUsuario = await getRolId("USUARIO");
+
+  await prisma.$queryRaw`
+    INSERT INTO USUARIO (id_rol, estado, nombre, apellido, correo, password_hash, telefono, url_perfil)
+    VALUES (${idRolUsuario}, 'ACTIVO', ${nombre}, ${apellido || null}, ${correo},
+            ${hash}, ${telefono || null}, NULL)
+  `;
+
+  // Volver a leer el usuario insertado
+  const usuarioRows = await prisma.$queryRaw`
+    SELECT u.id_usuario, u.nombre, u.apellido, u.correo, u.telefono, r.nombre AS rol, u.estado
+    FROM USUARIO u
+    JOIN ROL r ON r.id_rol = u.id_rol
+    WHERE u.correo = ${correo}
+    LIMIT 1
+  `;
+
+  return usuarioRows[0];
+}
+
+/**
+ * Login + bitácora de acceso + JWT
+ */
+export async function loginService({ correo, password, ip, userAgent }) {
+  const usuarios = await prisma.$queryRaw`
+    SELECT u.id_usuario, u.password_hash, u.nombre, u.apellido, u.correo,
+           u.estado, r.nombre AS rol
+    FROM USUARIO u
+    JOIN ROL r ON r.id_rol = u.id_rol
+    WHERE u.correo = ${correo}
+    LIMIT 1
+  `;
+
+  const user = usuarios[0];
+
+  if (!user) {
+    // Aquí podrías registrar bitácora sin usuario, si quisieras
+    const error = new Error("Credenciales inválidas");
+    error.status = 401;
+    throw error;
+  }
+
+  // ===== compatibilidad con hashes bcrypt y texto plano =====
+  let ok = false;
+
+  try {
+    // Si parece un hash bcrypt ($2a$, $2b$, $2y$...), usamos bcrypt.compare
+    if (user.password_hash && user.password_hash.startsWith("$2")) {
+      ok = await bcrypt.compare(password, user.password_hash);
+    } else {
+      // Si NO parece hash, asumimos que está en texto plano (ej: '123456')
+      ok = password === user.password_hash;
+    }
+  } catch (e) {
+    // Si bcrypt truena por hash inválido, hacemos fallback a texto plano
+    ok = password === user.password_hash;
+  }
+
+  const resultadoNombre = ok ? "OK" : "FAIL";
+  const idResultado = await getResultadoAccesoId(resultadoNombre);
+
+  // Registrar en BITACORA_ACCESO (solo si tenemos usuario)
+  await prisma.$queryRaw`
+    INSERT INTO BITACORA_ACCESO (id_usuario, fecha, direccion_ip, user_agent, id_resultado)
+    VALUES (${user.id_usuario}, NOW(), ${ip}, ${userAgent}, ${idResultado})
+  `;
+
+  if (!ok) {
+    const error = new Error("Credenciales inválidas");
+    error.status = 401;
+    throw error;
+  }
+
+  const payload = {
+    id_usuario: user.id_usuario,
+    correo: user.correo,
+    rol: user.rol,
+  };
+
+  const token = jwt.sign(payload, process.env.JWT_SECRET, {
+    expiresIn: "2h",
+  });
+
+  return {
+    token,
+    usuario: {
+      id_usuario: user.id_usuario,
+      nombre: user.nombre,
+      apellido: user.apellido,
+      correo: user.correo,
+      rol: user.rol,
+      estado: user.estado,
+    },
+  };
+}
+
+/**
+ * Perfil de usuario por id
+ */
+export async function obtenerPerfilService(idUsuario) {
+  const rows = await prisma.$queryRaw`
+    SELECT u.id_usuario, u.nombre, u.apellido, u.correo, u.telefono,
+           u.estado, u.url_perfil, r.nombre AS rol
+    FROM USUARIO u
+    JOIN ROL r ON r.id_rol = u.id_rol
+    WHERE u.id_usuario = ${idUsuario}
+    LIMIT 1
+  `;
+  if (!rows.length) {
+    const err = new Error("Usuario no encontrado");
+    err.status = 404;
+    throw err;
+  }
+  return rows[0];
+}
+
+/**
+ * Actualizar perfil de un usuario
+ * (no borra campos si no se envían)
+ */
+export async function actualizarPerfilService(idUsuario, datos) {
+  const { nombre, apellido, telefono, url_perfil } = datos;
+
+  // 1) Obtener valores actuales
+  const currentRows = await prisma.$queryRaw`
+    SELECT id_usuario, nombre, apellido, telefono, url_perfil, id_rol, estado, correo
+    FROM USUARIO
+    WHERE id_usuario = ${idUsuario}
+    LIMIT 1
+  `;
+
+  if (!currentRows.length) {
+    const err = new Error("Usuario no encontrado");
+    err.status = 404;
+    throw err;
+  }
+
+  const current = currentRows[0];
+
+  // 2) Mezclar valores nuevos con actuales
+  const nuevoNombre = nombre !== undefined ? nombre : current.nombre;
+  const nuevoApellido = apellido !== undefined ? apellido : current.apellido;
+  const nuevoTelefono = telefono !== undefined ? telefono : current.telefono;
+  const nuevaUrlPerfil =
+    url_perfil !== undefined ? url_perfil : current.url_perfil;
+
+  // 3) Actualizar
+  await prisma.$queryRaw`
+    UPDATE USUARIO
+    SET
+      nombre = ${nuevoNombre},
+      apellido = ${nuevoApellido},
+      telefono = ${nuevoTelefono},
+      url_perfil = ${nuevaUrlPerfil}
+    WHERE id_usuario = ${idUsuario}
+  `;
+
+  // 4) Devolver datos actualizados + rol
+  const rows = await prisma.$queryRaw`
+    SELECT u.id_usuario, u.nombre, u.apellido, u.correo, u.telefono,
+           u.estado, u.url_perfil, r.nombre AS rol
+    FROM USUARIO u
+    JOIN ROL r ON r.id_rol = u.id_rol
+    WHERE u.id_usuario = ${idUsuario}
+    LIMIT 1
+  `;
+
+  return rows[0];
+}
+
+/**
+ * Cambiar contraseña de un usuario
+ */
+export async function cambiarPasswordService(
+  idUsuario,
+  passwordActual,
+  passwordNueva
+) {
+  const rows = await prisma.$queryRaw`
+    SELECT password_hash
+    FROM USUARIO
+    WHERE id_usuario = ${idUsuario}
+    LIMIT 1
+  `;
+
+  if (!rows.length) {
+    const err = new Error("Usuario no encontrado");
+    err.status = 404;
+    throw err;
+  }
+
+  const { password_hash } = rows[0];
+
+  let ok = false;
+
+  try {
+    if (password_hash && password_hash.startsWith("$2")) {
+      ok = await bcrypt.compare(passwordActual, password_hash);
+    } else {
+      ok = passwordActual === password_hash;
+    }
+  } catch (e) {
+    ok = passwordActual === password_hash;
+  }
+
+  if (!ok) {
+    const err = new Error("La contraseña actual es incorrecta");
+    err.status = 400;
+    throw err;
+  }
+
+  const nuevoHash = await bcrypt.hash(passwordNueva, 10);
+
+  await prisma.$queryRaw`
+    UPDATE USUARIO
+    SET password_hash = ${nuevoHash}
+    WHERE id_usuario = ${idUsuario}
+  `;
+
+  return true;
+}
+</file>
+
+<file path="src/modules/bitacoras/bitacoras.controller.js">
+// src/modules/bitacoras/bitacoras.controller.js
+import {
+  listarAccesosService,
+  listarBitacoraIntercambiosService,
+} from "./bitacoras.service.js";
+
+function toInt(v, def = null) {
+  const n = Number(v);
+  return Number.isNaN(n) ? def : n;
+}
+
+/**
+ * GET /api/bitacoras/accesos
+ * Admin: lista accesos (con paginación y filtro opcional por idUsuario)
+ */
+export async function getAccesosController(req, res, next) {
+  try {
+    const { page, pageSize, idUsuario } = req.query;
+
+    const result = await listarAccesosService({
+      page: toInt(page, 1),
+      pageSize: toInt(pageSize, 20),
+      idUsuario: idUsuario ? toInt(idUsuario) : null,
+    });
+
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * GET /api/bitacoras/mis-accesos
+ * Usuario normal: ve solo sus propios accesos
+ */
+export async function getMisAccesosController(req, res, next) {
+  try {
+    const { page, pageSize } = req.query;
+    const idUsuario = req.user.id_usuario;
+
+    const result = await listarAccesosService({
+      page: toInt(page, 1),
+      pageSize: toInt(pageSize, 20),
+      idUsuario,
+    });
+
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * GET /api/bitacoras/intercambios
+ * Admin: bitácora de intercambios.
+ * Filtros opcionales: ?idTransaccion=&idUsuario=
+ */
+export async function getBitacoraIntercambiosController(req, res, next) {
+  try {
+    const { page, pageSize, idTransaccion, idUsuario } = req.query;
+
+    const result = await listarBitacoraIntercambiosService({
+      page: toInt(page, 1),
+      pageSize: toInt(pageSize, 20),
+      idTransaccion: idTransaccion ? toInt(idTransaccion) : null,
+      idUsuario: idUsuario ? toInt(idUsuario) : null,
+    });
+
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+</file>
+
+<file path="src/modules/bitacoras/bitacoras.routes.js">
+// src/modules/bitacoras/bitacoras.routes.js
+import { Router } from "express";
+import { authMiddleware } from "../../middlewares/auth.js";
+import { isAdmin } from "../../middlewares/isAdmin.js";
+import {
+  getAccesosController,
+  getMisAccesosController,
+  getBitacoraIntercambiosController,
+} from "./bitacoras.controller.js";
+
+const router = Router();
+
+// Todas requieren login
+router.use(authMiddleware);
+
+// Admin: ver todos los accesos
+router.get("/accesos", isAdmin, getAccesosController);
+
+// Usuario: ver solo sus accesos
+router.get("/mis-accesos", getMisAccesosController);
+
+// Admin: bitácora de intercambios
+router.get("/intercambios", isAdmin, getBitacoraIntercambiosController);
+
+export default router;
+</file>
+
+<file path="src/modules/bitacoras/bitacoras.service.js">
+// src/modules/bitacoras/bitacoras.service.js
+import { prisma } from "../../config/prisma.js";
+
+/**
+ * Listar accesos (BITACORA_ACCESO) con paginación.
+ * Si se envía idUsuario, filtra por ese usuario.
+ */
+export async function listarAccesosService({
+  page = 1,
+  pageSize = 20,
+  idUsuario = null,
+}) {
+  const limit = Math.max(1, Math.min(Number(pageSize) || 20, 100));
+  const pageNum = Math.max(Number(page) || 1, 1);
+  const offset = (pageNum - 1) * limit;
+
+  let where = "WHERE 1=1";
+  const params = [];
+
+  if (idUsuario) {
+    where += " AND b.id_usuario = ?";
+    params.push(Number(idUsuario));
+  }
+
+  const countSql = `
+    SELECT COUNT(*) AS total
+    FROM BITACORA_ACCESO b
+    ${where}
+  `;
+  const [countRow] = await prisma.$queryRawUnsafe(countSql, ...params);
+  const total = Number(countRow?.total || 0);
+
+  const dataSql = `
+    SELECT
+      b.id_acceso AS id_bitacora,
+      b.id_usuario,
+      u.nombre,
+      u.correo,
+      b.fecha,
+      b.direccion_ip,
+      b.user_agent,
+      r.nombre AS resultado
+    FROM BITACORA_ACCESO b
+    JOIN USUARIO u ON u.id_usuario = b.id_usuario
+    JOIN RESULTADO_ACCESO r ON r.id_resultado = b.id_resultado
+    ${where}
+    ORDER BY b.fecha DESC, b.id_acceso DESC
+    LIMIT ? OFFSET ?
+  `;
+  const data = await prisma.$queryRawUnsafe(
+    dataSql,
+    ...params,
+    limit,
+    offset
+  );
+
+  return {
+    page: pageNum,
+    pageSize: limit,
+    total,
+    data,
+  };
+}
+
+/**
+ * Bitácora de intercambios (BITACORA_INTERCAMBIO) con paginación.
+ * Opcional: filtrar por idTransaccion o idUsuario (origen/destino).
+ */
+export async function listarBitacoraIntercambiosService({
+  page = 1,
+  pageSize = 20,
+  idTransaccion = null,
+  idUsuario = null,
+}) {
+  const limit = Math.max(1, Math.min(Number(pageSize) || 20, 100));
+  const pageNum = Math.max(Number(page) || 1, 1);
+  const offset = (pageNum - 1) * limit;
+
+  let where = "WHERE 1=1";
+  const params = [];
+
+  if (idTransaccion) {
+    where += " AND bi.id_transaccion = ?";
+    params.push(Number(idTransaccion));
+  }
+
+  if (idUsuario) {
+    where +=
+      " AND (bi.id_usuario_origen = ? OR bi.id_usuario_destino = ?)";
+    params.push(Number(idUsuario), Number(idUsuario));
+  }
+
+  const countSql = `
+    SELECT COUNT(*) AS total
+    FROM BITACORA_INTERCAMBIO bi
+    ${where}
+  `;
+  const [countRow] = await prisma.$queryRawUnsafe(countSql, ...params);
+  const total = Number(countRow?.total || 0);
+
+  const dataSql = `
+    SELECT
+      bi.id_bitacora,
+      bi.id_transaccion,
+      bi.id_usuario_origen,
+      uo.nombre  AS usuario_origen,
+      bi.id_usuario_destino,
+      ud.nombre  AS usuario_destino,
+      bi.cantidad_creditos,
+      bi.descripcion,
+      t.estado   AS estado_transaccion,
+      t.creado_en AS fecha_transaccion
+    FROM BITACORA_INTERCAMBIO bi
+    JOIN TRANSACCION t
+      ON t.id_transaccion = bi.id_transaccion
+    JOIN USUARIO uo
+      ON uo.id_usuario = bi.id_usuario_origen
+    JOIN USUARIO ud
+      ON ud.id_usuario = bi.id_usuario_destino
+    ${where}
+    ORDER BY bi.id_bitacora DESC
+    LIMIT ? OFFSET ?
+  `;
+  const data = await prisma.$queryRawUnsafe(
+    dataSql,
+    ...params,
+    limit,
+    offset
+  );
+
+  return {
+    page: pageNum,
+    pageSize: limit,
+    total,
+    data,
+  };
+}
+</file>
+
+<file path="src/modules/catalogos/catalogos.controller.js">
+import {
+  listarCategorias,
+  listarUnidadesMedida,
+  listarPaquetesCreditos,
+  listarTiposActividad,
+  listarTiposPromocion,
+  listarUbicacionesPublicidad,
+  listarTiposLogro,
+  // Opcional (para admin – CRUD)
+  crearCatalogoService,
+  editarCatalogoService,
+} from "./catalogos.service.js";
+
+// Helper para respuestas limpias
+function ok(res, data) {
+  return res.json({ ok: true, data });
+}
+
+/* =======================
+   CATÁLOGOS PÚBLICOS
+   ======================= */
+
+export const getCategorias = async (_req, res, next) => {
+  try {
+    ok(res, await listarCategorias());
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const getUnidadesMedida = async (_req, res, next) => {
+  try {
+    ok(res, await listarUnidadesMedida());
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const getPaquetesCreditos = async (_req, res, next) => {
+  try {
+    ok(res, await listarPaquetesCreditos());
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const getTiposActividad = async (_req, res, next) => {
+  try {
+    ok(res, await listarTiposActividad());
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const getTiposPromocion = async (_req, res, next) => {
+  try {
+    ok(res, await listarTiposPromocion());
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const getUbicacionesPublicidad = async (_req, res, next) => {
+  try {
+    ok(res, await listarUbicacionesPublicidad());
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const getTiposLogro = async (_req, res, next) => {
+  try {
+    ok(res, await listarTiposLogro());
+  } catch (e) {
+    next(e);
+  }
+};
+
+/* =======================
+   OPCIONAL: ADMIN – CRUD
+   ======================= */
+
+export const crearCatalogoController = async (req, res, next) => {
+  try {
+    const { tabla, nombre } = req.body;
+    const result = await crearCatalogoService(tabla, nombre);
+    res
+      .status(201)
+      .json({ ok: true, message: "Creado correctamente", data: result });
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const editarCatalogoController = async (req, res, next) => {
+  try {
+    const { tabla, id, nombre } = req.body;
+    const result = await editarCatalogoService(tabla, id, nombre);
+    res.json({ ok: true, message: "Actualizado correctamente", data: result });
+  } catch (e) {
+    next(e);
+  }
+};
+</file>
+
+<file path="src/modules/catalogos/catalogos.routes.js">
+import { Router } from "express";
+import {
+  getCategorias,
+  getUnidadesMedida,
+  getPaquetesCreditos,
+  getTiposActividad,
+  getTiposPromocion,
+  getUbicacionesPublicidad,
+  getTiposLogro,
+  // CRUD opcional solo admin
+  crearCatalogoController,
+  editarCatalogoController,
+} from "./catalogos.controller.js";
+
+import { authMiddleware } from "../../middlewares/auth.js";
+import { isAdmin } from "../../middlewares/isAdmin.js";
+
+const router = Router();
+
+/* =======================
+   RUTAS PÚBLICAS
+   ======================= */
+router.get("/categorias", getCategorias);
+router.get("/unidades-medida", getUnidadesMedida);
+router.get("/paquetes-creditos", getPaquetesCreditos);
+router.get("/tipos-actividad", getTiposActividad);
+router.get("/tipos-promocion", getTiposPromocion);
+router.get("/ubicaciones-publicidad", getUbicacionesPublicidad);
+router.get("/tipos-logro", getTiposLogro);
+
+/* =======================
+   RUTAS ADMIN (OPCIONALES)
+   ======================= */
+router.use(authMiddleware, isAdmin);
+
+router.post("/admin/crear", crearCatalogoController);
+router.put("/admin/editar", editarCatalogoController);
+
+export default router;
+</file>
+
+<file path="src/modules/catalogos/catalogos.service.js">
+import { prisma } from "../../config/prisma.js";
+
+/* =======================
+   LISTADOS
+   ======================= */
+
+export const listarCategorias = () =>
+  prisma.$queryRaw`SELECT * FROM CATEGORIA ORDER BY nombre`;
+
+export const listarUnidadesMedida = () =>
+  prisma.$queryRaw`SELECT * FROM UNIDAD_MEDIDA ORDER BY nombre`;
+
+export const listarPaquetesCreditos = () =>
+  prisma.$queryRaw`SELECT * FROM PAQUETE_CREDITOS WHERE activo = TRUE ORDER BY cantidad_creditos`;
+
+export const listarTiposActividad = () =>
+  prisma.$queryRaw`SELECT * FROM TIPO_ACTIVIDAD ORDER BY nombre`;
+
+export const listarTiposPromocion = () =>
+  prisma.$queryRaw`SELECT * FROM TIPO_PROMOCION ORDER BY nombre`;
+
+export const listarUbicacionesPublicidad = () =>
+  prisma.$queryRaw`SELECT * FROM UBICACION_PUBLICIDAD ORDER BY nombre`;
+
+export const listarTiposLogro = () =>
+  prisma.$queryRaw`SELECT * FROM TIPO_LOGRO ORDER BY nombre`;
+
+/* =======================
+   CRUD OPCIONAL (ADMIN)
+   ======================= */
+
+/**
+ * Solo catálogos "simples" (id, nombre, descripcion opcional)
+ * que admiten INSERT(nombre) sin campos extra obligatorios.
+ */
+const tablasPermitidas = {
+  categoria: {
+    tabla: "CATEGORIA",
+    idCol: "id_categoria",
+  },
+  tipo_actividad: {
+    tabla: "TIPO_ACTIVIDAD",
+    idCol: "id_tipo_actividad",
+  },
+  tipo_promocion: {
+    tabla: "TIPO_PROMOCION",
+    idCol: "id_tipo_promocion",
+  },
+  tipo_logro: {
+    tabla: "TIPO_LOGRO",
+    idCol: "id_tipo_logro",
+  },
+  // NOTA:
+  // UNIDAD_MEDIDA y UBICACION_PUBLICIDAD quedan solo lectura,
+  // porque requieren más campos (simbolo, precio_base, etc.).
+};
+
+/**
+ * Crear registro en catálogo genérico (ADMIN)
+ */
+export async function crearCatalogoService(tabla, nombre) {
+  const meta = tablasPermitidas[tabla];
+  if (!meta) {
+    const err = new Error("Catálogo no permitido para creación genérica");
+    err.status = 400;
+    throw err;
+  }
+
+  if (!nombre) {
+    const err = new Error("El nombre es obligatorio");
+    err.status = 400;
+    throw err;
+  }
+
+  await prisma.$queryRawUnsafe(
+    `INSERT INTO ${meta.tabla} (nombre) VALUES (?)`,
+    nombre
+  );
+
+  // devolver el último creado (por nombre)
+  const [row] = await prisma.$queryRawUnsafe(
+    `SELECT * FROM ${meta.tabla} WHERE nombre = ? ORDER BY ${meta.idCol} DESC LIMIT 1`,
+    nombre
+  );
+
+  return row || { tabla: meta.tabla, nombre };
+}
+
+/**
+ * Editar registro en catálogo genérico (ADMIN)
+ */
+export async function editarCatalogoService(tabla, id, nombre) {
+  const meta = tablasPermitidas[tabla];
+  if (!meta) {
+    const err = new Error("Catálogo no permitido para edición genérica");
+    err.status = 400;
+    throw err;
+  }
+
+  if (!id || !nombre) {
+    const err = new Error("id y nombre son obligatorios");
+    err.status = 400;
+    throw err;
+  }
+
+  await prisma.$queryRawUnsafe(
+    `UPDATE ${meta.tabla} SET nombre = ? WHERE ${meta.idCol} = ?`,
+    nombre,
+    id
+  );
+
+  const [row] = await prisma.$queryRawUnsafe(
+    `SELECT * FROM ${meta.tabla} WHERE ${meta.idCol} = ? LIMIT 1`,
+    id
+  );
+
+  return row || { tabla: meta.tabla, id, nombre };
+}
+</file>
+
+<file path="src/modules/intercambios/intercambios.controller.js">
+import {
+  crearIntercambioService,
+  misComprasService,
+  misVentasService,
+  detalleTransaccionService,
+} from "./intercambios.service.js";
+
+export const crearIntercambioController = async (req, res, next) => {
+  try {
+    const idComprador = req.user.id_usuario;
+    const { id_publicacion, creditos } = req.body;
+
+    const tx = await crearIntercambioService({
+      idComprador,
+      id_publicacion,
+      creditos,
+    });
+
+    res
+      .status(201)
+      .json({ message: "Intercambio creado correctamente", transaccion: tx });
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const misComprasController = async (req, res, next) => {
+  try {
+    const compras = await misComprasService(req.user.id_usuario);
+    res.json(compras);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const misVentasController = async (req, res, next) => {
+  try {
+    const ventas = await misVentasService(req.user.id_usuario);
+    res.json(ventas);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const detalleTransaccionController = async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ message: "ID de transacción inválido" });
+    }
+
+    const detalle = await detalleTransaccionService(id);
+    res.json(detalle);
+  } catch (e) {
+    next(e);
+  }
+};
+</file>
+
+<file path="src/modules/intercambios/intercambios.routes.js">
+import { Router } from "express";
+import { authMiddleware } from "../../middlewares/auth.js";
+import {
+  crearIntercambioController,
+  misComprasController,
+  misVentasController,
+  detalleTransaccionController,
+} from "./intercambios.controller.js";
+
+const router = Router();
+
+// Todas las rutas requieren estar logueado
+router.use(authMiddleware);
+
+// Crear nuevo intercambio
+router.post("/", crearIntercambioController);
+
+// Ver mis compras
+router.get("/mis-compras", misComprasController);
+
+// Ver mis ventas
+router.get("/mis-ventas", misVentasController);
+
+// Detalle de una transacción
+router.get("/:id", detalleTransaccionController);
+
+export default router;
+</file>
+
+<file path="src/modules/intercambios/intercambios.service.js">
+import { prisma } from "../../config/prisma.js";
+
+export async function crearIntercambioService({
+  idComprador,
+  id_publicacion,
+  creditos,
+}) {
+  if (!id_publicacion || creditos == null) {
+    const err = new Error("id_publicacion y creditos son obligatorios");
+    err.status = 400;
+    throw err;
+  }
+
+  const creditosNum = Number(creditos);
+  if (!Number.isFinite(creditosNum) || creditosNum <= 0) {
+    const err = new Error("creditos debe ser un número mayor a 0");
+    err.status = 400;
+    throw err;
+  }
+
+  // Llamar SP que encapsula toda la lógica de negocio
+  await prisma.$executeRawUnsafe(
+    "CALL sp_realizar_intercambio(?, ?, ?)",
+    idComprador,
+    id_publicacion,
+    creditosNum
+  );
+
+  // Última transacción creada por el comprador (más reciente)
+  const [tx] = await prisma.$queryRaw`
+    SELECT t.*, p.titulo
+    FROM TRANSACCION t
+    JOIN PUBLICACION p ON p.id_publicacion = t.id_publicacion
+    WHERE t.id_comprador = ${idComprador}
+    ORDER BY t.creado_en DESC, t.id_transaccion DESC
+    LIMIT 1
+  `;
+
+  return tx;
+}
+
+export async function misComprasService(idUsuario) {
+  return prisma.$queryRaw`
+    SELECT t.*, p.titulo
+    FROM TRANSACCION t
+    JOIN PUBLICACION p ON p.id_publicacion = t.id_publicacion
+    WHERE t.id_comprador = ${idUsuario}
+    ORDER BY t.creado_en DESC
+  `;
+}
+
+export async function misVentasService(idUsuario) {
+  return prisma.$queryRaw`
+    SELECT t.*, p.titulo
+    FROM TRANSACCION t
+    JOIN PUBLICACION p ON p.id_publicacion = t.id_publicacion
+    WHERE t.id_vendedor = ${idUsuario}
+    ORDER BY t.creado_en DESC
+  `;
+}
+
+export async function detalleTransaccionService(idTransaccion) {
+  const [row] = await prisma.$queryRaw`
+    SELECT
+      t.*,
+      p.titulo,
+      p.descripcion,
+      p.valor_creditos
+    FROM TRANSACCION t
+    JOIN PUBLICACION p ON p.id_publicacion = t.id_publicacion
+    WHERE t.id_transaccion = ${idTransaccion}
+    LIMIT 1
+  `;
+
+  if (!row) {
+    const err = new Error("Transacción no encontrada");
+    err.status = 404;
+    throw err;
+  }
+
+  return row;
+}
+</file>
+
+<file path="src/modules/logros/logros.controller.js">
+import {
+  misLogrosService,
+  listarLogrosService,
+} from "./logros.service.js";
+
+export const misLogrosController = async (req, res, next) => {
+  try {
+    const idUsuario = req.user.id_usuario;
+    const logros = await misLogrosService(idUsuario);
+    res.json(logros);
+  } catch (e) {
+    next(e);
+  }
+};
+
+/**
+ * Listado completo de logros (solo admin)
+ * Soporta filtro opcional:
+ *   GET /api/logros?id_tipo_logro=1
+ */
+export const listarLogrosController = async (req, res, next) => {
+  try {
+    const idTipo = req.query.id_tipo_logro
+      ? Number(req.query.id_tipo_logro)
+      : undefined;
+
+    if (idTipo !== undefined && !Number.isFinite(idTipo)) {
+      return res.status(400).json({ message: "id_tipo_logro inválido" });
+    }
+
+    const logros = await listarLogrosService(idTipo);
+    res.json({
+      message: "Listado de logros",
+      filtro: idTipo ? { id_tipo_logro: idTipo } : null,
+      data: logros,
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+</file>
+
+<file path="src/modules/logros/logros.routes.js">
+import { Router } from "express";
+import { authMiddleware } from "../../middlewares/auth.js";
+import { isAdmin } from "../../middlewares/isAdmin.js";
+import {
+  misLogrosController,
+  listarLogrosController,
+} from "./logros.controller.js";
+
+const router = Router();
+
+// Todas las rutas requieren estar logueado
+router.use(authMiddleware);
+
+// Ver mis logros (usuario normal)
+router.get("/mios", misLogrosController);
+
+// Catálogo completo de logros (solo admin, con filtro opcional)
+router.get("/", isAdmin, listarLogrosController);
+
+export default router;
+</file>
+
+<file path="src/modules/logros/logros.service.js">
+import { prisma } from "../../config/prisma.js";
+
+/**
+ * Listar catálogo de logros (opcionalmente filtrado por tipo)
+ * @param {number | undefined} idTipoLogro
+ */
+export const listarLogrosService = (idTipoLogro) => {
+  if (idTipoLogro) {
+    return prisma.$queryRaw`
+      SELECT l.*, tl.nombre AS tipo_logro
+      FROM LOGRO l
+      JOIN TIPO_LOGRO tl ON tl.id_tipo_logro = l.id_tipo_logro
+      WHERE l.id_tipo_logro = ${idTipoLogro}
+      ORDER BY l.id_logro
+    `;
+  }
+
+  // Sin filtro
+  return prisma.$queryRaw`
+    SELECT l.*, tl.nombre AS tipo_logro
+    FROM LOGRO l
+    JOIN TIPO_LOGRO tl ON tl.id_tipo_logro = l.id_tipo_logro
+    ORDER BY l.id_logro
+  `;
+};
+
+/**
+ * Logros del usuario actual (catálogo + progreso)
+ */
+export const misLogrosService = (idUsuario) =>
+  prisma.$queryRaw`
+    SELECT
+      ul.*,
+      l.nombre,
+      l.descripcion,
+      l.meta_requerida,
+      l.creditos_recompensa
+    FROM USUARIO_LOGRO ul
+    JOIN LOGRO l ON l.id_logro = ul.id_logro
+    WHERE ul.id_usuario = ${idUsuario}
+    ORDER BY l.id_logro
+  `;
+</file>
+
+<file path="src/modules/premium/premium.controller.js">
+// premium.controller.js
+import {
+  miPlanPremiumService,
+  activarPremiumService,
+} from "./premium.service.js";
+
+export const miPlanPremiumController = async (req, res, next) => {
+  try {
+    const idUsuario = req.user.id_usuario;
+    const plan = await miPlanPremiumService(idUsuario);
+    res.json(plan);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const activarPremiumController = async (req, res, next) => {
+  try {
+    const idUsuario = req.user.id_usuario;
+    const data = await activarPremiumService(idUsuario);
+    res
+      .status(201)
+      .json({ message: "Suscripción premium activada correctamente", data });
+  } catch (e) {
+    next(e);
+  }
+};
+</file>
+
+<file path="src/modules/premium/premium.routes.js">
+// premium.routes.js
+import { Router } from "express";
+import { authMiddleware } from "../../middlewares/auth.js";
+import {
+  miPlanPremiumController,
+  activarPremiumController,
+} from "./premium.controller.js";
+
+const router = Router();
+
+// Todas las rutas premium requieren estar autenticado
+router.use(authMiddleware);
+
+// Ver mi plan premium actual (la suscripción más reciente)
+router.get("/mi-plan", miPlanPremiumController);
+
+// Activar premium (30 días)
+router.post("/activar", activarPremiumController);
+
+export default router;
+</file>
+
+<file path="src/modules/premium/premium.service.js">
+// premium.service.js
+import { prisma } from "../../config/prisma.js";
+
+/**
+ * Devuelve la suscripción premium más reciente del usuario,
+ * o null si no tiene.
+ */
+export const miPlanPremiumService = async (idUsuario) => {
+  const rows = await prisma.$queryRaw`
+    SELECT *
+    FROM SUSCRIPCION_PREMIUM
+    WHERE id_usuario = ${idUsuario}
+    ORDER BY fecha_inicio DESC
+    LIMIT 1
+  `;
+  return rows[0] || null;
+};
+
+/**
+ * Activa una suscripción premium de 30 días.
+ * - Cierra suscripciones ACTIVA previas (las marca como VENCIDA).
+ * - Crea una nueva suscripción ACTIVA con monto fijo.
+ */
+export async function activarPremiumService(idUsuario) {
+  // 1) ¿Ya tiene una suscripción ACTIVA que aún no venció?
+  const [activa] = await prisma.$queryRaw`
+    SELECT *
+    FROM SUSCRIPCION_PREMIUM
+    WHERE id_usuario = ${idUsuario}
+      AND estado = 'ACTIVA'
+      AND (fecha_fin IS NULL OR fecha_fin > NOW())
+    ORDER BY fecha_inicio DESC
+    LIMIT 1
+  `;
+
+  if (activa) {
+    const err = new Error(
+      "Ya tienes una suscripción premium activa actualmente"
+    );
+    err.status = 400;
+    throw err;
+  }
+
+  // 2) Cerrar cualquier ACTIVA “vieja” que quedó sin fecha_fin coherente
+  await prisma.$executeRaw`
+    UPDATE SUSCRIPCION_PREMIUM
+    SET estado = 'VENCIDA',
+        fecha_fin = IFNULL(fecha_fin, NOW())
+    WHERE id_usuario = ${idUsuario}
+      AND estado = 'ACTIVA'
+      AND fecha_inicio <= NOW()
+  `;
+
+  // 3) Crear nueva suscripción de 30 días
+  const fin = new Date();
+  fin.setDate(fin.getDate() + 30);
+
+  const monto = 20.0; // 💰 aquí puedes parametrizar el precio si después tienes planes distintos
+
+  await prisma.$executeRaw`
+    INSERT INTO SUSCRIPCION_PREMIUM (
+      id_usuario,
+      fecha_fin,
+      estado,
+      monto_bs
+    )
+    VALUES (
+      ${idUsuario},
+      ${fin},
+      'ACTIVA',
+      ${monto}
+    )
+  `;
+
+  // 4) Devolver la suscripción recién creada
+  const [row] = await prisma.$queryRaw`
+    SELECT *
+    FROM SUSCRIPCION_PREMIUM
+    WHERE id_usuario = ${idUsuario}
+    ORDER BY fecha_inicio DESC
+    LIMIT 1
+  `;
+
+  return row;
+}
+</file>
+
+<file path="src/modules/promociones/promociones.controller.js">
+import {
+  listarPromocionesService,
+  crearPromocionService,
+  actualizarEstadoPromocionService,
+  vincularPublicacionService,
+} from "./promociones.service.js";
+
+export const listarPromocionesController = async (_req, res, next) => {
+  try {
+    const promos = await listarPromocionesService();
+    res.json(promos);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const crearPromocionController = async (req, res, next) => {
+  try {
+    const promo = await crearPromocionService(req.body);
+    res.status(201).json(promo);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const actualizarEstadoPromocionController = async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ message: "ID de promoción inválido" });
+    }
+
+    const { estado } = req.body;
+    const promo = await actualizarEstadoPromocionService(id, estado);
+
+    res.json({
+      message: "Estado de promoción actualizado",
+      data: promo,
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const vincularPublicacionController = async (req, res, next) => {
+  try {
+    const idPromocion = Number(req.params.id);
+    if (!Number.isFinite(idPromocion)) {
+      return res.status(400).json({ message: "ID de promoción inválido" });
+    }
+
+    const { id_publicacion } = req.body;
+    await vincularPublicacionService(idPromocion, id_publicacion);
+
+    res.status(201).json({ message: "Publicación vinculada correctamente" });
+  } catch (e) {
+    next(e);
+  }
+};
+</file>
+
+<file path="src/modules/promociones/promociones.routes.js">
+import { Router } from "express";
+import { authMiddleware } from "../../middlewares/auth.js";
+import { isAdmin } from "../../middlewares/isAdmin.js";
+import {
+  listarPromocionesController,
+  crearPromocionController,
+  actualizarEstadoPromocionController,
+  vincularPublicacionController,
+} from "./promociones.controller.js";
+
+const router = Router();
+
+// Todo el módulo de promociones es solo ADMIN
+router.use(authMiddleware, isAdmin);
+
+// Listar promociones
+router.get("/", listarPromocionesController);
+
+// Crear nueva promoción
+router.post("/", crearPromocionController);
+
+// Cambiar estado de promoción
+router.patch("/:id/estado", actualizarEstadoPromocionController);
+
+// Vincular publicación a promoción (dispara bono vía trigger)
+router.post("/:id/publicaciones", vincularPublicacionController);
+
+export default router;
+</file>
+
+<file path="src/modules/promociones/promociones.service.js">
+import { prisma } from "../../config/prisma.js";
+
+/**
+ * Listar promociones (panel admin).
+ * Más adelante podrías agregar filtros:
+ *   - por estado (?estado=ACTIVA)
+ *   - por rango de fechas (?desde, ?hasta)
+ */
+export const listarPromocionesService = () =>
+  prisma.$queryRaw`
+    SELECT *
+    FROM PROMOCION
+    ORDER BY fecha_inicio DESC
+  `;
+
+// Valores válidos según ENUM de la BD
+const ESTADOS_VALIDOS = [
+  "PROGRAMADA",
+  "ACTIVA",
+  "PAUSADA",
+  "FINALIZADA",
+  "CANCELADA",
+];
+
+export async function crearPromocionService(body) {
+  const {
+    id_tipo_promocion,
+    nombre,
+    descripcion,
+    creditos_otorgados,
+    fecha_inicio,
+    fecha_fin,
+    estado = "PROGRAMADA", // 👉 mejor default coherente con la BD
+  } = body;
+
+  if (
+    !id_tipo_promocion ||
+    !nombre ||
+    !creditos_otorgados ||
+    !fecha_inicio ||
+    !fecha_fin
+  ) {
+    const err = new Error("Faltan datos obligatorios de promoción");
+    err.status = 400;
+    throw err;
+  }
+
+  // Validar estado (si viene)
+  if (estado && !ESTADOS_VALIDOS.includes(estado)) {
+    const err = new Error("Estado de promoción inválido");
+    err.status = 400;
+    throw err;
+  }
+
+  // Validar fechas mínimamente
+  const ini = new Date(fecha_inicio);
+  const fin = new Date(fecha_fin);
+  if (!(ini instanceof Date && !isNaN(ini)) || !(fin instanceof Date && !isNaN(fin))) {
+    const err = new Error("fecha_inicio o fecha_fin inválidas");
+    err.status = 400;
+    throw err;
+  }
+  if (fin <= ini) {
+    const err = new Error("fecha_fin debe ser mayor a fecha_inicio");
+    err.status = 400;
+    throw err;
+  }
+
+  await prisma.$queryRaw`
+    INSERT INTO PROMOCION (
+      id_tipo_promocion,
+      nombre,
+      descripcion,
+      creditos_otorgados,
+      fecha_inicio,
+      fecha_fin,
+      estado
+    )
+    VALUES (
+      ${id_tipo_promocion},
+      ${nombre},
+      ${descripcion || null},
+      ${creditos_otorgados},
+      ${fecha_inicio},
+      ${fecha_fin},
+      ${estado}
+    )
+  `;
+
+  const [row] = await prisma.$queryRaw`
+    SELECT *
+    FROM PROMOCION
+    WHERE id_promocion = LAST_INSERT_ID()
+    LIMIT 1
+  `;
+
+  return row;
+}
+
+export async function actualizarEstadoPromocionService(idPromocion, estado) {
+  if (!ESTADOS_VALIDOS.includes(estado)) {
+    const err = new Error("Estado de promoción inválido");
+    err.status = 400;
+    throw err;
+  }
+
+  await prisma.$queryRaw`
+    UPDATE PROMOCION
+    SET estado = ${estado}
+    WHERE id_promocion = ${idPromocion}
+  `;
+
+  const [row] = await prisma.$queryRaw`
+    SELECT *
+    FROM PROMOCION
+    WHERE id_promocion = ${idPromocion}
+    LIMIT 1
+  `;
+
+  if (!row) {
+    const err = new Error("Promoción no encontrada");
+    err.status = 404;
+    throw err;
+  }
+
+  return row;
+}
+
+export async function vincularPublicacionService(idPromocion, idPublicacion) {
+  if (!idPublicacion) {
+    const err = new Error("id_publicacion es obligatorio");
+    err.status = 400;
+    throw err;
+  }
+
+  await prisma.$queryRaw`
+    INSERT IGNORE INTO PROMOCION_PUBLICACION (id_promocion, id_publicacion)
+    VALUES (${idPromocion}, ${idPublicacion})
+  `;
+
+  // El trigger trg_promopub_after_ins_bono se encarga del bono de créditos
+}
+</file>
+
+<file path="src/modules/publicaciones/publicaciones.controller.js">
+import {
+  listarPublicacionesService,
+  obtenerPublicacionService,
+  crearPublicacionProductoService,
+  crearPublicacionServicioService,
+  misPublicacionesService,
+  buscarPublicacionesService,
+  crearCalificacionService,
+  listarCalificacionesService,
+  actualizarPublicacionService,
+  cambiarEstadoPublicacionService,
+  eliminarPublicacionService,
+} from "./publicaciones.service.js";
+
+export const listarPublicacionesController = async (req, res, next) => {
+  try {
+    const { categoria, estado, page, pageSize } = req.query;
+
+    const pageNum = page ? Number(page) : undefined;
+    const pageSizeNum = pageSize ? Number(pageSize) : undefined;
+
+    const data = await listarPublicacionesService({
+      categoria,
+      estado,
+      page: pageNum,
+      pageSize: pageSizeNum,
+    });
+
+    res.json(data);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const obtenerPublicacionController = async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ message: "ID de publicación inválido" });
+    }
+    const pub = await obtenerPublicacionService(id);
+    res.json(pub);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const crearPublicacionProductoController = async (req, res, next) => {
+  try {
+    const idUsuario = req.user.id_usuario;
+    const pub = await crearPublicacionProductoService(idUsuario, req.body);
+    res.status(201).json(pub);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const crearPublicacionServicioController = async (req, res, next) => {
+  try {
+    const idUsuario = req.user.id_usuario;
+    const pub = await crearPublicacionServicioService(idUsuario, req.body);
+    res.status(201).json(pub);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const misPublicacionesController = async (req, res, next) => {
+  try {
+    const idUsuario = req.user.id_usuario;
+    const pubs = await misPublicacionesService(idUsuario);
+    res.json(pubs);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const buscarPublicacionesController = async (req, res, next) => {
+  try {
+    const q = req.query.q || "";
+    const result = await buscarPublicacionesService(q);
+    res.json(result);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const crearCalificacionController = async (req, res, next) => {
+  try {
+    const idUsuario = req.user.id_usuario;
+    const idPublicacion = Number(req.params.id);
+
+    if (!Number.isFinite(idPublicacion)) {
+      return res.status(400).json({ message: "ID de publicación inválido" });
+    }
+
+    const { estrellas, comentario } = req.body;
+    const calif = await crearCalificacionService({
+      idUsuario,
+      idPublicacion,
+      estrellas,
+      comentario,
+    });
+
+    res.status(201).json(calif);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const listarCalificacionesController = async (req, res, next) => {
+  try {
+    const idPublicacion = Number(req.params.id);
+    if (!Number.isFinite(idPublicacion)) {
+      return res.status(400).json({ message: "ID de publicación inválido" });
+    }
+
+    const califs = await listarCalificacionesService(idPublicacion);
+    res.json(califs);
+  } catch (e) {
+    next(e);
+  }
+};
+
+/* ============================================================
+   NUEVO: Editar, cambiar estado y eliminar publicación
+   ============================================================ */
+
+/**
+ * PUT /api/publicaciones/:id
+ * Permite al dueño (o ADMIN) actualizar datos básicos de la publicación.
+ */
+export const actualizarPublicacionController = async (req, res, next) => {
+  try {
+    const idPublicacion = Number(req.params.id);
+    if (!Number.isFinite(idPublicacion)) {
+      return res.status(400).json({ message: "ID de publicación inválido" });
+    }
+
+    const idUsuario = req.user.id_usuario;
+    const rol = req.user.rol;
+
+    const pub = await actualizarPublicacionService(
+      idUsuario,
+      rol,
+      idPublicacion,
+      req.body
+    );
+
+    res.json({
+      message: "Publicación actualizada correctamente",
+      publicacion: pub,
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+
+/**
+ * PATCH /api/publicaciones/:id/estado
+ * Cambia el estado de la publicación (BORRADOR, PUBLICADA, PAUSADA, AGOTADA, OCULTA, ELIMINADA)
+ */
+export const cambiarEstadoPublicacionController = async (req, res, next) => {
+  try {
+    const idPublicacion = Number(req.params.id);
+    if (!Number.isFinite(idPublicacion)) {
+      return res.status(400).json({ message: "ID de publicación inválido" });
+    }
+
+    const { estado } = req.body;
+    const idUsuario = req.user.id_usuario;
+    const rol = req.user.rol;
+
+    const pub = await cambiarEstadoPublicacionService(
+      idUsuario,
+      rol,
+      idPublicacion,
+      estado
+    );
+
+    res.json({
+      message: "Estado de publicación actualizado",
+      publicacion: pub,
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+
+/**
+ * DELETE /api/publicaciones/:id
+ * Eliminación lógica → se marca estado = 'ELIMINADA'
+ */
+export const eliminarPublicacionController = async (req, res, next) => {
+  try {
+    const idPublicacion = Number(req.params.id);
+    if (!Number.isFinite(idPublicacion)) {
+      return res.status(400).json({ message: "ID de publicación inválido" });
+    }
+
+    const idUsuario = req.user.id_usuario;
+    const rol = req.user.rol;
+
+    const pub = await eliminarPublicacionService(idUsuario, rol, idPublicacion);
+
+    res.json({
+      message: "Publicación eliminada (estado = ELIMINADA)",
+      publicacion: pub,
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+</file>
+
+<file path="src/modules/publicaciones/publicaciones.routes.js">
+import { Router } from "express";
+import { authMiddleware } from "../../middlewares/auth.js";
+import {
+  listarPublicacionesController,
+  obtenerPublicacionController,
+  crearPublicacionProductoController,
+  crearPublicacionServicioController,
+  misPublicacionesController,
+  buscarPublicacionesController,
+  crearCalificacionController,
+  listarCalificacionesController,
+  actualizarPublicacionController,
+  cambiarEstadoPublicacionController,
+  eliminarPublicacionController,
+} from "./publicaciones.controller.js";
+
+const router = Router();
+
+/* ====== RUTAS PÚBLICAS ====== */
+// Paginación opcional: ?page=1&pageSize=12
+router.get("/", listarPublicacionesController);
+router.get("/busqueda", buscarPublicacionesController);
+
+// OJO: la más específica primero
+router.get("/:id/calificaciones", listarCalificacionesController);
+router.get("/:id", obtenerPublicacionController);
+
+/* ====== RUTAS PROTEGIDAS (requieren login) ====== */
+router.use(authMiddleware);
+
+// Mis publicaciones
+router.get("/mias/listado", misPublicacionesController);
+
+// Crear publicaciones
+router.post("/producto", crearPublicacionProductoController);
+router.post("/servicio", crearPublicacionServicioController);
+
+// Calificar publicación
+router.post("/:id/calificaciones", crearCalificacionController);
+
+// NUEVOS: editar / estado / eliminar
+router.put("/:id", actualizarPublicacionController);
+router.patch("/:id/estado", cambiarEstadoPublicacionController);
+router.delete("/:id", eliminarPublicacionController);
+
+export default router;
+</file>
+
+<file path="src/modules/publicaciones/publicaciones.service.js">
+import { prisma } from "../../config/prisma.js";
+
+const ESTADOS_PUBLICACION = [
+  "BORRADOR",
+  "PUBLICADA",
+  "PAUSADA",
+  "AGOTADA",
+  "OCULTA",
+  "ELIMINADA",
+];
+
+/* ============================================================
+   LISTADO + PAGINACIÓN
+   ============================================================ */
+
+// Si NO mandas page/pageSize → devuelve array simple (compatibilidad)
+// Si mandas page → devuelve { items, total, page, pageSize }
+export async function listarPublicacionesService({
+  categoria,
+  estado,
+  page,
+  pageSize,
+}) {
+  let where = "WHERE 1=1";
+  const params = [];
+
+  if (categoria) {
+    const catNum = Number(categoria);
+    if (Number.isFinite(catNum)) {
+      where += " AND p.id_categoria = ?";
+      params.push(catNum);
+    }
+  }
+
+  if (estado) {
+    where += " AND p.estado = ?";
+    params.push(estado);
+  }
+
+  const baseFrom = `
+    FROM PUBLICACION p
+    JOIN CATEGORIA c ON c.id_categoria = p.id_categoria
+    JOIN USUARIO u   ON u.id_usuario   = p.id_usuario
+    ${where}
+  `;
+
+  // Sin paginación → comportamiento anterior
+  if (!page) {
+    const sql = `
+      SELECT
+        p.id_publicacion,
+        p.titulo,
+        p.descripcion,
+        p.valor_creditos,
+        p.estado,
+        p.imagen_url,
+        c.nombre AS categoria,
+        u.nombre AS usuario
+      ${baseFrom}
+      ORDER BY p.creado_en DESC
+    `;
+    return prisma.$queryRawUnsafe(sql, ...params);
+  }
+
+  // Con paginación
+  const currentPage = Math.max(Number(page) || 1, 1);
+  const size = Math.max(Number(pageSize) || 10, 1);
+  const offset = (currentPage - 1) * size;
+
+  // total
+  const [countRow] = await prisma.$queryRawUnsafe(
+    `SELECT COUNT(*) AS total ${baseFrom}`,
+    ...params
+  );
+  const total = Number(countRow?.total || 0);
+
+  // items
+  const paramsWithLimit = [...params, offset, size];
+  const itemsSql = `
+    SELECT
+      p.id_publicacion,
+      p.titulo,
+      p.descripcion,
+      p.valor_creditos,
+      p.estado,
+      p.imagen_url,
+      c.nombre AS categoria,
+      u.nombre AS usuario
+    ${baseFrom}
+    ORDER BY p.creado_en DESC
+    LIMIT ?, ?
+  `;
+  const items = await prisma.$queryRawUnsafe(itemsSql, ...paramsWithLimit);
+
+  return {
+    items,
+    total,
+    page: currentPage,
+    pageSize: size,
+    totalPages: Math.ceil(total / size),
+  };
+}
+
+/* ============================================================
+   BÁSICOS
+   ============================================================ */
+
+export async function obtenerPublicacionService(idPublicacion) {
+  const [row] = await prisma.$queryRaw`
+    SELECT
+      p.*,
+      c.nombre AS categoria,
+      u.nombre AS usuario
+    FROM PUBLICACION p
+    JOIN CATEGORIA c ON c.id_categoria = p.id_categoria
+    JOIN USUARIO u   ON u.id_usuario   = p.id_usuario
+    WHERE p.id_publicacion = ${idPublicacion}
+    LIMIT 1
+  `;
+  if (!row) {
+    const err = new Error("Publicación no encontrada");
+    err.status = 404;
+    throw err;
+  }
+  return row;
+}
+
+export async function misPublicacionesService(idUsuario) {
+  return prisma.$queryRaw`
+    SELECT *
+    FROM PUBLICACION
+    WHERE id_usuario = ${idUsuario}
+    ORDER BY creado_en DESC
+  `;
+}
+
+/* ============================================================
+   CREAR PRODUCTO / SERVICIO
+   ============================================================ */
+
+// Crear PRODUCTO + PUBLICACION + PUBLICACION_PRODUCTO
+export async function crearPublicacionProductoService(idUsuario, body) {
+  const {
+    titulo,
+    descripcion,
+    id_categoria,
+    valor_creditos,
+    imagen_url,
+    producto, // { nombre, descripcion, precio, peso }
+    cantidad,
+    id_um,
+  } = body;
+
+  if (
+    !titulo ||
+    !descripcion ||
+    !id_categoria ||
+    !valor_creditos ||
+    !producto ||
+    !cantidad ||
+    !id_um
+  ) {
+    const err = new Error("Faltan datos obligatorios");
+    err.status = 400;
+    throw err;
+  }
+
+  return prisma.$transaction(async (tx) => {
+    // 1) Producto
+    await tx.$queryRaw`
+      INSERT INTO PRODUCTO (id_categoria, nombre, descripcion, precio, peso)
+      VALUES (
+        ${id_categoria},
+        ${producto.nombre},
+        ${producto.descripcion || null},
+        ${producto.precio || null},
+        ${producto.peso || null}
+      )
+    `;
+
+    const [newProd] = await tx.$queryRaw`
+      SELECT *
+      FROM PRODUCTO
+      WHERE id_producto = LAST_INSERT_ID()
+      LIMIT 1
+    `;
+
+    // 2) Tipo de publicación PRODUCTO
+    const tipoProducto = await tx.$queryRaw`
+      SELECT id_tipo_publicacion
+      FROM TIPO_PUBLICACION
+      WHERE nombre = 'PRODUCTO'
+      LIMIT 1
+    `;
+    if (!tipoProducto.length) {
+      const err = new Error("No existe TIPO_PUBLICACION PRODUCTO");
+      err.status = 500;
+      throw err;
+    }
+
+    // 3) Publicación
+    await tx.$queryRaw`
+      INSERT INTO PUBLICACION (
+        id_usuario,
+        id_categoria,
+        id_tipo_publicacion,
+        titulo,
+        descripcion,
+        valor_creditos,
+        imagen_url
+      )
+      VALUES (
+        ${idUsuario},
+        ${id_categoria},
+        ${tipoProducto[0].id_tipo_publicacion},
+        ${titulo},
+        ${descripcion},
+        ${valor_creditos},
+        ${imagen_url || null}
+      )
+    `;
+
+    const [pub] = await tx.$queryRaw`
+      SELECT *
+      FROM PUBLICACION
+      WHERE id_publicacion = LAST_INSERT_ID()
+      LIMIT 1
+    `;
+
+    // 4) Relación PUBLICACION_PRODUCTO
+    await tx.$queryRaw`
+      INSERT INTO PUBLICACION_PRODUCTO (id_publicacion, id_producto, cantidad, id_um)
+      VALUES (
+        ${pub.id_publicacion},
+        ${newProd.id_producto},
+        ${cantidad},
+        ${id_um}
+      )
+    `;
+
+    return pub;
+  });
+}
+
+// Crear SERVICIO + PUBLICACION + PUBLICACION_SERVICIO
+export async function crearPublicacionServicioService(idUsuario, body) {
+  const {
+    titulo,
+    descripcion,
+    id_categoria,
+    valor_creditos,
+    imagen_url,
+    servicio, // { nombre, descripcion, precio, duracion_min }
+    horario,
+  } = body;
+
+  if (!titulo || !descripcion || !id_categoria || !valor_creditos || !servicio || !horario) {
+    const err = new Error("Faltan datos obligatorios");
+    err.status = 400;
+    throw err;
+  }
+
+  return prisma.$transaction(async (tx) => {
+    // 1) Servicio
+    await tx.$queryRaw`
+      INSERT INTO SERVICIO (id_categoria, estado, nombre, descripcion, precio, duracion_min)
+      VALUES (
+        ${id_categoria},
+        'ACTIVO',
+        ${servicio.nombre},
+        ${servicio.descripcion || null},
+        ${servicio.precio || null},
+        ${servicio.duracion_min || null}
+      )
+    `;
+
+    const [serv] = await tx.$queryRaw`
+      SELECT *
+      FROM SERVICIO
+      WHERE id_servicio = LAST_INSERT_ID()
+      LIMIT 1
+    `;
+
+    // 2) Tipo de publicación SERVICIO
+    const tipoServicio = await tx.$queryRaw`
+      SELECT id_tipo_publicacion
+      FROM TIPO_PUBLICACION
+      WHERE nombre = 'SERVICIO'
+      LIMIT 1
+    `;
+    if (!tipoServicio.length) {
+      const err = new Error("No existe TIPO_PUBLICACION SERVICIO");
+      err.status = 500;
+      throw err;
+    }
+
+    // 3) Publicación
+    await tx.$queryRaw`
+      INSERT INTO PUBLICACION (
+        id_usuario,
+        id_categoria,
+        id_tipo_publicacion,
+        titulo,
+        descripcion,
+        valor_creditos,
+        imagen_url
+      )
+      VALUES (
+        ${idUsuario},
+        ${id_categoria},
+        ${tipoServicio[0].id_tipo_publicacion},
+        ${titulo},
+        ${descripcion},
+        ${valor_creditos},
+        ${imagen_url || null}
+      )
+    `;
+
+    const [pub] = await tx.$queryRaw`
+      SELECT *
+      FROM PUBLICACION
+      WHERE id_publicacion = LAST_INSERT_ID()
+      LIMIT 1
+    `;
+
+    // 4) Relación PUBLICACION_SERVICIO
+    await tx.$queryRaw`
+      INSERT INTO PUBLICACION_SERVICIO (id_publicacion, id_servicio, horario)
+      VALUES (
+        ${pub.id_publicacion},
+        ${serv.id_servicio},
+        ${horario}
+      )
+    `;
+
+    return pub;
+  });
+}
+
+/* ============================================================
+   BÚSQUEDA FULLTEXT
+   ============================================================ */
+
+export async function buscarPublicacionesService(q) {
+  if (!q.trim()) return [];
+
+  return prisma.$queryRawUnsafe(
+    `
+      SELECT
+        id_publicacion,
+        titulo,
+        descripcion,
+        valor_creditos,
+        imagen_url
+      FROM PUBLICACION
+      WHERE MATCH(titulo, descripcion) AGAINST (? IN NATURAL LANGUAGE MODE)
+        AND estado = 'PUBLICADA'
+      ORDER BY creado_en DESC
+    `,
+    q
+  );
+}
+
+/* ============================================================
+   CALIFICACIONES
+   ============================================================ */
+
+export async function crearCalificacionService({
+  idUsuario,
+  idPublicacion,
+  estrellas,
+  comentario,
+}) {
+  if (!estrellas) {
+    const err = new Error("estrellas es obligatorio");
+    err.status = 400;
+    throw err;
+  }
+
+  await prisma.$queryRaw`
+    INSERT INTO CALIFICACION (id_usuario, id_publicacion, estrellas, comentario)
+    VALUES (${idUsuario}, ${idPublicacion}, ${estrellas}, ${comentario || null})
+    ON DUPLICATE KEY UPDATE
+      estrellas  = VALUES(estrellas),
+      comentario = VALUES(comentario)
+  `;
+
+  const [row] = await prisma.$queryRaw`
+    SELECT *
+    FROM CALIFICACION
+    WHERE id_usuario = ${idUsuario}
+      AND id_publicacion = ${idPublicacion}
+    LIMIT 1
+  `;
+  return row;
+}
+
+export async function listarCalificacionesService(idPublicacion) {
+  return prisma.$queryRaw`
+    SELECT c.*, u.nombre
+    FROM CALIFICACION c
+    JOIN USUARIO u ON u.id_usuario = c.id_usuario
+    WHERE c.id_publicacion = ${idPublicacion}
+    ORDER BY c.id_calificacion DESC
+  `;
+}
+
+/* ============================================================
+   NUEVO: EDITAR / ESTADO / ELIMINAR
+   ============================================================ */
+
+// Helper: verificar que el usuario sea dueño o ADMIN
+async function assertPuedeEditar(idUsuario, rol, idPublicacion) {
+  const [row] = await prisma.$queryRaw`
+    SELECT id_usuario
+    FROM PUBLICACION
+    WHERE id_publicacion = ${idPublicacion}
+    LIMIT 1
+  `;
+  if (!row) {
+    const err = new Error("Publicación no encontrada");
+    err.status = 404;
+    throw err;
+  }
+
+  const esAdmin = rol === "ADMIN";
+  if (!esAdmin && row.id_usuario !== idUsuario) {
+    const err = new Error("No tienes permiso para modificar esta publicación");
+    err.status = 403;
+    throw err;
+  }
+}
+
+export async function actualizarPublicacionService(
+  idUsuario,
+  rol,
+  idPublicacion,
+  datos
+) {
+  await assertPuedeEditar(idUsuario, rol, idPublicacion);
+
+  const {
+    titulo,
+    descripcion,
+    id_categoria,
+    valor_creditos,
+    imagen_url,
+  } = datos;
+
+  // No obligo a mandar todo, actualizo solo lo que viene definido
+  await prisma.$queryRaw`
+    UPDATE PUBLICACION
+    SET
+      titulo        = COALESCE(${titulo}, titulo),
+      descripcion   = COALESCE(${descripcion}, descripcion),
+      id_categoria  = COALESCE(${id_categoria}, id_categoria),
+      valor_creditos= COALESCE(${valor_creditos}, valor_creditos),
+      imagen_url    = COALESCE(${imagen_url}, imagen_url)
+    WHERE id_publicacion = ${idPublicacion}
+  `;
+
+  return obtenerPublicacionService(idPublicacion);
+}
+
+export async function cambiarEstadoPublicacionService(
+  idUsuario,
+  rol,
+  idPublicacion,
+  estado
+) {
+  if (!estado || !ESTADOS_PUBLICACION.includes(estado)) {
+    const err = new Error(
+      `Estado inválido. Permitidos: ${ESTADOS_PUBLICACION.join(", ")}`
+    );
+    err.status = 400;
+    throw err;
+  }
+
+  await assertPuedeEditar(idUsuario, rol, idPublicacion);
+
+  await prisma.$queryRaw`
+    UPDATE PUBLICACION
+    SET estado = ${estado}
+    WHERE id_publicacion = ${idPublicacion}
+  `;
+
+  return obtenerPublicacionService(idPublicacion);
+}
+
+export async function eliminarPublicacionService(
+  idUsuario,
+  rol,
+  idPublicacion
+) {
+  // Eliminación lógica ≈ estado = 'ELIMINADA'
+  return cambiarEstadoPublicacionService(
+    idUsuario,
+    rol,
+    idPublicacion,
+    "ELIMINADA"
+  );
+}
+</file>
+
+<file path="src/modules/publicidad/publicidad.controller.js">
+// src/modules/publicidad/publicidad.controller.js
+import {
+  crearPublicidadService,
+  listarPublicidadActivaService,
+  listarPublicidadAdminService,
+  cambiarEstadoPublicidadService,
+  eliminarPublicidadService,
+} from "./publicidad.service.js";
+
+import { buscarPublicacionesService } from "../publicaciones/publicaciones.service.js";
+
+function toPlain(value) {
+  if (typeof value === "bigint") return Number(value);
+  if (value instanceof Date)
+    return value.toISOString().slice(0, 19).replace("T", " ");
+
+  if (value && typeof value === "object") {
+    if (typeof value.toNumber === "function") return value.toNumber();
+    if (Array.isArray(value)) return value.map(toPlain);
+
+    const out = {};
+    for (const [k, v] of Object.entries(value)) out[k] = toPlain(v);
+    return out;
+  }
+  return value;
+}
+
+/* =====================================================
+   PUBLICAS
+===================================================== */
+export const listarPublicidadActivaController = async (req, res, next) => {
+  try {
+    const data = await listarPublicidadActivaService();
+    res.json(toPlain(data));
+  } catch (err) {
+    next(err);
+  }
+};
+
+/* =====================================================
+   ADMIN
+===================================================== */
+export const crearPublicidadController = async (req, res, next) => {
+  try {
+    const idUsuario = req.user.id_usuario;
+    const data = await crearPublicidadService(idUsuario, req.body);
+    res.status(201).json(toPlain(data));
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const listarPublicidadAdminController = async (req, res, next) => {
+  try {
+    const data = await listarPublicidadAdminService();
+    res.json(toPlain(data));
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const buscarPublicacionesParaPublicidadController = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const q = req.query.q || "";
+    const data = await buscarPublicacionesService(q);
+    res.json(toPlain(data));
+  } catch (err) {
+    next(err);
+  }
+};
+
+/* =====================================================
+   NUEVO: CAMBIAR ESTADO
+===================================================== */
+export const cambiarEstadoPublicidadController = async (req, res, next) => {
+  try {
+    const idPublicidad = Number(req.params.id);
+    const { estado } = req.body;
+
+    const data = await cambiarEstadoPublicidadService(idPublicidad, estado);
+    res.json({
+      message: "Estado actualizado correctamente",
+      publicidad: toPlain(data),
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/* =====================================================
+   NUEVO: ELIMINAR (LOGICO)
+===================================================== */
+export const eliminarPublicidadController = async (req, res, next) => {
+  try {
+    const idPublicidad = Number(req.params.id);
+    const data = await eliminarPublicidadService(idPublicidad);
+
+    res.json({
+      message: "Publicidad eliminada (estado = 'ELIMINADA')",
+      publicidad: toPlain(data),
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+</file>
+
+<file path="src/modules/publicidad/publicidad.routes.js">
+// src/modules/publicidad/publicidad.routes.js
+import { Router } from "express";
+import { authMiddleware } from "../../middlewares/auth.js";
+import { isAdmin } from "../../middlewares/isAdmin.js";
+
+import {
+  listarPublicidadActivaController,
+  crearPublicidadController,
+  listarPublicidadAdminController,
+  buscarPublicacionesParaPublicidadController,
+  cambiarEstadoPublicidadController,
+  eliminarPublicidadController,
+} from "./publicidad.controller.js";
+
+const router = Router();
+
+/* ===========================
+   PUBLICA
+=========================== */
+router.get("/activa", listarPublicidadActivaController);
+
+/* ===========================
+   SOLO ADMIN
+=========================== */
+router.use(authMiddleware, isAdmin);
+
+router.get("/admin", listarPublicidadAdminController);
+
+router.get("/buscar-publicaciones", buscarPublicacionesParaPublicidadController);
+
+router.post("/", crearPublicidadController);
+
+router.patch("/:id/estado", cambiarEstadoPublicidadController);
+
+router.delete("/:id", eliminarPublicidadController);
+
+export default router;
+</file>
+
+<file path="src/modules/publicidad/publicidad.service.js">
+// src/modules/publicidad/publicidad.service.js
+import { prisma } from "../../config/prisma.js";
+
+const ESTADOS = ["PROGRAMADA", "ACTIVA", "PAUSADA", "FINALIZADA", "CANCELADA", "ELIMINADA"];
+
+export const listarPublicidadActivaService = () =>
+  prisma.$queryRaw`
+    SELECT p.*, u.nombre AS usuario
+    FROM PUBLICIDAD p
+    JOIN USUARIO u ON u.id_usuario = p.id_usuario
+    WHERE p.estado = 'ACTIVA'
+      AND NOW() BETWEEN p.fecha_inicio AND p.fecha_fin
+    ORDER BY p.fecha_inicio DESC, p.id_publicidad DESC
+  `;
+
+export const listarPublicidadAdminService = () =>
+  prisma.$queryRaw`
+    SELECT p.*, u.nombre AS usuario
+    FROM PUBLICIDAD p
+    JOIN USUARIO u ON u.id_usuario = p.id_usuario
+    ORDER BY p.fecha_inicio DESC, p.id_publicidad DESC
+  `;
+
+export const crearPublicidadService = async (idUsuario, body) => {
+  const {
+    id_ubicacion,
+    titulo,
+    descripcion,
+    url_destino,
+    fecha_inicio,
+    fecha_fin,
+    costo_creditos,
+  } = body;
+
+  if (!id_ubicacion || !titulo || !fecha_inicio || !fecha_fin || !costo_creditos) {
+    const err = new Error("Faltan datos obligatorios de publicidad");
+    err.status = 400;
+    throw err;
+  }
+
+  await prisma.$queryRaw`
+    INSERT INTO PUBLICIDAD (
+      id_usuario, id_ubicacion, estado,
+      titulo, descripcion, url_destino,
+      fecha_inicio, fecha_fin, costo_creditos
+    )
+    VALUES (
+      ${idUsuario}, ${id_ubicacion}, 'PROGRAMADA',
+      ${titulo}, ${descripcion || null}, ${url_destino || null},
+      ${fecha_inicio}, ${fecha_fin}, ${costo_creditos}
+    )
+  `;
+
+  const [row] = await prisma.$queryRaw`
+    SELECT *
+    FROM PUBLICIDAD
+    WHERE id_publicidad = LAST_INSERT_ID()
+    LIMIT 1
+  `;
+  return row;
+};
+
+/* =====================================================
+   NUEVO: CAMBIAR ESTADO
+===================================================== */
+export const cambiarEstadoPublicidadService = async (idPublicidad, estado) => {
+  if (!ESTADOS.includes(estado)) {
+    const err = new Error(`Estado inválido. Permitidos: ${ESTADOS.join(", ")}`);
+    err.status = 400;
+    throw err;
+  }
+
+  await prisma.$queryRaw`
+    UPDATE PUBLICIDAD
+    SET estado = ${estado}
+    WHERE id_publicidad = ${idPublicidad}
+  `;
+
+  const [row] = await prisma.$queryRaw`
+    SELECT *
+    FROM PUBLICIDAD
+    WHERE id_publicidad = ${idPublicidad}
+    LIMIT 1
+  `;
+
+  return row;
+};
+
+/* =====================================================
+   NUEVO: ELIMINAR (LOGICO)
+===================================================== */
+export const eliminarPublicidadService = async (idPublicidad) => {
+  return cambiarEstadoPublicidadService(idPublicidad, "ELIMINADA");
+};
+</file>
+
+<file path="src/modules/reportes/reportes.controller.js">
+// backend/src/modules/reportes/reportes.controller.js
+import {
+  usuariosActivosReporte,
+  usuariosAbandonadosReporte,
+  ingresosCreditosReporte,
+  creditosGeneradosVsConsumidosReporte,
+  intercambiosPorCategoriaReporte,
+  publicacionesVsIntercambiosReporte,
+  impactoAcumuladoReporte,
+  rankingUsuariosReporte,
+  usuariosPremiumReporte,
+  usuariosNuevosReporte,
+  saldosCreditosReporte,
+  actividadesSosteniblesReporte,
+  impactoPorCategoriaReporte,
+} from "./reportes.service.js";
+
+/**
+ * Helper para leer fechas (?desde=yyyy-mm-dd&hasta=yyyy-mm-dd)
+ * y poner valores por defecto si no mandan nada.
+ */
+function getRangoFechas(query) {
+  const { desde, hasta } = query;
+
+  const hoy = new Date();
+  const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+
+  return {
+    desde: desde || inicioMes.toISOString().slice(0, 10),
+    hasta: hasta || hoy.toISOString().slice(0, 10),
+  };
+}
+
+// C1) Usuarios activos
+export async function getUsuariosActivos(req, res, next) {
+  try {
+    const rango = getRangoFechas(req.query);
+    const data = await usuariosActivosReporte(rango);
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// C2) Usuarios abandonados
+export async function getUsuariosAbandonados(req, res, next) {
+  try {
+    const rango = getRangoFechas(req.query);
+    const data = await usuariosAbandonadosReporte(rango);
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// C3) Ingresos por compra de créditos
+export async function getIngresosCreditos(req, res, next) {
+  try {
+    const rango = getRangoFechas(req.query);
+    const data = await ingresosCreditosReporte(rango);
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// C4) Créditos generados vs consumidos
+export async function getCreditosGeneradosVsConsumidos(req, res, next) {
+  try {
+    const rango = getRangoFechas(req.query);
+    const data = await creditosGeneradosVsConsumidosReporte(rango);
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// C5) Intercambios por categoría
+export async function getIntercambiosPorCategoria(req, res, next) {
+  try {
+    const rango = getRangoFechas(req.query);
+    const data = await intercambiosPorCategoriaReporte(rango);
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// C6) Publicaciones vs intercambios
+export async function getPublicacionesVsIntercambios(req, res, next) {
+  try {
+    const rango = getRangoFechas(req.query);
+    const data = await publicacionesVsIntercambiosReporte(rango);
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// C7) Impacto acumulado
+export async function getImpactoAcumulado(req, res, next) {
+  try {
+    // Soporta tanto camelCase (frontend) como snake_case (pantalla de pruebas)
+    const idTipoReporte = Number(
+      req.query.idTipoReporte ?? req.query.id_tipo_reporte
+    );
+    const idPeriodo = Number(
+      req.query.idPeriodo ?? req.query.id_periodo
+    );
+
+    if (!idTipoReporte || !idPeriodo) {
+      return res
+        .status(400)
+        .json({ message: "idTipoReporte e idPeriodo son obligatorios" });
+    }
+
+    const data = await impactoAcumuladoReporte({ idTipoReporte, idPeriodo });
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// C8) Ranking de usuarios
+export async function getRankingUsuarios(req, res, next) {
+  try {
+    const idPeriodo = req.query.idPeriodo ?? req.query.id_periodo ?? null;
+    const limit = Number(req.query.limit) || 10;
+
+    const data = await rankingUsuariosReporte({ idPeriodo, limit });
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+}
+
+
+// C9) Usuarios premium
+export async function getUsuariosPremium(req, res, next) {
+  try {
+    const rango = getRangoFechas(req.query);
+    const data = await usuariosPremiumReporte(rango);
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// C10) Usuarios nuevos
+export async function getUsuariosNuevos(req, res, next) {
+  try {
+    const rango = getRangoFechas(req.query);
+    const data = await usuariosNuevosReporte(rango);
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// C11) Saldos de créditos
+export async function getSaldosCreditos(req, res, next) {
+  try {
+    const limit = Number(req.query.limit) || 10;
+    const data = await saldosCreditosReporte({ limit });
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// C12) Actividades sostenibles
+export async function getActividadesSostenibles(req, res, next) {
+  try {
+    const rango = getRangoFechas(req.query);
+    const data = await actividadesSosteniblesReporte(rango);
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// C13) Impacto ambiental por categoría (por período)
+export async function getImpactoPorCategoria(req, res, next) {
+  try {
+    const idPeriodo = Number(req.query.idPeriodo);
+    if (!idPeriodo) {
+      return res
+        .status(400)
+        .json({ message: "idPeriodo es obligatorio (query param)" });
+    }
+
+    const data = await impactoPorCategoriaReporte({ idPeriodo });
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+}
+</file>
+
+<file path="src/modules/reportes/reportes.routes.js">
+import { Router } from "express";
+import { authMiddleware } from "../../middlewares/auth.js";
+import { isAdmin } from "../../middlewares/isAdmin.js";
+import {
+  getUsuariosActivos,
+  getUsuariosAbandonados,
+  getIngresosCreditos,
+  getCreditosGeneradosVsConsumidos,
+  getIntercambiosPorCategoria,
+  getPublicacionesVsIntercambios,
+  getImpactoAcumulado,
+  getRankingUsuarios,
+  getUsuariosPremium,
+  getUsuariosNuevos,
+  getSaldosCreditos,
+  getActividadesSostenibles,
+  getImpactoPorCategoria,
+} from "./reportes.controller.js";
+
+const router = Router();
+
+// Todo el módulo de reportes SOLO para admins
+router.use(authMiddleware, isAdmin);
+
+/*  REPORTES PRINCIPALES */
+
+// ✔ Usuarios activos
+router.get("/usuarios-activos", getUsuariosActivos);
+
+// ✔ Usuarios abandonados
+router.get("/usuarios-abandonados", getUsuariosAbandonados);
+
+// ✔ Ingresos por venta de créditos
+router.get("/ingresos-creditos", getIngresosCreditos);
+
+// ✔ Créditos generados vs consumidos
+router.get("/creditos-generados-consumidos", getCreditosGeneradosVsConsumidos);
+
+// ✔ Intercambios por categoría
+router.get("/intercambios-categoria", getIntercambiosPorCategoria);
+
+// ✔ Publicaciones vs intercambios
+router.get("/publicaciones-vs-intercambios", getPublicacionesVsIntercambios);
+
+// ✔ Impacto ecológico acumulado
+router.get("/impacto-acumulado", getImpactoAcumulado);
+
+/* REPORTES AVANZADOS */
+
+// ✔ Ranking de usuarios (top N)
+router.get("/ranking-usuarios", getRankingUsuarios);
+
+// ✔ Reporte de usuarios premium
+router.get("/usuarios-premium", getUsuariosPremium);
+
+// ✔ Usuarios nuevos (primer login)
+router.get("/usuarios-nuevos", getUsuariosNuevos);
+
+// ✔ Saldos de créditos (top N)
+router.get("/saldos-usuarios", getSaldosCreditos);
+
+// ✔ Actividades sostenibles
+router.get("/actividades-sostenibles", getActividadesSostenibles);
+
+// ✔ Impacto ambiental por categoría (por período)
+router.get("/impacto-categoria", getImpactoPorCategoria);
+
+export default router;
+</file>
+
+<file path="src/modules/reportes/reportes.service.js">
+// backend/src/modules/reportes/reportes.service.js
+import { prisma } from "../../config/prisma.js";
+
+/**
+ * Helpers
+ */
+function toPlain(value) {
+  if (typeof value === "bigint") return Number(value);
+
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 19).replace("T", " ");
+  }
+
+  if (value && typeof value === "object") {
+    if (typeof value.toNumber === "function") return value.toNumber();
+
+    const prim = value.valueOf?.();
+    if (prim != null && typeof prim !== "object") return prim;
+
+    if (Array.isArray(value)) return value.map((v) => toPlain(v));
+
+    const out = {};
+    for (const [k, v] of Object.entries(value)) out[k] = toPlain(v);
+    return out;
+  }
+
+  return value;
+}
+
+/**
+ * Normaliza el resultado de CALL sp_xxx(...)
+ */
+function normalizeResult(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) {
+    if (Array.isArray(raw[0])) return raw[0];
+    return raw;
+  }
+  return raw;
+}
+
+/**
+ * Mapeos (ya estaban en tu controller)
+ */
+
+function mapUsuarioActivo(r) {
+  return {
+    id_usuario: r.id_usuario ?? r.f0 ?? null,
+    nombre: r.nombre ?? r.f1 ?? null,
+    correo: r.correo ?? r.f2 ?? null,
+    ultimo_login: r.ultimo_login ?? r.f3 ?? null,
+    cantidad_logins: r.cantidad_logins ?? r.f4 ?? null,
+  };
+}
+
+function mapUsuarioAbandonado(r) {
+  return {
+    id_usuario: r.id_usuario ?? r.f0 ?? null,
+    nombre: r.nombre ?? r.f1 ?? null,
+    correo: r.correo ?? r.f2 ?? null,
+    ultimo_login: r.ultimo_login ?? r.f3 ?? null,
+    dias_sin_login: r.dias_sin_login ?? r.f4 ?? null,
+  };
+}
+
+function mapIngresoCreditos(r) {
+  return {
+    fecha: r.fecha ?? r.f0 ?? null,
+    total_creditos: r.total_creditos ?? r.f1 ?? null,
+    total_monto: r.total_monto ?? r.f2 ?? null,
+  };
+}
+
+function mapIntercambiosCategoria(r) {
+  return {
+    id_categoria: r.id_categoria ?? r.f0 ?? null,
+    categoria: r.categoria ?? r.f1 ?? null,
+    cantidad_intercambios: r.cantidad_intercambios ?? r.f2 ?? null,
+  };
+}
+
+function mapPublicacionesVsIntercambios(r) {
+  return {
+    fecha: r.fecha ?? r.f0 ?? null,
+    publicaciones: r.publicaciones ?? r.f1 ?? null,
+    intercambios: r.intercambios ?? r.f2 ?? null,
+  };
+}
+
+function mapImpacto(r) {
+  return {
+    co2_total: r.co2_total ?? r.f0 ?? null,
+    agua_total: r.agua_total ?? r.f1 ?? null,
+    energia_total: r.energia_total ?? r.f2 ?? null,
+  };
+}
+
+function mapRankingUsuarios(r) {
+  return {
+    id_usuario: r.id_usuario ?? r.f0 ?? null,
+    nombre: r.nombre ?? r.f1 ?? null,
+    co2_total: r.co2_total ?? r.f2 ?? null,
+    agua_total: r.agua_total ?? r.f3 ?? null,
+    energia_total: r.energia_total ?? r.f4 ?? null,
+    transacciones: r.transacciones ?? r.f5 ?? null,
+  };
+}
+
+function mapUsuariosPremium(r) {
+  return {
+    id_usuario: r.id_usuario ?? r.f0 ?? null,
+    nombre: r.nombre ?? r.f1 ?? null,
+    correo: r.correo ?? r.f2 ?? null,
+    fecha_primer_pago: r.fecha_primer_pago ?? r.f3 ?? null,
+    total_pagado: r.total_pagado ?? r.f4 ?? null,
+  };
+}
+
+function mapUsuariosNuevos(r) {
+  return {
+    id_usuario: r.id_usuario ?? r.f0 ?? null,
+    nombre: r.nombre ?? r.f1 ?? null,
+    correo: r.correo ?? r.f2 ?? null,
+    fecha_primer_login: r.fecha_primer_login ?? r.f3 ?? null,
+    cantidad_logins: r.cantidad_logins ?? r.f4 ?? null,
+  };
+}
+
+function mapSaldoUsuario(r) {
+  return {
+    id_usuario: r.id_usuario ?? r.f0 ?? null,
+    nombre: r.nombre ?? r.f1 ?? null,
+    correo: r.correo ?? r.f2 ?? null,
+    saldo_creditos: r.saldo_creditos ?? r.f3 ?? null,
+  };
+}
+
+function mapActividadSostenible(r) {
+  return {
+    id_usuario: r.id_usuario ?? r.f0 ?? null,
+    nombre: r.nombre ?? r.f1 ?? null,
+    correo: r.correo ?? r.f2 ?? null,
+    cantidad_actividades: r.cantidad_actividades ?? r.f3 ?? null,
+    co2_total: r.co2_total ?? r.f4 ?? null,
+    agua_total: r.agua_total ?? r.f5 ?? null,
+    energia_total: r.energia_total ?? r.f6 ?? null,
+  };
+}
+
+function mapImpactoCategoria(r) {
+  return {
+    id_categoria: r.id_categoria ?? r.f0 ?? null,
+    categoria: r.categoria ?? r.f1 ?? null,
+    co2_total: r.co2_total ?? r.f2 ?? null,
+    agua_total: r.agua_total ?? r.f3 ?? null,
+    energia_total: r.energia_total ?? r.f4 ?? null,
+  };
+}
+
+/* ──────────────────────────────────────────────
+   SERVICES (una función por cada endpoint)
+   ────────────────────────────────────────────── */
+
+// C1) Usuarios activos
+export async function usuariosActivosReporte({ desde, hasta }) {
+  const raw =
+    await prisma.$queryRaw`CALL sp_rep_usuarios_activos(${desde}, ${hasta})`;
+
+  const rows = normalizeResult(raw).map(mapUsuarioActivo);
+  return toPlain(rows);
+}
+
+// C2) Usuarios abandonados
+export async function usuariosAbandonadosReporte({ desde, hasta }) {
+  const raw =
+    await prisma.$queryRaw`CALL sp_rep_usuarios_abandonados(${desde}, ${hasta})`;
+
+  const rows = normalizeResult(raw).map(mapUsuarioAbandonado);
+  return toPlain(rows);
+}
+
+// C3) Ingresos por compra de créditos
+export async function ingresosCreditosReporte({ desde, hasta }) {
+  const raw =
+    await prisma.$queryRaw`CALL sp_rep_ingresos_creditos(${desde}, ${hasta})`;
+
+  const rows = normalizeResult(raw).map(mapIngresoCreditos);
+  return toPlain(rows);
+}
+
+// C4) Créditos generados vs consumidos
+export async function creditosGeneradosVsConsumidosReporte({ desde, hasta }) {
+  const raw =
+    await prisma.$queryRaw`CALL sp_rep_creditos_generados_vs_consumidos(${desde}, ${hasta})`;
+
+  const rows = normalizeResult(raw).map(mapIngresoCreditos);
+  return toPlain(rows);
+}
+
+// C5) Intercambios por categoría
+export async function intercambiosPorCategoriaReporte({ desde, hasta }) {
+  const raw =
+    await prisma.$queryRaw`CALL sp_rep_intercambios_por_categoria(${desde}, ${hasta})`;
+
+  const rows = normalizeResult(raw).map(mapIntercambiosCategoria);
+  return toPlain(rows);
+}
+
+// C6) Publicaciones vs intercambios
+export async function publicacionesVsIntercambiosReporte({ desde, hasta }) {
+  const raw =
+    await prisma.$queryRaw`CALL sp_rep_publicaciones_vs_intercambios(${desde}, ${hasta})`;
+
+  const rows = normalizeResult(raw).map(mapPublicacionesVsIntercambios);
+  return toPlain(rows);
+}
+
+// C7) Impacto acumulado (usa SP sp_generar_reporte_impacto)
+export async function impactoAcumuladoReporte({ idTipoReporte, idPeriodo }) {
+  const tipo = Number(idTipoReporte) || 1;
+  const periodo = Number(idPeriodo) || 1;
+
+  const raw =
+    await prisma.$queryRaw`CALL sp_generar_reporte_impacto(${tipo}, ${periodo}, NULL)`;
+
+  const rows = normalizeResult(raw).map(mapImpacto);
+  return toPlain(rows);
+}
+
+// C8) Ranking de usuarios (SP basado en IMPACTO_AMBIENTAL)
+export async function rankingUsuariosReporte({ idPeriodo = null, limit = 10 }) {
+  const periodo = idPeriodo != null ? Number(idPeriodo) : null;
+  const top = Number(limit) || 10;
+
+  let raw;
+  if (periodo) {
+    raw =
+      await prisma.$queryRaw`CALL sp_obtener_ranking_usuarios(${periodo}, ${top})`;
+  } else {
+    // Si el SP soporta periodo NULL para "todos los periodos"
+    raw =
+      await prisma.$queryRaw`CALL sp_obtener_ranking_usuarios(${null}, ${top})`;
+  }
+
+  const rows = normalizeResult(raw).map(mapRankingUsuarios);
+  return toPlain(rows);
+}
+
+// C9) Usuarios premium
+export async function usuariosPremiumReporte({ desde, hasta }) {
+  const raw =
+    await prisma.$queryRaw`CALL sp_rep_usuarios_premium(${desde}, ${hasta})`;
+
+  const rows = normalizeResult(raw).map(mapUsuariosPremium);
+  return toPlain(rows);
+}
+
+// C10) Usuarios nuevos (primer login)
+export async function usuariosNuevosReporte({ desde, hasta }) {
+  const raw = await prisma.$queryRawUnsafe(
+    `
+    SELECT 
+      u.id_usuario,
+      u.nombre,
+      u.correo,
+      MIN(ba.fecha_hora) AS fecha_primer_login,
+      COUNT(*) AS cantidad_logins
+    FROM BITACORA_ACCESO ba
+    JOIN USUARIO u ON u.id_usuario = ba.id_usuario
+    GROUP BY u.id_usuario, u.nombre, u.correo
+    HAVING fecha_primer_login BETWEEN ? AND ?
+    ORDER BY fecha_primer_login ASC
+  `,
+    desde,
+    hasta
+  );
+
+  const rows = normalizeResult(raw).map(mapUsuariosNuevos);
+  return toPlain(rows);
+}
+
+// C11) Saldos de créditos
+export async function saldosCreditosReporte({ limit = 20 }) {
+  const top = Number(limit) || 20;
+
+  const raw = await prisma.$queryRawUnsafe(
+    `
+    SELECT 
+      u.id_usuario,
+      u.nombre,
+      u.correo,
+      b.saldo_creditos
+    FROM USUARIO u
+    JOIN BILLETERA b ON b.id_usuario = u.id_usuario
+    ORDER BY b.saldo_creditos DESC
+    LIMIT ?
+  `,
+    top
+  );
+
+  const rows = normalizeResult(raw).map(mapSaldoUsuario);
+  return toPlain(rows);
+}
+
+// C12) Actividades sostenibles
+export async function actividadesSosteniblesReporte({ desde, hasta }) {
+  const raw = await prisma.$queryRawUnsafe(
+    `
+    SELECT 
+      u.id_usuario,
+      u.nombre,
+      u.correo,
+      COUNT(*) AS cantidad_actividades,
+      SUM(a.co2_ahorrado) AS co2_total,
+      SUM(a.agua_ahorrada) AS agua_total,
+      SUM(a.energia_ahorrada) AS energia_total
+    FROM ACTIVIDAD_SOSTENIBLE a
+    JOIN USUARIO u ON u.id_usuario = a.id_usuario
+    WHERE a.fecha BETWEEN ? AND ?
+    GROUP BY u.id_usuario, u.nombre, u.correo
+    ORDER BY cantidad_actividades DESC
+  `,
+    desde,
+    hasta
+  );
+
+  const rows = normalizeResult(raw).map(mapActividadSostenible);
+  return toPlain(rows);
+}
+
+// C13) Impacto ambiental por categoría (por período)
+export async function impactoPorCategoriaReporte({ idPeriodo }) {
+  const periodo = Number(idPeriodo);
+
+  const raw = await prisma.$queryRawUnsafe(
+    `
+    SELECT 
+      c.id_categoria,
+      c.nombre AS categoria,
+      SUM(ia.co2_ahorrado) AS co2_total,
+      SUM(ia.agua_ahorrada) AS agua_total,
+      SUM(ia.energia_ahorrada) AS energia_total
+    FROM IMPACTO_AMBIENTAL ia
+    JOIN TRANSACCION t ON t.id_transaccion = ia.id_transaccion
+    JOIN PUBLICACION p ON p.id_publicacion = t.id_publicacion
+    JOIN CATEGORIA c ON c.id_categoria = p.id_categoria
+    WHERE ia.id_periodo = ?
+    GROUP BY c.id_categoria, c.nombre
+    ORDER BY co2_total DESC
+  `,
+    periodo
+  );
+
+  const rows = normalizeResult(raw).map(mapImpactoCategoria);
+  return toPlain(rows);
+}
+</file>
+
+<file path="src/modules/uploads/multer.js">
+import multer from "multer";
+import { v4 as uuid } from "uuid";
+import path from "path";
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    // Carpeta física donde se guardan los archivos
+    cb(null, "uploads_storage");
+  },
+  filename: (_req, file, cb) => {
+    const unique = uuid();
+    const ext = path.extname(file.originalname);
+    cb(null, unique + ext);
+  },
+});
+
+export const upload = multer({ storage });
+</file>
+
+<file path="src/modules/uploads/uploads.controller.js">
+import { procesarArchivoService } from "./uploads.service.js";
+
+export const subirArchivoController = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res
+        .status(400)
+        .json({ message: "No enviaste ningún archivo" });
+    }
+
+    const data = await procesarArchivoService(req.file);
+
+    res.json({
+      message: "Archivo subido correctamente",
+      data,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+</file>
+
+<file path="src/modules/uploads/uploads.routes.js">
+import { Router } from "express";
+import { authMiddleware } from "../../middlewares/auth.js";
+import { upload } from "./multer.js";
+import { subirArchivoController } from "./uploads.controller.js";
+
+const router = Router();
+
+// Ruta protegida: requiere login
+router.post("/", authMiddleware, upload.single("archivo"), subirArchivoController);
+
+export default router;
+</file>
+
+<file path="src/modules/uploads/uploads.service.js">
+import path from "path";
+
+export async function procesarArchivoService(file) {
+  // Ruta interna donde se guardó físicamente
+  const diskPath = path.join("uploads_storage", file.filename);
+  // URL pública (el frontend usará esto)
+  const url = `/uploads/${file.filename}`;
+
+  // Aquí podrías:
+  // - Guardar info en BD
+  // - Subir a S3 / Cloudinary
+  // - Registrar logs, etc.
+
+  return {
+    url,
+    path: diskPath,
+    originalName: file.originalname,
+    size: file.size,
+    mimetype: file.mimetype,
+  };
+}
+</file>
+
+<file path="src/modules/usuarios/usuarios.controller.js">
+// src/modules/usuarios/usuarios.controller.js
+
+import {
+  listarUsuariosService,
+  crearUsuarioAdminService,
+  actualizarUsuarioService,
+  cambiarEstadoUsuarioService,
+  obtenerHistorialUsuarioService,
+} from "./usuarios.service.js";
+
+export async function listarUsuariosController(req, res, next) {
+  try {
+    const usuarios = await listarUsuariosService();
+    res.json(usuarios);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function crearUsuarioAdminController(req, res, next) {
+  try {
+    const usuario = await crearUsuarioAdminService(req.body);
+    res.status(201).json(usuario);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function actualizarUsuarioController(req, res, next) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const usuario = await actualizarUsuarioService(id, req.body);
+    res.json(usuario);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function cambiarEstadoUsuarioController(req, res, next) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { estado } = req.body;
+    const usuario = await cambiarEstadoUsuarioService(id, estado);
+    res.json(usuario);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function obtenerHistorialUsuarioController(req, res, next) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const historial = await obtenerHistorialUsuarioService(id);
+    res.json(historial);
+  } catch (err) {
+    next(err);
+  }
+}
+</file>
+
+<file path="src/modules/usuarios/usuarios.routes.js">
+// src/modules/usuarios/usuarios.routes.js
+import { Router } from "express";
+import { authMiddleware } from "../../middlewares/auth.js";
+import { isAdmin } from "../../middlewares/isAdmin.js";
+import {
+  listarUsuariosController,
+  crearUsuarioAdminController,
+  actualizarUsuarioController,
+  cambiarEstadoUsuarioController,
+  obtenerHistorialUsuarioController,
+} from "./usuarios.controller.js";
+
+const router = Router();
+
+// Todo lo de aquí requiere admin
+router.use(authMiddleware, isAdmin);
+
+// GET /api/usuarios
+router.get("/", listarUsuariosController);
+
+// POST /api/usuarios
+router.post("/", crearUsuarioAdminController);
+
+// PUT /api/usuarios/:id
+router.put("/:id", actualizarUsuarioController);
+
+// PATCH /api/usuarios/:id/estado
+router.patch("/:id/estado", cambiarEstadoUsuarioController);
+
+// GET /api/usuarios/:id/historial
+router.get("/:id/historial", obtenerHistorialUsuarioController);
+
+export default router;
+</file>
+
+<file path="src/modules/usuarios/usuarios.service.js">
+// src/modules/usuarios/usuarios.service.js
+import bcrypt from "bcryptjs";
+import { prisma } from "../../config/prisma.js";
+
+export async function listarUsuariosService() {
+  const rows = await prisma.$queryRaw`
+    SELECT u.id_usuario, u.nombre, u.apellido, u.correo, u.telefono,
+           u.estado, r.nombre AS rol
+    FROM USUARIO u
+    JOIN ROL r ON r.id_rol = u.id_rol
+    ORDER BY u.id_usuario DESC
+  `;
+  return rows;
+}
+
+export async function crearUsuarioAdminService({
+  nombre,
+  apellido,
+  correo,
+  telefono,
+  password,
+  id_rol,
+  estado = "ACTIVO",
+}) {
+  if (!nombre || !correo || !password || !id_rol) {
+    const err = new Error("nombre, correo, password e id_rol son obligatorios");
+    err.status = 400;
+    throw err;
+  }
+
+  const existente = await prisma.$queryRaw`
+    SELECT id_usuario FROM USUARIO WHERE correo = ${correo} LIMIT 1
+  `;
+  if (existente.length) {
+    const error = new Error("El correo ya está registrado");
+    error.status = 409;
+    throw error;
+  }
+
+  const hash = await bcrypt.hash(password, 10);
+
+  await prisma.$queryRaw`
+    INSERT INTO USUARIO (id_rol, estado, nombre, apellido, correo, password_hash, telefono, url_perfil)
+    VALUES (${id_rol}, ${estado}, ${nombre}, ${apellido || null}, ${correo}, ${hash},
+            ${telefono || null}, NULL)
+  `;
+
+  const rows = await prisma.$queryRaw`
+    SELECT u.id_usuario, u.nombre, u.apellido, u.correo, u.telefono,
+           u.estado, r.nombre AS rol
+    FROM USUARIO u
+    JOIN ROL r ON r.id_rol = u.id_rol
+    WHERE u.correo = ${correo}
+    LIMIT 1
+  `;
+  return rows[0];
+}
+
+export async function actualizarUsuarioService(idUsuario, data) {
+  const { nombre, apellido, telefono, id_rol } = data;
+
+  // Normalizar undefined → null para que COALESCE funcione como "no cambiar"
+  const nombreParam = nombre === undefined ? null : nombre;
+  const apellidoParam = apellido === undefined ? null : apellido;
+  const telefonoParam = telefono === undefined ? null : telefono;
+  const rolParam = id_rol === undefined ? null : id_rol;
+
+  await prisma.$queryRaw`
+    UPDATE USUARIO
+    SET nombre  = COALESCE(${nombreParam}, nombre),
+        apellido = COALESCE(${apellidoParam}, apellido),
+        telefono = COALESCE(${telefonoParam}, telefono),
+        id_rol   = COALESCE(${rolParam}, id_rol)
+    WHERE id_usuario = ${idUsuario}
+  `;
+
+  const rows = await prisma.$queryRaw`
+    SELECT u.id_usuario, u.nombre, u.apellido, u.correo, u.telefono,
+           u.estado, r.nombre AS rol
+    FROM USUARIO u
+    JOIN ROL r ON r.id_rol = u.id_rol
+    WHERE u.id_usuario = ${idUsuario}
+    LIMIT 1
+  `;
+  if (!rows.length) {
+    const err = new Error("Usuario no encontrado");
+    err.status = 404;
+    throw err;
+  }
+  return rows[0];
+}
+
+export async function cambiarEstadoUsuarioService(idUsuario, estado) {
+  if (!estado) {
+    const err = new Error("estado es obligatorio");
+    err.status = 400;
+    throw err;
+  }
+
+  await prisma.$queryRaw`
+    UPDATE USUARIO
+    SET estado = ${estado}
+    WHERE id_usuario = ${idUsuario}
+  `;
+
+  const rows = await prisma.$queryRaw`
+    SELECT u.id_usuario, u.nombre, u.apellido, u.correo, u.telefono,
+           u.estado, r.nombre AS rol
+    FROM USUARIO u
+    JOIN ROL r ON r.id_rol = u.id_rol
+    WHERE u.id_usuario = ${idUsuario}
+    LIMIT 1
+  `;
+  if (!rows.length) {
+    const err = new Error("Usuario no encontrado");
+    err.status = 404;
+    throw err;
+  }
+  return rows[0];
+}
+
+export async function obtenerHistorialUsuarioService(idUsuario) {
+  // Llama a tu SP sp_obtener_historial_usuario
+  const [rows] = await prisma.$queryRawUnsafe(
+    "CALL sp_obtener_historial_usuario(?)",
+    idUsuario
+  );
+  // rows ya es el primer resultset del CALL
+  return rows;
+}
+</file>
+
+<file path="src/modules/wallet/wallet.controller.js">
+import {
+  obtenerMisCreditosService,
+  obtenerMisMovimientosService,
+  comprarCreditosService,
+  obtenerMisComprasService,
+} from "./wallet.service.js";
+
+export async function getMisCreditosController(req, res, next) {
+  try {
+    const idUsuario = req.user.id_usuario;
+    const data = await obtenerMisCreditosService(idUsuario);
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getMisMovimientosController(req, res, next) {
+  try {
+    const idUsuario = req.user.id_usuario;
+    const data = await obtenerMisMovimientosService(idUsuario);
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function postCompraCreditosController(req, res, next) {
+  try {
+    const idUsuario = req.user.id_usuario;
+    const { idPaquete, idTransaccionPago } = req.body;
+
+    if (!idPaquete) {
+      return res.status(400).json({ message: "idPaquete es obligatorio" });
+    }
+
+    const billetera = await comprarCreditosService({
+      idUsuario,
+      idPaquete,
+      idTransaccionPago: idTransaccionPago || null,
+    });
+
+    res.status(201).json({
+      message: "Compra aprobada",
+      billetera,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getMisComprasController(req, res, next) {
+  try {
+    const idUsuario = req.user.id_usuario;
+    const compras = await obtenerMisComprasService(idUsuario);
+    res.json(compras);
+  } catch (err) {
+    next(err);
+  }
+}
+</file>
+
+<file path="src/modules/wallet/wallet.routes.js">
+import { Router } from "express";
+import { authMiddleware } from "../../middlewares/auth.js";
+import {
+  getMisCreditosController,
+  getMisMovimientosController,
+  postCompraCreditosController,
+  getMisComprasController,
+} from "./wallet.controller.js";
+
+const router = Router();
+
+router.use(authMiddleware);
+
+// GET /api/wallet/mis-creditos
+router.get("/mis-creditos", getMisCreditosController);
+
+// GET /api/wallet/mis-movimientos
+router.get("/mis-movimientos", getMisMovimientosController);
+
+// POST /api/wallet/compra-creditos
+router.post("/compra-creditos", postCompraCreditosController);
+
+// GET /api/wallet/compras
+router.get("/compras", getMisComprasController);
+
+export default router;
+</file>
+
+<file path="src/modules/wallet/wallet.service.js">
+// backend/src/modules/wallet/wallet.service.js
+import { prisma } from "../../config/prisma.js";
+
+// =======================================
+// Helper: convertir BigInt / Decimal a Number
+// =======================================
+function toNumberSafe(value, def = 0) {
+  if (value == null) return def;
+
+  if (typeof value === "bigint") return Number(value);
+
+  if (typeof value === "object" && typeof value.toNumber === "function") {
+    return value.toNumber();
+  }
+
+  const num = Number(value);
+  return Number.isNaN(num) ? def : num;
+}
+
+// =======================================
+// Normalizadores
+// =======================================
+
+// Saldo de billetera
+function normalizeBilleteraRow(row) {
+  if (!row) {
+    return {
+      saldo_creditos: 0,
+      saldo_bs: 0,
+      saldo: 0,
+      creditos: 0,
+      saldo_bloqueado: 0,
+      bloqueado: 0,
+    };
+  }
+
+  const saldoCreditos = toNumberSafe(row.saldo_creditos, 0);
+  const saldoBs = toNumberSafe(row.saldo_bs, 0);
+  const saldoBloqueado = toNumberSafe(row.saldo_bloqueado ?? 0, 0);
+
+  return {
+    // nombres originales de la consulta
+    saldo_creditos: saldoCreditos,
+    saldo_bs: saldoBs,
+
+    // alias que usan Home, Perfil y Wallet en el front
+    saldo: saldoCreditos,
+    creditos: saldoCreditos,
+    saldo_bloqueado: saldoBloqueado,
+    bloqueado: saldoBloqueado,
+  };
+}
+
+// Movimiento de créditos
+function normalizeMovimientoRow(row) {
+  if (!row) return row;
+
+  const cantidad = toNumberSafe(row.cantidad, 0);
+
+  return {
+    ...row,
+    cantidad,
+    creditos: cantidad, // el front muestra a.creditos en Home
+    saldo_anterior: toNumberSafe(row.saldo_anterior, 0),
+    saldo_posterior: toNumberSafe(row.saldo_posterior, 0),
+    // creado_en queda como Date y Express lo serializa a ISO
+  };
+}
+
+// Compra de paquete de créditos
+function normalizeCompraRow(row) {
+  if (!row) return row;
+
+  const cant = toNumberSafe(row.cantidad_creditos, 0);
+  const monto = toNumberSafe(row.monto_bs, 0);
+
+  return {
+    ...row,
+    cantidad_creditos: cant,
+    creditos: cant,          // para tablas que leen c.creditos
+    creditos_compra: cant,   // para tablas que leen c.creditos_compra
+    monto_bs: monto,
+    monto,                   // alias genérico
+  };
+}
+
+// =======================================
+// Servicios públicos del módulo
+// =======================================
+
+// Saldo actual de la billetera del usuario logueado
+export async function obtenerMisCreditosService(idUsuario) {
+  const rows = await prisma.$queryRaw`
+    SELECT saldo_creditos, saldo_bs
+    FROM BILLETERA
+    WHERE id_usuario = ${idUsuario}
+    LIMIT 1
+  `;
+
+  return normalizeBilleteraRow(rows[0]);
+}
+
+// Movimientos de la billetera del usuario
+export async function obtenerMisMovimientosService(idUsuario) {
+  const rows = await prisma.$queryRaw`
+    SELECT m.id_movimiento,
+           m.cantidad,
+           m.saldo_anterior,
+           m.saldo_posterior,
+           m.id_referencia,
+           m.creado_en,
+           tm.nombre AS tipo_movimiento,
+           tr.nombre AS tipo_referencia
+    FROM MOVIMIENTO_CREDITOS m
+    JOIN TIPO_MOVIMIENTO tm ON tm.id_tipo_movimiento = m.id_tipo_movimiento
+    JOIN TIPO_REFERENCIA tr ON tr.id_tipo_referencia = m.id_tipo_referencia
+    WHERE m.id_usuario = ${idUsuario}
+    ORDER BY m.creado_en DESC, m.id_movimiento DESC
+  `;
+
+  return rows.map(normalizeMovimientoRow);
+}
+
+// Compra de un paquete de créditos (llama al SP y devuelve la billetera actualizada)
+export async function comprarCreditosService({
+  idUsuario,
+  idPaquete,
+  idTransaccionPago,
+}) {
+  // SP: sp_compra_creditos_aprobar(p_id_usuario, p_id_paquete, p_id_transaccion_pago)
+  await prisma.$executeRawUnsafe(
+    "CALL sp_compra_creditos_aprobar(?, ?, ?)",
+    idUsuario,
+    idPaquete,
+    idTransaccionPago
+  );
+
+  const rows = await prisma.$queryRaw`
+    SELECT saldo_creditos, saldo_bs
+    FROM BILLETERA
+    WHERE id_usuario = ${idUsuario}
+    LIMIT 1
+  `;
+
+  return normalizeBilleteraRow(rows[0]);
+}
+
+// Historial de compras de paquetes de créditos
+export async function obtenerMisComprasService(idUsuario) {
+  const rows = await prisma.$queryRaw`
+    SELECT c.id_compra,
+           c.id_paquete,
+           p.nombre AS paquete,
+           p.cantidad_creditos,
+           c.monto_bs,
+           c.estado,
+           c.id_transaccion_pago,
+           c.creado_en
+    FROM COMPRA_CREDITOS c
+    JOIN PAQUETE_CREDITOS p ON p.id_paquete = c.id_paquete
+    WHERE c.id_usuario = ${idUsuario}
+    ORDER BY c.creado_en DESC, c.id_compra DESC
+  `;
+
+  return rows.map(normalizeCompraRow);
+}
+</file>
+
+<file path="src/routes/index.js">
+// src/routes/index.js
+import { Router } from "express";
+
+import authRoutes from "../modules/auth/auth.routes.js";
+import usuariosRoutes from "../modules/usuarios/usuarios.routes.js";
+import catalogosRoutes from "../modules/catalogos/catalogos.routes.js";
+import walletRoutes from "../modules/wallet/wallet.routes.js";
+import publicacionesRoutes from "../modules/publicaciones/publicaciones.routes.js";
+import intercambiosRoutes from "../modules/intercambios/intercambios.routes.js";
+import actividadesRoutes from "../modules/actividades/actividades.routes.js";
+import promocionesRoutes from "../modules/promociones/promociones.routes.js";
+import publicidadRoutes from "../modules/publicidad/publicidad.routes.js";
+import logrosRoutes from "../modules/logros/logros.routes.js";
+import premiumRoutes from "../modules/premium/premium.routes.js";
+import reportesRoutes from "../modules/reportes/reportes.routes.js";
+import uploadsRoutes from "../modules/uploads/uploads.routes.js";
+
+// ⬇️ NUEVO
+import bitacorasRoutes from "../modules/bitacoras/bitacoras.routes.js";
+
+const router = Router();
+
+router.get("/health", (req, res) => {
+  res.json({ ok: true, message: "API Digital Barter OK" });
+});
+
+// Módulos
+router.use("/auth", authRoutes);
+router.use("/usuarios", usuariosRoutes);
+router.use("/catalogos", catalogosRoutes);
+router.use("/wallet", walletRoutes);
+router.use("/publicaciones", publicacionesRoutes);
+router.use("/intercambios", intercambiosRoutes);
+router.use("/actividades-sostenibles", actividadesRoutes);
+router.use("/promociones", promocionesRoutes);
+router.use("/publicidad", publicidadRoutes);
+router.use("/logros", logrosRoutes);
+router.use("/premium", premiumRoutes);
+router.use("/reportes", reportesRoutes);
+router.use("/uploads", uploadsRoutes);
+
+// ⬇️ NUEVO: bitácoras
+router.use("/bitacoras", bitacorasRoutes);
+
+export default router;
+</file>
+
+<file path="src/server.js">
+// src/server.js
+import app from './app.js'
+import { env } from './config/env.js'
+
+const PORT = env.PORT
+
+app.listen(PORT, () => {
+    console.log(`🚀 API running on http://localhost:${PORT}`)
+})
+</file>
+
+<file path="utils/jsonBigInt.js">
+export function toJsonSafe(value) {
+  if (typeof value === "bigint") {
+    return Number(value);            // <- si prefieres string: value.toString()
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(toJsonSafe);
+  }
+
+  if (value !== null && typeof value === "object") {
+    const out = {};
+    for (const key in value) {
+      out[key] = toJsonSafe(value[key]);
+    }
+    return out;
+  }
+
+  return value;
+}
+</file>
+
+</files>

@@ -1,9 +1,27 @@
-// src/modules/intercambios/intercambios.routes.js
-import { Router } from 'express'
-import { realizarIntercambio } from './intercambios.controller.js'
+import { Router } from "express";
+import { authMiddleware } from "../../middlewares/auth.js";
+import {
+  crearIntercambioController,
+  misComprasController,
+  misVentasController,
+  detalleTransaccionController,
+} from "./intercambios.controller.js";
 
-const router = Router()
+const router = Router();
 
-router.post('/', realizarIntercambio)
+// Todas las rutas requieren estar logueado
+router.use(authMiddleware);
 
-export default router
+// Crear nuevo intercambio
+router.post("/", crearIntercambioController);
+
+// Ver mis compras
+router.get("/mis-compras", misComprasController);
+
+// Ver mis ventas
+router.get("/mis-ventas", misVentasController);
+
+// Detalle de una transacción
+router.get("/:id", detalleTransaccionController);
+
+export default router;

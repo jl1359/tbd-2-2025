@@ -1,5 +1,6 @@
-// src/modules/reportes/reportes.routes.js
-import { Router } from 'express'
+import { Router } from "express";
+import { authMiddleware } from "../../middlewares/auth.js";
+import { isAdmin } from "../../middlewares/isAdmin.js";
 import {
   getUsuariosActivos,
   getUsuariosAbandonados,
@@ -8,16 +9,60 @@ import {
   getIntercambiosPorCategoria,
   getPublicacionesVsIntercambios,
   getImpactoAcumulado,
-} from './reportes.controller.js'
+  getRankingUsuarios,
+  getUsuariosPremium,
+  getUsuariosNuevos,
+  getSaldosCreditos,
+  getActividadesSostenibles,
+  getImpactoPorCategoria,
+} from "./reportes.controller.js";
 
-const router = Router()
+const router = Router();
 
-router.get('/usuarios-activos', getUsuariosActivos)
-router.get('/usuarios-abandonados', getUsuariosAbandonados)
-router.get('/ingresos-creditos', getIngresosCreditos)
-router.get('/creditos-generados-consumidos', getCreditosGeneradosVsConsumidos)
-router.get('/intercambios-categoria', getIntercambiosPorCategoria)
-router.get('/publicaciones-vs-intercambios', getPublicacionesVsIntercambios)
-router.get('/impacto-acumulado', getImpactoAcumulado)
+// Todo el módulo de reportes SOLO para admins
+router.use(authMiddleware, isAdmin);
 
-export default router
+/*  REPORTES PRINCIPALES */
+
+// ✔ Usuarios activos
+router.get("/usuarios-activos", getUsuariosActivos);
+
+// ✔ Usuarios abandonados
+router.get("/usuarios-abandonados", getUsuariosAbandonados);
+
+// ✔ Ingresos por venta de créditos
+router.get("/ingresos-creditos", getIngresosCreditos);
+
+// ✔ Créditos generados vs consumidos
+router.get("/creditos-generados-consumidos", getCreditosGeneradosVsConsumidos);
+
+// ✔ Intercambios por categoría
+router.get("/intercambios-categoria", getIntercambiosPorCategoria);
+
+// ✔ Publicaciones vs intercambios
+router.get("/publicaciones-vs-intercambios", getPublicacionesVsIntercambios);
+
+// ✔ Impacto ecológico acumulado
+router.get("/impacto-acumulado", getImpactoAcumulado);
+
+/* REPORTES AVANZADOS */
+
+// ✔ Ranking de usuarios (top N)
+router.get("/ranking-usuarios", getRankingUsuarios);
+
+// ✔ Reporte de usuarios premium
+router.get("/usuarios-premium", getUsuariosPremium);
+
+// ✔ Usuarios nuevos (primer login)
+router.get("/usuarios-nuevos", getUsuariosNuevos);
+
+// ✔ Saldos de créditos (top N)
+router.get("/saldos-usuarios", getSaldosCreditos);
+
+// ✔ Actividades sostenibles
+router.get("/actividades-sostenibles", getActividadesSostenibles);
+
+// ✔ Impacto ambiental por categoría (por período)
+router.get("/impacto-categoria", getImpactoPorCategoria);
+
+export default router;

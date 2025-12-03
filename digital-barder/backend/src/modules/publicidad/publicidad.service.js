@@ -30,6 +30,8 @@ export const crearPublicidadService = async (idUsuario, body) => {
     fecha_inicio,
     fecha_fin,
     costo_creditos,
+    tipo_media,
+    url_media,
   } = body;
 
   if (!id_ubicacion || !titulo || !fecha_inicio || !fecha_fin || !costo_creditos) {
@@ -38,27 +40,75 @@ export const crearPublicidadService = async (idUsuario, body) => {
     throw err;
   }
 
-  await prisma.$queryRaw`
-    INSERT INTO PUBLICIDAD (
-      id_usuario, id_ubicacion, estado,
-      titulo, descripcion, url_destino,
-      fecha_inicio, fecha_fin, costo_creditos
-    )
-    VALUES (
-      ${idUsuario}, ${id_ubicacion}, 'PROGRAMADA',
-      ${titulo}, ${descripcion || null}, ${url_destino || null},
-      ${fecha_inicio}, ${fecha_fin}, ${costo_creditos}
-    )
-  `;
+  return await prisma.$transaction(async (tx) => {
+    // 1) Ver saldo actual
+    const [billetera] = await tx.$queryRaw`
+      SELECT saldo_creditos
+      FROM BILLETERA
+      WHERE id_usuario = ${idUsuario}
+      LIMIT 1
+    `;
 
-  const [row] = await prisma.$queryRaw`
-    SELECT *
-    FROM PUBLICIDAD
-    WHERE id_publicidad = LAST_INSERT_ID()
-    LIMIT 1
-  `;
-  return row;
+    const saldoActual = Number(billetera?.saldo_creditos ?? 0);
+    if (saldoActual < costo_creditos) {
+      const err = new Error("Saldo insuficiente para publicar publicidad");
+      err.status = 400;
+      throw err;
+    }
+
+    // 2) Insertar publicidad
+    await tx.$queryRaw`
+      INSERT INTO PUBLICIDAD (
+        id_usuario, id_ubicacion, estado,
+        titulo, descripcion, url_destino,
+        fecha_inicio, fecha_fin, costo_creditos,
+        tipo_media, url_media
+      )
+      VALUES (
+        ${idUsuario}, ${id_ubicacion}, 'PROGRAMADA',
+        ${titulo}, ${descripcion || null}, ${url_destino || null},
+        ${fecha_inicio}, ${fecha_fin}, ${costo_creditos},
+        ${tipo_media || null}, ${url_media || null}
+      )
+    `;
+
+    const [pub] = await tx.$queryRaw`
+      SELECT *
+      FROM PUBLICIDAD
+      WHERE id_publicidad = LAST_INSERT_ID()
+      LIMIT 1
+    `;
+
+    // 3) Registrar movimiento en billetera (tipo PUBLICIDAD)
+    const saldoNuevo = saldoActual - costo_creditos;
+
+    await tx.$queryRaw`
+      INSERT INTO MOVIMIENTO_BILLETERA (
+        id_usuario,
+        tipo_movimiento,
+        descripcion,
+        creditos,
+        saldo_resultante
+      )
+      VALUES (
+        ${idUsuario},
+        'PUBLICIDAD',
+        ${`Publicación de anuncio #${pub.id_publicidad}`},
+        ${-costo_creditos},
+        ${saldoNuevo}
+      )
+    `;
+
+    await tx.$queryRaw`
+      UPDATE BILLETERA
+      SET saldo_creditos = ${saldoNuevo}
+      WHERE id_usuario = ${idUsuario}
+    `;
+
+    return pub;
+  });
 };
+
 
 /* =====================================================
    NUEVO: CAMBIAR ESTADO

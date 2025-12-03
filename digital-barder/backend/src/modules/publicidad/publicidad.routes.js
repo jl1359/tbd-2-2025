@@ -2,6 +2,8 @@
 import { Router } from "express";
 import { authMiddleware } from "../../middlewares/auth.js";
 import { isAdmin } from "../../middlewares/isAdmin.js";
+import { upload } from "../uploads/multer.js";
+
 
 import {
   listarPublicidadActivaController,
@@ -22,13 +24,14 @@ router.get("/activa", listarPublicidadActivaController);
 /* ===========================
    SOLO ADMIN
 =========================== */
-router.use(authMiddleware, isAdmin);
+router.use(authMiddleware);
 
 router.get("/admin", listarPublicidadAdminController);
 
 router.get("/buscar-publicaciones", buscarPublicacionesParaPublicidadController);
 
-router.post("/", crearPublicidadController);
+router.post("/", upload.single("archivo"), crearPublicidadController);
+
 
 router.patch("/:id/estado", cambiarEstadoPublicidadController);
 

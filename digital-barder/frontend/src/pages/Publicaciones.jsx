@@ -4,6 +4,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { api, getPublicidadActiva, crearIntercambio } from "../services/api";
 import hoja from "../assets/hoja.png";
 
+// reutilizamos el ID de ubicación para publicaciones
+import { UBICACION_PUBLICACIONES_ID } from "./Publicidad";
+
+// URL base del backend - AJUSTA ESTO según tu configuración
+const API_BASE_URL = "http://localhost:5000"; // Cambia según tu backend
+
 export default function Publicaciones() {
   const [publicaciones, setPublicaciones] = useState([]);
   const [anuncios, setAnuncios] = useState([]);
@@ -28,8 +34,22 @@ export default function Publicaciones() {
         getPublicidadActiva(),
       ]);
 
+      // DEBUG: Ver qué datos recibimos
+      console.log("📢 Datos de publicidad recibidos:", dataPublicidad);
+      if (dataPublicidad && dataPublicidad.length > 0) {
+        console.log("📢 Primera publicidad:", dataPublicidad[0]);
+        console.log("📢 Campos disponibles:", Object.keys(dataPublicidad[0]));
+      }
+
       setPublicaciones(Array.isArray(dataPublicaciones) ? dataPublicaciones : []);
-      setAnuncios(Array.isArray(dataPublicidad) ? dataPublicidad : []);
+
+      const soloPublicaciones =
+        Array.isArray(dataPublicidad)
+          ? dataPublicidad.filter((ad) => ad.id_ubicacion === UBICACION_PUBLICACIONES_ID)
+          : [];
+
+      console.log("📢 Publicaciones filtradas (ubicación PUBLICACIONES):", soloPublicaciones.length);
+      setAnuncios(soloPublicaciones);
     } catch (err) {
       console.error(err);
       setError("No se pudieron cargar las publicaciones o la publicidad.");
@@ -171,10 +191,8 @@ export default function Publicaciones() {
                   </div>
                 </div>
               </div>
-
             </div>
           </div>
-
         </div>
       </div>
 
@@ -392,7 +410,23 @@ function FilaPublicidad({ anuncios }) {
               }}
             >
               {anuncios.map((ad) => {
-                const videoSrc = ad.video_url || ad.video || ad.url_video;
+                // DEBUG: Ver estructura de datos de cada anuncio
+                console.log("🎬 Anuncio recibido:", ad);
+                
+                // Obtener el nombre del archivo - prueba diferentes campos posibles
+                const mediaNombre = ad.archivo || ad.nombre_archivo || ad.video_nombre || ad.imagen_nombre || ad.media_file;
+                
+                // Obtener el tipo de media - prueba diferentes campos posibles
+                const mediaTipo = ad.tipo_media || ad.tipo || (mediaNombre ? 
+                  (mediaNombre.match(/\.(mp4|webm|ogg|mov|avi|m4v)$/i) ? "video" : 
+                   mediaNombre.match(/\.(jpg|jpeg|png|gif|webp|bmp)$/i) ? "imagen" : "video") : "video");
+                
+                // Construir URL completa para acceder al archivo
+                // ASUNCIÓN: El backend guarda archivos en /uploads/ y los sirve desde ahí
+                const mediaUrl = mediaNombre ? `${API_BASE_URL}/uploads/${mediaNombre}` : null;
+                
+                console.log("🎬 Media info:", { mediaNombre, mediaTipo, mediaUrl });
+                
                 const activo = videoActivoId === ad.id_publicidad;
 
                 return (
@@ -401,24 +435,44 @@ function FilaPublicidad({ anuncios }) {
                     className="w-full flex-shrink-0 min-h-[260px] md:min-h-[360px]
                       flex flex-col md:flex-row bg-[#051c15] text-white"
                   >
-                    {/* VIDEO GRANDE */}
+                    {/* CONTENEDOR DE MEDIA (VIDEO/IMAGEN) */}
                     <div className="relative w-full md:w-2/3 h-[220px] md:h-[360px] overflow-hidden">
-                      {videoSrc && (
-                        <video
-                          ref={(el) => {
-                            if (el) {
-                              videoRefs.current[ad.id_publicidad] = el;
-                            }
-                          }}
-                          src={videoSrc}
-                          className="w-full h-full object-cover"
-                          autoPlay
-                          muted
-                          loop
-                          playsInline
-                          onClick={() => handleClickVideo(ad.id_publicidad)}
-                          style={{ cursor: "pointer" }}
-                        />
+                      {mediaUrl ? (
+                        mediaTipo === "video" ? (
+                          <video
+                            ref={(el) => {
+                              if (el) {
+                                videoRefs.current[ad.id_publicidad] = el;
+                              }
+                            }}
+                            src={mediaUrl}
+                            className="w-full h-full object-cover"
+                            autoPlay
+                            muted
+                            loop
+                            playsInline
+                            onClick={() => handleClickVideo(ad.id_publicidad)}
+                            style={{ cursor: "pointer" }}
+                          />
+                        ) : (
+                          <img
+                            src={mediaUrl}
+                            className="w-full h-full object-cover"
+                            alt={ad.titulo || "Publicidad"}
+                            onClick={() => handleClickVideo(ad.id_publicidad)}
+                            style={{ cursor: "pointer" }}
+                          />
+                        )
+                      ) : (
+                        // Placeholder si no hay archivo
+                        <div className="w-full h-full bg-gradient-to-br from-emerald-900 to-green-900 flex items-center justify-center">
+                          <div className="text-center p-4">
+                            <div className="text-4xl mb-2">📺</div>
+                            <p className="text-sm text-emerald-200 font-semibold">PUBLICIDAD</p>
+                            <p className="text-xs text-emerald-300 mt-1">{ad.titulo || "Sin título"}</p>
+                            <p className="text-xs text-emerald-400 mt-2">(No hay archivo multimedia)</p>
+                          </div>
+                        </div>
                       )}
 
                       {/* overlay profundidad */}
@@ -428,11 +482,11 @@ function FilaPublicidad({ anuncios }) {
                       {/* borde interno suave */}
                       <div className="pointer-events-none absolute inset-2 rounded-2xl border border-emerald-300/15" />
 
-                      {/* ETIQUETA PUBLICIDAD con el mismo estilo de Publicidad.jsx */}
+                      {/* ETIQUETA PUBLICIDAD */}
                       <div className="absolute top-3 left-3 flex items-center gap-2">
                         <div className="inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-emerald-400 via-lime-300 to-emerald-500 text-xs font-extrabold text-emerald-900 shadow-[0_0_12px_rgba(34,197,94,0.6)] animate-pulse">
-              PUBLICIDAD
-            </div>
+                          PUBLICIDAD
+                        </div>
                         {activo && (
                           <span className="flex items-center gap-1 text-[0.7rem] text-emerald-300">
                             <span className="h-2 w-2 rounded-full bg-emerald-300 animate-pulse" />
@@ -446,7 +500,7 @@ function FilaPublicidad({ anuncios }) {
                         {ad.estado}
                       </div>
 
-                      {/* halo verde bajo el video */}
+                      {/* halo verde bajo el media */}
                       <div className="pointer-events-none absolute -bottom-12 left-1/2 -translate-x-1/2 
                         w-40 h-14 bg-emerald-400/35 blur-3xl" />
                     </div>
@@ -454,7 +508,7 @@ function FilaPublicidad({ anuncios }) {
                     {/* PANEL DE TEXTO */}
                     <div className="w-full md:w-1/3 px-4 py-4 flex flex-col">
                       <h3 className="text-lg font-semibold mb-2 line-clamp-2 text-emerald-300">
-                        {ad.titulo}
+                        {ad.titulo || "Publicidad"}
                       </h3>
 
                       {ad.descripcion && (
@@ -477,6 +531,14 @@ function FilaPublicidad({ anuncios }) {
                               {ad.costo_creditos} créditos
                             </p>
                           )}
+                          {mediaNombre && (
+                            <p className="flex items-center gap-1 text-emerald-300">
+                              <span className="text-[0.8rem]">
+                                {mediaTipo === "video" ? "🎬" : "🖼️"}
+                              </span>{" "}
+                              {mediaNombre}
+                            </p>
+                          )}
                         </div>
 
                         {ad.url_destino && (
@@ -487,7 +549,7 @@ function FilaPublicidad({ anuncios }) {
                               rel="noopener noreferrer"
                               className="text-[0.8rem] font-semibold text-emerald-300 hover:text-emerald-200 hover:underline"
                             >
-                              Visitar
+                              Ver más
                             </a>
                           </div>
                         )}

@@ -90,12 +90,14 @@ export default function Navbar() {
         <button
           onClick={() => {
             localStorage.removeItem("token");
+            localStorage.removeItem("usuario"); // limpiar datos del usuario
             window.location.href = "/login";
           }}
           className="bg-emerald-500 hover:bg-emerald-600 px-4 py-1 rounded-lg text-white font-semibold transition"
         >
           Salir
         </button>
+
       </div>
     </nav>
   );

@@ -18,28 +18,30 @@ import EditarPerfil from "./pages/EditarPerfil.jsx";
 import ComprarCreditos from "./pages/ComprarCreditos.jsx";
 import Movimientos from "./pages/Movimientos.jsx";
 import HistorialCompras from "./pages/HistorialCompras.jsx";
-
 import Wallet from "./pages/Wallet.jsx";
 
+// Publicaciones
 import Publicaciones from "./pages/Publicaciones.jsx";
 import MisPublicaciones from "./pages/MisPublicaciones.jsx";
-
 import PublicacionNueva from "./pages/PublicacionNueva.jsx";
 
+// Intercambios
 import Intercambios from "./pages/Intercambios.jsx";
 
+// Actividades
 import Actividades from "./pages/Actividades.jsx";
 import MisActividades from "./pages/MisActividades.jsx";
 
+// Premium / otros módulos
 import Premium from "./pages/Premium.jsx";
-
 import Logros from "./pages/Logros.jsx";
 import Promociones from "./pages/Promociones.jsx";
 
-// Reportes menú principal
-import Reportes from "./pages/Reportes.jsx";
+// Publicidad
 import Publicidad from "./pages/Publicidad.jsx";
 
+// Reportes menú principal
+import Reportes from "./pages/Reportes.jsx";
 
 // Reportes individuales
 import ReportesUsuarios from "./pages/ReportesUsuarios.jsx";
@@ -95,7 +97,7 @@ export default function AppRouter() {
         }
       />
 
-      {/* EDITAR PERFIL (NUEVO, FUNCIONAL) */}
+      {/* EDITAR PERFIL */}
       <Route
         path="/perfil/editar"
         element={
@@ -107,15 +109,19 @@ export default function AppRouter() {
         }
       />
 
-        <Route
-          path="/wallet"
-          element={
-            <ProtectedRoute>
+      {/* WALLET - RESUMEN */}
+      <Route
+        path="/wallet"
+        element={
+          <ProtectedRoute>
+            <Layout>
               <Wallet />
-            </ProtectedRoute>
-          }
-        />
-            {/* WALLET */}
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* COMPRAR CRÉDITOS (ruta principal) */}
       <Route
         path="/comprar-creditos"
         element={
@@ -127,6 +133,19 @@ export default function AppRouter() {
         }
       />
 
+      {/* Alias para evitar 404 en /wallet/compra-creditos */}
+      <Route
+        path="/wallet/compra-creditos"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ComprarCreditos />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* MOVIMIENTOS WALLET */}
       <Route
         path="/wallet/movimientos"
         element={
@@ -138,6 +157,8 @@ export default function AppRouter() {
         }
       />
 
+      {/* HISTORIAL COMPRAS WALLET */}
+      // Historial de compras (ruta “corta”)
       <Route
         path="/wallet/compras"
         element={
@@ -149,6 +170,19 @@ export default function AppRouter() {
         }
       />
 
+      // Alias: /wallet/historial-compras
+      <Route
+        path="/wallet/historial-compras"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <HistorialCompras />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* PUBLICACIONES */}
       <Route
         path="/publicaciones"
         element={
@@ -182,6 +216,7 @@ export default function AppRouter() {
         }
       />
 
+      {/* INTERCAMBIOS */}
       <Route
         path="/intercambios"
         element={
@@ -193,6 +228,7 @@ export default function AppRouter() {
         }
       />
 
+      {/* ACTIVIDADES */}
       <Route
         path="/actividades"
         element={
@@ -215,37 +251,41 @@ export default function AppRouter() {
         }
       />
 
-    <Route
-      path="/premium"
-      element={
-        <ProtectedRoute>
-          <Layout>
-            <Premium />
-          </Layout>
-        </ProtectedRoute>
-      }
-    />
+      {/* PREMIUM / LOGROS / PROMOCIONES */}
       <Route
-      path="/logros"
-      element={
-        <ProtectedRoute>
-          <Layout>
-            <Logros />
-          </Layout>
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path="/promociones"
-      element={
-        <ProtectedRoute>
-          <Layout>
-            <Promociones />
-          </Layout>
-        </ProtectedRoute>
-      }
-    />
+        path="/premium"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Premium />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
 
+      <Route
+        path="/logros"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Logros />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/promociones"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Promociones />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* PUBLICIDAD */}
       <Route
         path="/publicidad"
         element={
@@ -257,7 +297,7 @@ export default function AppRouter() {
         }
       />
 
-      {/* REPORTES */}
+      {/* REPORTES MENÚ PRINCIPAL */}
       <Route
         path="/reportes"
         element={

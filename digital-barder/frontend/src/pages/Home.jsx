@@ -22,22 +22,21 @@ export default function Home() {
       setLoading(true);
       setError("");
 
-      const estado = await api("/health");
-      setEstado(estado);
+      const estadoRes = await api("/health");
+      setEstado(estadoRes);
 
       const creditos = await api("/wallet/mis-creditos");
 
-      // Soportar tanto saldo_creditos como saldo
       const saldo =
         creditos?.saldo_creditos ??
         creditos?.saldo ??
         creditos?.creditos ??
         0;
 
-      setMisCreditos(saldo);
+      setMisCreditos(Number(saldo) || 0);
 
       const act = await api("/wallet/mis-movimientos");
-      setActividadReciente(Array.isArray(act) ? act.slice(0, 5) : []);
+      setActividadReciente(Array.isArray(act) ? act.slice(0, 8) : []);
     } catch (err) {
       console.error(err);
       setError("No se pudo cargar la información de inicio.");
@@ -45,6 +44,33 @@ export default function Home() {
       setLoading(false);
     }
   }
+
+  // MISMA LÓGICA QUE EN Movimientos.jsx: NO CAMBIAMOS HUSO HORARIO
+  const formatFechaMovimiento = (raw) => {
+    if (!raw) return "";
+
+    if (typeof raw === "string") {
+      const clean = raw.replace("T", " ").replace("Z", "").trim();
+      const [datePart, timePart] = clean.split(" ");
+      if (!datePart) return raw;
+
+      const [year, month, day] = datePart.split("-");
+      if (!timePart) return `${day}/${month}/${year}`;
+
+      const [hh, mm] = timePart.split(":");
+      return `${day}/${month}/${year}, ${hh}:${mm} p. m.`; // solo reordenamos texto
+    }
+
+    const d = raw instanceof Date ? raw : new Date(raw);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleString("es-BO", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
   if (loading) {
     return (
@@ -85,12 +111,14 @@ export default function Home() {
 
         <div className="bg-[#0f3f2d] rounded-xl p-5 border border-emerald-700 shadow-md">
           <p className="text-sm text-emerald-200 mb-1">Mis créditos</p>
-          <p className="text-3xl font-bold text-emerald-300">{misCreditos}</p>
+          <p className="text-3xl font-bold text-emerald-300">
+            {misCreditos.toLocaleString("es-BO")}
+          </p>
           <button
             onClick={() => navigate("/wallet")}
             className="mt-3 text-xs bg-emerald-500 hover:bg-emerald-600 text-emerald-950 px-3 py-1.5 rounded-lg font-semibold"
           >
-            Ver mi wallet
+            Ver mi billetera
           </button>
         </div>
 
@@ -123,7 +151,7 @@ export default function Home() {
       <section className="bg-[#0f3f2d] rounded-xl p-5 border border-emerald-700 shadow-md">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold text-emerald-300">
-            Actividad reciente en mi wallet
+            Movimientos recientes
           </h2>
           <button
             onClick={() => navigate("/wallet/movimientos")}
@@ -149,6 +177,10 @@ export default function Home() {
               const fecha =
                 m.creado_en || m.fecha || m.fecha_movimiento || null;
 
+              const cantidad = m.cantidad ?? m.creditos ?? 0;
+              const esIngreso = Number(cantidad) >= 0;
+              const saldo = m.saldo_posterior ?? m.saldo ?? null;
+
               return (
                 <div
                   key={m.id_movimiento || `${m.tipo_movimiento}-${fecha}`}
@@ -160,30 +192,25 @@ export default function Home() {
                       {m.tipo_referencia ? ` (${m.tipo_referencia})` : ""}
                     </p>
                     <p className="text-xs text-emerald-100/70">
-                      {fecha
-                        ? new Date(fecha).toLocaleString()
-                        : ""}
+                      {formatFechaMovimiento(fecha)}
                     </p>
                   </div>
 
                   <div className="text-right">
                     <p
                       className={`font-semibold ${
-                        (m.cantidad ?? 0) >= 0
-                          ? "text-emerald-300"
-                          : "text-red-300"
+                        esIngreso ? "text-emerald-300" : "text-red-300"
                       }`}
                     >
-                      {(m.cantidad ?? 0) >= 0 ? "+" : ""}
-                      {m.cantidad ?? m.creditos ?? 0} cr.
+                      {esIngreso ? "+" : "-"}
+                      {Math.abs(Number(cantidad)).toLocaleString("es-BO")} cr.
                     </p>
-                    <p className="text-[11px] text-emerald-100/60 mt-1">
-                      Saldo:{" "}
-                      {m.saldo_posterior ??
-                        m.saldo ??
-                        "-"}{" "}
-                      cr.
-                    </p>
+                    {saldo != null && (
+                      <p className="text-[11px] text-emerald-100/60 mt-1">
+                        Saldo:{" "}
+                        {Number(saldo).toLocaleString("es-BO")} cr.
+                      </p>
+                    )}
                   </div>
                 </div>
               );

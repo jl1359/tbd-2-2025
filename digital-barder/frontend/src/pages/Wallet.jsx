@@ -43,8 +43,8 @@ export default function Wallet() {
         Array.isArray(resMovs) ? resMovs.slice(0, 10) : []
       );
     } catch (err) {
-      console.error("Error cargando wallet:", err);
-      setError(err.message || "Error al cargar la información de la wallet.");
+      console.error("Error cargando billetera:", err);
+      setError(err.message || "Error al cargar la información de la billetera.");
     } finally {
       setCargando(false);
     }
@@ -53,7 +53,7 @@ export default function Wallet() {
   if (cargando) {
     return (
       <div className="min-h-screen bg-[#082b1f] text-white flex items-center justify-center">
-        Cargando wallet.
+        Cargando billeterat.
       </div>
     );
   }
@@ -63,7 +63,7 @@ export default function Wallet() {
       {/* HEADER */}
       <div className="flex items-center gap-3 mb-8">
         <img src={hoja} alt="logo" className="w-10 h-10 drop-shadow-lg" />
-        <h1 className="text-3xl font-bold text-emerald-400">Mi Wallet</h1>
+        <h1 className="text-3xl font-bold text-emerald-400">Mi Billetera</h1>
       </div>
 
       {/* ERROR */}

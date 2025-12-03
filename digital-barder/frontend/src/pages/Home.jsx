@@ -1,11 +1,17 @@
+// frontend/src/pages/Home.jsx
 import React, { useEffect, useState } from "react";
-import { api } from "../services/api";
+import { useNavigate } from "react-router-dom";
 import hoja from "../assets/hoja.png";
+import { api } from "../services/api";
 
 export default function Home() {
-  const [statusAPI, setStatusAPI] = useState("Cargando...");
-  const [misCreditos, setMisCreditos] = useState(null);
+  const [estado, setEstado] = useState(null);
+  const [misCreditos, setMisCreditos] = useState(0);
   const [actividadReciente, setActividadReciente] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     cargarTodo();
@@ -13,107 +19,178 @@ export default function Home() {
 
   async function cargarTodo() {
     try {
+      setLoading(true);
+      setError("");
+
       const estado = await api("/health");
-      setStatusAPI(estado.message || "OK");
+      setEstado(estado);
 
       const creditos = await api("/wallet/mis-creditos");
-      setMisCreditos(creditos.saldo);
+
+      // Soportar tanto saldo_creditos como saldo
+      const saldo =
+        creditos?.saldo_creditos ??
+        creditos?.saldo ??
+        creditos?.creditos ??
+        0;
+
+      setMisCreditos(saldo);
 
       const act = await api("/wallet/mis-movimientos");
-      setActividadReciente(act.slice(0, 5));
+      setActividadReciente(Array.isArray(act) ? act.slice(0, 5) : []);
     } catch (err) {
-      setStatusAPI("Error conectando al backend");
+      console.error(err);
+      setError("No se pudo cargar la información de inicio.");
+    } finally {
+      setLoading(false);
     }
   }
 
-  return (
-    <div className="min-h-screen w-full bg-[#082b1f] text-white px-6 py-10">
-      
-      {/* ENCABEZADO */}
-      <div className="flex items-center gap-3 mb-10">
-        <img src={hoja} alt="logo" className="w-12 h-12 drop-shadow-lg" />
-        <h1 className="text-3xl font-bold text-emerald-400 drop-shadow-md">
-          Digital Barter – Inicio
-        </h1>
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#082b1f] text-white">
+        Cargando inicio...
       </div>
+    );
+  }
 
-      {/* ESTADO DEL SISTEMA */}
-      <section className="mb-10">
-        <h2 className="text-xl font-semibold text-emerald-300 mb-3">
-          Estado del sistema
-        </h2>
-
-        <div className="bg-[#0f3f2d] p-5 rounded-xl border border-emerald-600 shadow-lg">
-          <p className="text-lg">{statusAPI}</p>
+  return (
+    <div className="min-h-screen bg-[#082b1f] text-white p-4 md:p-8">
+      {/* HEADER */}
+      <header className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-emerald-300">
+            Bienvenido a Créditos Verdes
+          </h1>
+          <p className="text-sm text-emerald-100/80">
+            Plataforma de economía circular y sostenibilidad.
+          </p>
         </div>
-      </section>
+        <img src={hoja} alt="logo" className="w-10 h-10 drop-shadow-lg" />
+      </header>
 
-      {/* RESUMEN RÁPIDO */}
-      <section className="mb-12">
-        <h2 className="text-xl font-semibold text-emerald-300 mb-4">
-          Resumen rápido
-        </h2>
-
-        <div className="grid md:grid-cols-3 gap-6">
-
-          {/* TARJETA CREDITOS */}
-          <div className="bg-[#0e4330] p-6 rounded-xl border border-emerald-500 shadow-md hover:scale-[1.02] transition transform cursor-pointer">
-            <h3 className="text-lg font-bold text-emerald-300">Mis Créditos</h3>
-            <p className="text-4xl font-bold mt-2 text-emerald-400 drop-shadow-md">
-              {misCreditos !== null ? misCreditos : "—"}
+      {/* ESTADO API + SALDO */}
+      <section className="grid gap-4 md:grid-cols-3 mb-8">
+        <div className="bg-[#0f3f2d] rounded-xl p-5 border border-emerald-700 shadow-md">
+          <p className="text-sm text-emerald-200 mb-1">Estado del sistema</p>
+          <p className="text-lg font-semibold text-emerald-300">
+            {estado?.ok ? "Online" : "Offline"}
+          </p>
+          {estado && (
+            <p className="text-xs text-emerald-100/70 mt-1">
+              {estado.message || ""}
             </p>
+          )}
+        </div>
+
+        <div className="bg-[#0f3f2d] rounded-xl p-5 border border-emerald-700 shadow-md">
+          <p className="text-sm text-emerald-200 mb-1">Mis créditos</p>
+          <p className="text-3xl font-bold text-emerald-300">{misCreditos}</p>
+          <button
+            onClick={() => navigate("/wallet")}
+            className="mt-3 text-xs bg-emerald-500 hover:bg-emerald-600 text-emerald-950 px-3 py-1.5 rounded-lg font-semibold"
+          >
+            Ver mi wallet
+          </button>
+        </div>
+
+        <div className="bg-[#0f3f2d] rounded-xl p-5 border border-emerald-700 shadow-md">
+          <p className="text-sm text-emerald-200 mb-1">Accesos rápidos</p>
+          <div className="flex flex-wrap gap-2 mt-2 text-xs">
+            <button
+              className="bg-emerald-600 hover:bg-emerald-500 px-3 py-1 rounded-lg"
+              onClick={() => navigate("/publicaciones")}
+            >
+              Publicaciones
+            </button>
+            <button
+              className="bg-emerald-600 hover:bg-emerald-500 px-3 py-1 rounded-lg"
+              onClick={() => navigate("/actividades")}
+            >
+              Actividades
+            </button>
+            <button
+              className="bg-emerald-600 hover:bg-emerald-500 px-3 py-1 rounded-lg"
+              onClick={() => navigate("/reportes")}
+            >
+              Reportes
+            </button>
           </div>
-
-          {/* TARJETA PUBLICACIONES */}
-          <a
-            href="/publicaciones"
-            className="bg-[#0e4330] p-6 rounded-xl border border-emerald-500 shadow-md hover:bg-[#14694c] hover:scale-[1.02] transition transform cursor-pointer"
-          >
-            <h3 className="text-lg font-bold text-emerald-300">Marketplace</h3>
-            <p className="opacity-80 mt-1">Explora productos y servicios</p>
-          </a>
-
-          {/* TARJETA WALLET */}
-          <a
-            href="/wallet"
-            className="bg-[#0e4330] p-6 rounded-xl border border-emerald-500 shadow-md hover:bg-[#14694c] hover:scale-[1.02] transition transform cursor-pointer"
-          >
-            <h3 className="text-lg font-bold text-emerald-300">Mi Wallet</h3>
-            <p className="opacity-80 mt-1">Ver movimientos y saldo</p>
-          </a>
         </div>
       </section>
 
       {/* ACTIVIDAD RECIENTE */}
-      <section className="mb-20">
-        <h2 className="text-xl font-semibold text-emerald-300 mb-4">
-          Actividad reciente
-        </h2>
-
-        <div className="bg-[#0f3f2d] p-5 rounded-xl border border-emerald-600 shadow-lg">
-          {actividadReciente.length === 0 ? (
-            <p className="opacity-80">No hay actividad reciente.</p>
-          ) : (
-            <ul className="space-y-3">
-              {actividadReciente.map((a, i) => (
-                <li
-                  key={i}
-                  className="bg-[#0e4330] p-4 rounded-lg border border-emerald-500 shadow-md"
-                >
-                  <p className="text-emerald-300 font-semibold">
-                    {a.tipo_movimiento}
-                  </p>
-                  <p className="text-sm opacity-80">{a.descripcion || "Movimiento realizado"}</p>
-                  <p className="mt-1 text-emerald-400 font-bold">
-                    {a.creditos} créditos
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
+      <section className="bg-[#0f3f2d] rounded-xl p-5 border border-emerald-700 shadow-md">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold text-emerald-300">
+            Actividad reciente en mi wallet
+          </h2>
+          <button
+            onClick={() => navigate("/wallet/movimientos")}
+            className="text-xs text-emerald-200 underline"
+          >
+            Ver todos
+          </button>
         </div>
-      </section>
 
+        {error && (
+          <p className="text-sm text-red-300 mb-2">
+            {error}
+          </p>
+        )}
+
+        {actividadReciente.length === 0 ? (
+          <p className="text-sm text-emerald-100/70">
+            Aún no tienes movimientos en tu billetera.
+          </p>
+        ) : (
+          <div className="space-y-2 text-sm">
+            {actividadReciente.map((m) => {
+              const fecha =
+                m.creado_en || m.fecha || m.fecha_movimiento || null;
+
+              return (
+                <div
+                  key={m.id_movimiento || `${m.tipo_movimiento}-${fecha}`}
+                  className="flex items-center justify-between border-b border-emerald-800/60 pb-2 last:border-0"
+                >
+                  <div>
+                    <p className="font-semibold text-emerald-100">
+                      {m.tipo_movimiento || "Movimiento"}
+                      {m.tipo_referencia ? ` (${m.tipo_referencia})` : ""}
+                    </p>
+                    <p className="text-xs text-emerald-100/70">
+                      {fecha
+                        ? new Date(fecha).toLocaleString()
+                        : ""}
+                    </p>
+                  </div>
+
+                  <div className="text-right">
+                    <p
+                      className={`font-semibold ${
+                        (m.cantidad ?? 0) >= 0
+                          ? "text-emerald-300"
+                          : "text-red-300"
+                      }`}
+                    >
+                      {(m.cantidad ?? 0) >= 0 ? "+" : ""}
+                      {m.cantidad ?? m.creditos ?? 0} cr.
+                    </p>
+                    <p className="text-[11px] text-emerald-100/60 mt-1">
+                      Saldo:{" "}
+                      {m.saldo_posterior ??
+                        m.saldo ??
+                        "-"}{" "}
+                      cr.
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

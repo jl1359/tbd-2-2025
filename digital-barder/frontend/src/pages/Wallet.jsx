@@ -39,12 +39,12 @@ export default function Wallet() {
       setSaldo(saldoDisponible);
       setBloqueado(saldoBloqueado);
 
-      setMovimientos(
-        Array.isArray(resMovs) ? resMovs.slice(0, 10) : []
-      );
+      setMovimientos(Array.isArray(resMovs) ? resMovs.slice(0, 10) : []);
     } catch (err) {
       console.error("Error cargando billetera:", err);
-      setError(err.message || "Error al cargar la información de la billetera.");
+      setError(
+        err.message || "Error al cargar la información de la billetera."
+      );
     } finally {
       setCargando(false);
     }
@@ -90,9 +90,7 @@ export default function Wallet() {
         {/* Acciones rápidas */}
         <div className="rounded-2xl border border-emerald-700 bg-[#0f3f2d] p-6 shadow-lg flex flex-col justify-between">
           <div>
-            <p className="text-emerald-200 text-sm mb-2">
-              Acciones rápidas
-            </p>
+            <p className="text-emerald-200 text-sm mb-2">Acciones rápidas</p>
             <p className="text-xs text-emerald-100/80 mb-3">
               Compra créditos, revisa movimientos o historial de compras.
             </p>
@@ -122,7 +120,7 @@ export default function Wallet() {
 
       {/* LISTA MOVIMIENTOS RECIENTES */}
       <section className="bg-[#0f3f2d] rounded-2xl border border-emerald-700 p-6 shadow-lg">
-        <div className="flex items-center justify-between mb  -4">
+        <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-emerald-300">
             Movimientos recientes
           </h2>
@@ -141,8 +139,15 @@ export default function Wallet() {
         ) : (
           <div className="mt-3 space-y-3 text-sm">
             {movimientos.map((m) => {
-              const fecha =
-                m.creado_en || m.fecha || m.fecha_movimiento || null;
+              const fecha = m.creado_en || m.fecha || m.fecha_movimiento || null;
+
+              // 👇 AQUÍ DEFINIMOS SI ES NEGATIVO O POSITIVO
+              const esNegativo =
+                m.signo_mov === "NEGATIVO" ||
+                m.tipo_movimiento?.includes("OUT") ||
+                m.tipo_movimiento?.includes("NEGATIVO");
+
+              const cantidad = m.cantidad ?? m.creditos ?? 0;
 
               return (
                 <div
@@ -162,20 +167,14 @@ export default function Wallet() {
                   <div className="text-right">
                     <p
                       className={`font-semibold ${
-                        (m.cantidad ?? 0) >= 0
-                          ? "text-emerald-300"
-                          : "text-red-300"
+                        esNegativo ? "text-red-300" : "text-emerald-300"
                       }`}
                     >
-                      {(m.cantidad ?? 0) >= 0 ? "+" : ""}
-                      {m.cantidad ?? m.creditos ?? 0} cr.
+                      {esNegativo ? "-" : "+"} {cantidad} cr.
                     </p>
                     <p className="text-[11px] text-emerald-100/60 mt-1">
                       Saldo:{" "}
-                      {m.saldo_posterior ??
-                        m.saldo ??
-                        "-"}{" "}
-                      cr.
+                      {m.saldo_posterior ?? m.saldo ?? "-"} cr.
                     </p>
                   </div>
                 </div>

@@ -29,7 +29,7 @@ export default function Logros() {
     }
   }
 
-  // Estadísticas simples
+  // Estadísticas simples (total y último logro obtenido)
   const stats = useMemo(() => {
     if (!logros.length) return { total: 0, ult: null };
 
@@ -99,7 +99,8 @@ export default function Logros() {
         </div>
       ) : logros.length === 0 ? (
         <div className="text-center text-emerald-100/80 mt-10">
-          Aún no has desbloqueado ningún logro.  
+          Aún no has desbloqueado ningún logro.{" "}
+          <br />
           Participa en actividades, realiza intercambios y usa la plataforma
           para comenzar a ganar insignias.
         </div>
@@ -150,11 +151,13 @@ export default function Logros() {
                 null;
               const meta = logro.meta_requerida ?? null;
               const porcentaje =
-                progreso && meta ? Math.min(100, (progreso / meta) * 100) : null;
+                progreso && meta
+                  ? Math.min(100, (progreso / meta) * 100)
+                  : null;
 
               return (
                 <article
-                  key={logro.id_logro || idx}
+                  key={logro.id_usuario_logro || logro.id_logro || idx}
                   className="bg-[#0f3f2d] border border-emerald-700 rounded-2xl p-4 shadow-md flex flex-col"
                 >
                   {/* Icono / encabezado */}
@@ -199,7 +202,7 @@ export default function Logros() {
                     {typeof logro.creditos_recompensa === "number" && (
                       <p>
                         Créditos recompensa:{" "}
-                        <span className="font-semibold text-emerald-300">
+                          <span className="font-semibold text-emerald-300">
                           {logro.creditos_recompensa} cr.
                         </span>
                       </p>

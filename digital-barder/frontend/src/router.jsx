@@ -31,7 +31,7 @@ import Intercambios from "./pages/Intercambios.jsx";
 // Actividades
 import Actividades from "./pages/Actividades.jsx";
 import MisActividades from "./pages/MisActividades.jsx";
-import ActividadesAdmin from "./pages/ActividadesAdmin.jsx"; // 👈 IMPORT NUEVO
+import ActividadesAdmin from "./pages/ActividadesAdmin.jsx";
 
 // Premium / otros módulos
 import Premium from "./pages/Premium.jsx";
@@ -250,9 +250,31 @@ export default function AppRouter() {
         }
       />
 
-      {/* 👇 NUEVA RUTA: PANEL ADMIN DE ACTIVIDADES */}
       <Route
         path="/actividades/admin"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ActividadesAdmin />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* 🔁 ALIAS PARA EVITAR 404 EN RUTAS ANTIGUAS */}
+      <Route
+        path="/mis-actividades"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <MisActividades />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/actividades-pendientes"
         element={
           <ProtectedRoute>
             <Layout>

@@ -1,200 +1,206 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../services/api";
 import hoja from "../assets/hoja.png";
 
-export default function EditarPerfil() {
-  const [usuario, setUsuario] = useState(null);
+const PLACEHOLDER_FOTO =
+  "https://via.placeholder.com/120?text=Foto";
 
+export default function PerfilEditar() {
   const [nombre, setNombre] = useState("");
-  const [correo, setCorreo] = useState("");
+  const [apellido, setApellido] = useState("");
   const [telefono, setTelefono] = useState("");
-  const [password, setPassword] = useState("");
+  const [foto, setFoto] = useState("");      // url_perfil actual
+  const [preview, setPreview] = useState(""); // para mostrar mientras editas
 
-  const [fotoPreview, setFotoPreview] = useState(null);
-  const [fotoArchivo, setFotoArchivo] = useState(null);
+  const [error, setError] = useState("");
+  const [okMsg, setOkMsg] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
-    cargarDatos();
+    cargarPerfil();
   }, []);
 
-  async function cargarDatos() {
+  async function cargarPerfil() {
     try {
-      const data = await api("/auth/me");  // ✅ ESTA ES LA RUTA CORRECTA
-      setUsuario(data);
-
-      setNombre(data.nombre || "");
-      setCorreo(data.correo || "");
-      setTelefono(data.telefono || "");
-      setFotoPreview(data.foto || null);
-
-    } catch (error) {
-      console.error("Error al cargar perfil:", error);
+      setError("");
+      const u = await api("/auth/me");
+      setNombre(u.nombre || "");
+      setApellido(u.apellido || "");
+      setTelefono(u.telefono || "");
+      setFoto(u.url_perfil || "");
+      setPreview(u.url_perfil || "");
+    } catch (err) {
+      console.error("Error cargando perfil:", err);
+      setError("No se pudo cargar el perfil.");
     }
   }
 
-  async function guardarCambios(e) {
+  function handleFileChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      // aquí podrías subir a Cloudinary; por ahora usamos la dataURL solo como vista previa
+      setPreview(reader.result.toString());
+      // Si tu flujo real es URL remota, aquí deberías llamar a un upload
+      // y luego setFoto(urlFinalSubida).
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function handleSubmit(e) {
     e.preventDefault();
-
     try {
-      let fotoURL = fotoPreview;
+      setLoading(true);
+      setError("");
+      setOkMsg("");
 
-      // Si se eligió una nueva foto, subirla
-      if (fotoArchivo) {
-        const formData = new FormData();
-        formData.append("archivo", fotoArchivo);
+      const payload = {
+        nombre,
+        apellido,
+        telefono,
+        // si ya tienes una URL real de la foto, guárdala aquí
+        url_perfil: foto || "", 
+      };
 
-        const uploadRes = await api("/uploads", {
-          method: "POST",
-          body: formData,
-        });
-
-        fotoURL = uploadRes.url;
-      }
-
-      // Actualizar datos del usuario
+      // 👇 IMPORTANTE: body es un OBJETO, no JSON.stringify
       await api("/auth/me", {
         method: "PUT",
-        body: {
-          nombre,
-          correo,
-          telefono,
-          foto: fotoURL,
-          password: password || undefined, // si está vacío no lo envía
-        },
+        body: payload,
       });
 
-      alert("Perfil actualizado correctamente");
-      window.location.href = "/perfil";
-
-    } catch (error) {
-      console.error("Error guardando perfil:", error);
-      alert("Hubo un error al actualizar el perfil");
+      setOkMsg("Perfil actualizado correctamente.");
+      // recargar datos del perfil principal después de guardar
+      setTimeout(() => navigate("/perfil"), 800);
+    } catch (err) {
+      console.error("Error actualizando perfil:", err);
+      setError(err.message || "No se pudo actualizar el perfil.");
+    } finally {
+      setLoading(false);
     }
   }
 
-  if (!usuario) {
-    return (
-      <div className="min-h-screen bg-[#082b1f] text-white flex items-center justify-center">
-        Cargando perfil...
-      </div>
-    );
-  }
+  const fotoMostrar = preview || foto || PLACEHOLDER_FOTO;
 
   return (
     <div className="min-h-screen bg-[#082b1f] text-white p-6 md:p-10">
-
-      {/* HEADER */}
-      <div className="flex items-center gap-3 mb-10">
-        <img src={hoja} alt="logo" className="w-12 h-12 drop-shadow-lg" />
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-8">
+        <img src={hoja} className="w-10 h-10 drop-shadow-lg" alt="logo" />
         <h1 className="text-3xl font-bold text-emerald-400">
           Editar Perfil
         </h1>
       </div>
 
-      {/* FORMULARIO */}
-      <form
-        onSubmit={guardarCambios}
-        className="bg-[#0e4330] p-8 rounded-xl border border-emerald-500 shadow-xl max-w-2xl mx-auto"
-      >
+      {/* Mensajes */}
+      {error && (
+        <div className="mb-4 rounded-md border border-red-400 bg-red-900/40 px-4 py-2 text-sm text-red-100">
+          {error}
+        </div>
+      )}
+      {okMsg && (
+        <div className="mb-4 rounded-md border border-emerald-400 bg-emerald-900/40 px-4 py-2 text-sm text-emerald-100">
+          {okMsg}
+        </div>
+      )}
 
-        {/* FOTO */}
-        <div className="flex flex-col items-center mb-8">
-          <img
-            src={fotoPreview || "https://via.placeholder.com/120"}
-            className="w-32 h-32 rounded-full object-cover border-4 border-emerald-500 shadow-lg"
-          />
-
-          <label
-            className="mt-4 cursor-pointer bg-emerald-500 hover:bg-emerald-600 px-4 py-2 rounded-lg font-semibold transition"
-          >
-            Cambiar foto
-            <input
-              type="file"
-              className="hidden"
-              accept="image/*"
-              onChange={(e) => {
-                setFotoArchivo(e.target.files[0]);
-                setFotoPreview(URL.createObjectURL(e.target.files[0]));
-              }}
+      <div className="bg-[#0e4330] border border-emerald-500 rounded-xl p-6 md:p-8 shadow-xl">
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col md:flex-row gap-8"
+        >
+          {/* Columna foto */}
+          <div className="flex flex-col items-center gap-4">
+            <img
+              src={fotoMostrar}
+              alt="Foto de perfil"
+              className="w-32 h-32 rounded-full object-cover border-4 border-emerald-500 shadow-lg"
             />
-          </label>
-        </div>
+            <label className="cursor-pointer bg-emerald-500 hover:bg-emerald-600 text-emerald-950 px-4 py-2 rounded-lg text-sm font-semibold">
+              Cambiar foto
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+            </label>
+          </div>
 
-        {/* NOMBRE */}
-        <div className="mb-5">
-          <label className="text-emerald-300 font-semibold">Nombre</label>
-          <input
-            type="text"
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-            className="w-full mt-1 bg-[#0f3f2d] text-white px-4 py-2 rounded-lg 
-                       border border-emerald-500 outline-none focus:ring-2 
-                       focus:ring-emerald-400"
-          />
-        </div>
+          {/* Columna campos */}
+          <div className="flex-1 space-y-4">
+            <div>
+              <label className="block text-sm mb-1 text-emerald-200">
+                Nombre
+              </label>
+              <input
+                className="w-full rounded-lg bg-[#062117] border border-emerald-600 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-400"
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+              />
+            </div>
 
-        {/* CORREO */}
-        <div className="mb-5">
-          <label className="text-emerald-300 font-semibold">Correo</label>
-          <input
-            type="email"
-            value={correo}
-            onChange={(e) => setCorreo(e.target.value)}
-            className="w-full mt-1 bg-[#0f3f2d] text-white px-4 py-2 rounded-lg 
-                       border border-emerald-500 outline-none focus:ring-2 
-                       focus:ring-emerald-400"
-          />
-        </div>
+            <div>
+              <label className="block text-sm mb-1 text-emerald-200">
+                Apellido
+              </label>
+              <input
+                className="w-full rounded-lg bg-[#062117] border border-emerald-600 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-400"
+                value={apellido}
+                onChange={(e) => setApellido(e.target.value)}
+              />
+            </div>
 
-        {/* TELEFONO */}
-        <div className="mb-5">
-          <label className="text-emerald-300 font-semibold">Teléfono</label>
-          <input
-            type="text"
-            value={telefono}
-            onChange={(e) => setTelefono(e.target.value)}
-            className="w-full mt-1 bg-[#0f3f2d] text-white px-4 py-2 rounded-lg 
-                       border border-emerald-500 outline-none focus:ring-2 
-                       focus:ring-emerald-400"
-          />
-        </div>
+            <div>
+              <label className="block text-sm mb-1 text-emerald-200">
+                Teléfono
+              </label>
+              <input
+                className="w-full rounded-lg bg-[#062117] border border-emerald-600 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-400"
+                value={telefono}
+                onChange={(e) => setTelefono(e.target.value)}
+              />
+            </div>
 
-        {/* PASSWORD (opcional) */}
-        <div className="mb-5">
-          <label className="text-emerald-300 font-semibold">
-            Nueva contraseña (opcional)
-          </label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Dejar vacío si no deseas cambiarla"
-            className="w-full mt-1 bg-[#0f3f2d] text-white px-4 py-2 rounded-lg 
-                       border border-emerald-500 outline-none focus:ring-2 
-                       focus:ring-emerald-400"
-          />
-        </div>
+            {/* Si quieres editar directamente la URL de la foto */}
+            <div>
+              <label className="block text-sm mb-1 text-emerald-200">
+                URL de foto de perfil (opcional)
+              </label>
+              <input
+                className="w-full rounded-lg bg-[#062117] border border-emerald-600 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-400"
+                value={foto}
+                onChange={(e) => {
+                  setFoto(e.target.value);
+                  setPreview(e.target.value);
+                }}
+                placeholder="https://tuservidor.com/imagen.jpg"
+              />
+            </div>
 
-        {/* BOTONES */}
-        <div className="flex justify-between mt-8">
-          <a
-            href="/perfil"
-            className="px-5 py-2 rounded-lg bg-gray-600 hover:bg-gray-700 
-                       transition font-semibold"
-          >
-            Cancelar
-          </a>
-
-          <button
-            type="submit"
-            className="px-6 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 
-                       transition font-semibold"
-          >
-            Guardar Cambios
-          </button>
-        </div>
-
-      </form>
+            <div className="flex gap-3 pt-4">
+              <button
+                type="button"
+                onClick={() => navigate("/perfil")}
+                className="px-4 py-2 rounded-lg border border-emerald-500 text-sm hover:bg-[#063024]"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-emerald-950 font-semibold text-sm disabled:opacity-50"
+              >
+                {loading ? "Guardando..." : "Guardar cambios"}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

@@ -3,10 +3,12 @@ import hoja from "../assets/hoja.png";
 import { api } from "../services/api";
 import { useNavigate } from "react-router-dom";
 
+const PLACEHOLDER_FOTO =
+  "https://via.placeholder.com/120?text=Foto";
+
 export default function Perfil() {
   const [usuario, setUsuario] = useState(null);
   const [creditos, setCreditos] = useState(null);
-
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -34,16 +36,21 @@ export default function Perfil() {
   if (!usuario) {
     return (
       <div className="min-h-screen bg-[#082b1f] flex items-center justify-center text-white">
-        <p>Cargando perfil.</p>
+        <p>Cargando perfil…</p>
       </div>
     );
   }
+
+  // URL de foto: usamos url_perfil del backend
+  const fotoUrl = usuario.url_perfil && usuario.url_perfil.trim() !== ""
+    ? usuario.url_perfil
+    : PLACEHOLDER_FOTO;
 
   return (
     <div className="min-h-screen bg-[#082b1f] text-white p-6 md:p-10">
       {/* Header */}
       <div className="flex items-center gap-3 mb-8">
-        <img src={hoja} className="w-12 h-12 drop-shadow-lg" />
+        <img src={hoja} className="w-12 h-12 drop-shadow-lg" alt="logo" />
         <h1 className="text-3xl font-bold text-emerald-400">Mi Perfil</h1>
       </div>
 
@@ -53,7 +60,8 @@ export default function Perfil() {
           {/* Foto */}
           <div>
             <img
-              src={usuario.foto || "https://via.placeholder.com/120"}
+              src={fotoUrl}
+              alt="Foto de perfil"
               className="w-28 h-28 rounded-full object-cover border-4 border-emerald-500 shadow-lg"
             />
           </div>
@@ -68,12 +76,8 @@ export default function Perfil() {
 
             <p className="mt-2 text-sm">
               Estado:{" "}
-              <span
-                className={`font-bold ${
-                  usuario.es_premium ? "text-yellow-300" : "text-emerald-300"
-                }`}
-              >
-                {usuario.es_premium ? "Premium" : "Cuenta Normal"}
+              <span className="font-bold text-emerald-300">
+                Cuenta Normal
               </span>
             </p>
 

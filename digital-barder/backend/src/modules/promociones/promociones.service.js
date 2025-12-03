@@ -1,10 +1,8 @@
+// backend/src/modules/promociones/promociones.service.js
 import { prisma } from "../../config/prisma.js";
 
 /**
  * Listar promociones (panel admin).
- * Más adelante podrías agregar filtros:
- *   - por estado (?estado=ACTIVA)
- *   - por rango de fechas (?desde, ?hasta)
  */
 export const listarPromocionesService = () =>
   prisma.$queryRaw`
@@ -30,16 +28,11 @@ export async function crearPromocionService(body) {
     creditos_otorgados,
     fecha_inicio,
     fecha_fin,
-    estado = "PROGRAMADA", // 👉 mejor default coherente con la BD
+    estado = "PROGRAMADA", // default coherente con la BD
   } = body;
 
-  if (
-    !id_tipo_promocion ||
-    !nombre ||
-    !creditos_otorgados ||
-    !fecha_inicio ||
-    !fecha_fin
-  ) {
+  // creditos_otorgados ahora es OPCIONAL
+  if (!id_tipo_promocion || !nombre || !fecha_inicio || !fecha_fin) {
     const err = new Error("Faltan datos obligatorios de promoción");
     err.status = 400;
     throw err;
@@ -66,6 +59,12 @@ export async function crearPromocionService(body) {
     throw err;
   }
 
+  // Si no vienen créditos, se asume 0
+  const creditosValue =
+    creditos_otorgados == null || creditos_otorgados === ""
+      ? 0
+      : Number(creditos_otorgados);
+
   await prisma.$queryRaw`
     INSERT INTO PROMOCION (
       id_tipo_promocion,
@@ -80,7 +79,7 @@ export async function crearPromocionService(body) {
       ${id_tipo_promocion},
       ${nombre},
       ${descripcion || null},
-      ${creditos_otorgados},
+      ${creditosValue},
       ${fecha_inicio},
       ${fecha_fin},
       ${estado}

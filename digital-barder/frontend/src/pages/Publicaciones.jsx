@@ -4,8 +4,8 @@ import { api, crearIntercambio } from "../services/api";
 import hoja from "../assets/hoja.png";
 
 // Base de la API (ej: http://localhost:4000/api)
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+
 // Base de archivos (sin /api, ej: http://localhost:4000)
 const FILE_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, "");
 
@@ -34,7 +34,6 @@ export default function Publicaciones() {
     }
   }
 
-  // Lista de categorías únicas
   const categorias = [
     "TODAS",
     ...Array.from(
@@ -49,27 +48,22 @@ export default function Publicaciones() {
   // Filtros (solo PUBLICADAS en el marketplace)
   const filtradas = publicaciones.filter((p) => {
     const estado = (p.estado || "").toUpperCase();
-
-    // Solo mostrar publicaciones PUBLICADA
     if (estado !== "PUBLICADA") return false;
 
     const texto = filtroTexto.trim().toLowerCase();
-    const coincideTexto =
-      !texto ||
+    const coincideTexto = !texto ||
       (p.titulo || "").toLowerCase().includes(texto) ||
       (p.descripcion || "").toLowerCase().includes(texto);
 
     const categoriaPub = p.categoria || "OTROS";
-    const coincideCategoria =
-      filtroCategoria === "TODAS" || filtroCategoria === categoriaPub;
+    const coincideCategoria = filtroCategoria === "TODAS" ||
+      filtroCategoria === categoriaPub;
 
     return coincideTexto && coincideCategoria;
   });
 
-  // 👉 Intercambiar publicación
   async function handleIntercambiar(pub) {
     const creditos = Number(pub.valor_creditos || 0);
-
     if (!pub.id_publicacion || !creditos) {
       alert("No se pudo determinar la publicación o sus créditos.");
       return;
@@ -85,9 +79,7 @@ export default function Publicaciones() {
         id_publicacion: pub.id_publicacion,
         creditos,
       });
-
       alert("Intercambio realizado correctamente ✅");
-      // Recargar: la publicación pasa a AGOTADA en BD y ya no pasa el filtro
       await cargarPublicaciones();
     } catch (err) {
       console.error(err);
@@ -100,61 +92,77 @@ export default function Publicaciones() {
 
   return (
     <div className="min-h-screen bg-[#082b1f] text-white p-6 md:p-10">
-      {/* HEADER */}
-      <div className="flex items-center justify-between gap-3 mb-8">
-        <div className="flex items-center gap-3">
-          <img src={hoja} alt="logo" className="w-10 h-10 drop-shadow-lg" />
-          <h1 className="text-3xl font-bold text-emerald-400">
-            Marketplace
-          </h1>
-        </div>
-
-        <div className="flex gap-2">
-          <a
-            href="/publicaciones/nueva"
-            className="bg-emerald-500 hover:bg-emerald-600 px-4 py-2 rounded-lg font-semibold"
-          >
-            Crear publicación
-          </a>
-          <a
-            href="/publicaciones/mias"
-            className="bg-emerald-500 hover:bg-emerald-600 px-4 py-2 rounded-lg font-semibold"
-          >
-            Mis publicaciones
-          </a>
+      {/* HEADER + FILTROS SUPERIORES */}
+      <div className="flex flex-col gap-4 mb-8">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <img src={hoja} alt="logo" className="w-10 h-10 drop-shadow-lg" />
+            <h1 className="text-3xl font-bold text-emerald-400">Marketplace</h1>
+          </div>
+          <div className="w-full md:flex-1">
+            <div className="flex flex-col md:flex-row md:items-end gap-4">
+              {/* Buscador */}
+              <div className="flex-1">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={filtroTexto}
+                    onChange={(e) => setFiltroTexto(e.target.value)}
+                    placeholder="Buscar..."
+                    className="w-full md:max-w-md bg-[#0e4330] border border-emerald-600 rounded-lg px-3 py-2 pl-3 outline-none focus:ring-2 focus:ring-emerald-400"
+                  />
+                </div>
+              </div>
+              {/* Categoría */}
+              <div className="w-full md:w-64">
+                <div className="relative">
+                  <select
+                    value={filtroCategoria}
+                    onChange={(e) => setFiltroCategoria(e.target.value)}
+                    className="appearance-none w-full bg-[#038547] border border-[#026636] rounded-lg px-3 py-2 pr-12 text-sm text-white outline-none focus:ring-2 focus:ring-emerald-400"
+                  >
+                    {categorias.map((c) => (
+                      <option key={c} value={c}>
+                        {c === "TODAS" ? "Todas las categorías" : c}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none">
+                    <svg
+                      className="h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* FILTROS */}
-      <div className="bg-[#0f3f2d] border border-emerald-600 rounded-xl p-4 mb-6 flex flex-col md:flex-row gap-4 md:items-center">
-        <div className="flex-1">
-          <label className="block text-sm text-emerald-200 mb-1">
-            Buscar
-          </label>
-          <input
-            type="text"
-            value={filtroTexto}
-            onChange={(e) => setFiltroTexto(e.target.value)}
-            placeholder="Título o descripción..."
-            className="w-full bg-[#0e4330] border border-emerald-600 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-400"
-          />
-        </div>
-
-        <div className="w-full md:w-64">
-          <label className="block text-sm text-emerald-200 mb-1">
-            Categoría
-          </label>
-          <select
-            value={filtroCategoria}
-            onChange={(e) => setFiltroCategoria(e.target.value)}
-            className="w-full bg-[#0e4330] border border-emerald-600 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-400"
+      {/* BOTONES SUPERIORES */}
+      <div className="rounded-xl p-4 mb-6">
+        <div className="flex flex-wrap gap-3">
+          <a
+            href="/publicaciones/nueva"
+            className="flex items-center gap-2 bg-[#038547] hover:bg-[#026636] px-4 py-2 rounded-lg font-semibold text-sm shadow-md transition-all"
           >
-            {categorias.map((c) => (
-              <option key={c} value={c}>
-                {c === "TODAS" ? "Todas las categorías" : c}
-              </option>
-            ))}
-          </select>
+            <span className="text-lg">＋</span>
+            <span>Crear Publicación</span>
+          </a>
+          <a
+            href="/publicaciones/mias"
+            className="flex items-center gap-2 bg-[#038547] hover:bg-[#026636] px-4 py-2 rounded-lg font-semibold text-sm shadow-md transition-all"
+          >
+            <span className="text-lg">📁</span>
+            <span>Mis Publicaciones</span>
+          </a>
         </div>
       </div>
 
@@ -173,7 +181,7 @@ export default function Publicaciones() {
           No se encontraron publicaciones disponibles con los filtros actuales.
         </div>
       ) : (
-        <div className="grid gap-5 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-3">
           {filtradas.map((p) => {
             const estado = (p.estado || "").toUpperCase();
             const esActiva = estado === "PUBLICADA";
@@ -181,85 +189,103 @@ export default function Publicaciones() {
             // Construir URL completa del archivo
             let archivoUrl = null;
             if (p.imagen_url) {
-              const path = p.imagen_url.startsWith("/")
-                ? p.imagen_url
-                : "/" + p.imagen_url;
+              const path = p.imagen_url.startsWith("/") ? p.imagen_url : "/" + p.imagen_url;
               archivoUrl = p.imagen_url.startsWith("http")
                 ? p.imagen_url
                 : FILE_BASE_URL + path;
             }
 
-            const esImagenVisible =
-              archivoUrl &&
-              /\.(png|jpe?g|gif|webp|bmp)$/i.test(archivoUrl || "");
+            const esImagenVisible = archivoUrl && /\.(png|jpe?g|gif|webp|bmp)$/i.test(archivoUrl || "");
+            const esVideoVisible = archivoUrl && /\.(mp4|webm|ogg|mov|avi|m4v)$/i.test(archivoUrl || "");
 
             return (
               <article
                 key={p.id_publicacion}
-                className="bg-[#0f3f2d] border border-emerald-700 rounded-xl p-4 shadow-md flex flex-col"
+                className="bg-[#E9FFD9] text-[#013726] rounded-3xl shadow-lg overflow-hidden flex flex-col min-h-[360px]"
               >
-                {/* Vista de archivo / imagen */}
-                {esImagenVisible && (
-                  <img
-                    src={archivoUrl}
-                    alt={p.titulo}
-                    className="w-full h-40 object-cover rounded-lg mb-3"
-                  />
-                )}
-
-                {!esImagenVisible && archivoUrl && (
-                  <a
-                    href={archivoUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mb-3 inline-flex items-center gap-2 text-xs text-emerald-200 underline"
-                  >
-                    Ver archivo adjunto
-                  </a>
-                )}
-
-                <h2 className="text-lg font-semibold text-emerald-200">
-                  {p.titulo}
-                </h2>
-
-                <p className="text-xs text-emerald-300/80 mt-1">
-                  {p.categoria || "Sin categoría"} · {p.usuario}
-                </p>
-
-                <p className="mt-2 text-sm text-emerald-100/90 line-clamp-3">
-                  {p.descripcion || "Sin descripción"}
-                </p>
-
-                <div className="mt-3 flex items-center justify-between text-sm">
-                  <span className="font-semibold text-emerald-300">
-                    {p.valor_creditos} cr.
-                  </span>
-                  <span className="text-xs px-2 py-1 rounded-full border border-emerald-400 text-emerald-300">
-                    {estado}
-                  </span>
+                {/* MEDIA (imagen o video) */}
+                <div className="w-full h-40 bg-[#E9FFD9] border-b border-[#c5f0b8] overflow-hidden flex items-center justify-center">
+                  {esImagenVisible && (
+                    <img
+                      src={archivoUrl}
+                      alt={p.titulo}
+                      className="w-full h-full object-cover hover:scale-105 transition-all"
+                    />
+                  )}
+                  {!esImagenVisible && esVideoVisible && (
+                    <video
+                      src={archivoUrl}
+                      className="w-full h-full object-cover"
+                      controls
+                      muted
+                    />
+                  )}
+                  {!esImagenVisible && !esVideoVisible && archivoUrl && (
+                    <a
+                      href={archivoUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-[#0056D6] underline font-semibold"
+                    >
+                      Ver archivo adjunto
+                    </a>
+                  )}
                 </div>
 
-                <button
-                  type="button"
-                  className="mt-4 w-full rounded-lg bg-emerald-500/20 border border-emerald-500 py-2 text-sm font-semibold text-emerald-200"
-                  onClick={() =>
-                    alert(
-                      "Aquí más adelante podemos abrir el detalle o flujo de intercambio."
-                    )
-                  }
-                >
-                  Ver detalle
-                </button>
+                {/* CONTENIDO */}
+                <div className="px-4 pt-3 pb-4 flex flex-col flex-1">
+                  <div className="flex items-center justify-between text-[0.7rem] mb-1">
+                    <span className="inline-flex px-2 py-1 rounded-full bg-[#B6E4A3] font-semibold">
+                      {p.categoria || "Categoría"}
+                    </span>
+                    <span className="text-xs">{estado || "PUBLICADA"}</span>
+                  </div>
 
-                <button
-                  onClick={() => esActiva && handleIntercambiar(p)}
-                  disabled={!esActiva}
-                  className={`mt-3 w-full bg-emerald-500 hover:bg-emerald-600 text-emerald-950 font-semibold py-2 rounded-xl ${
-                    !esActiva ? "opacity-60 cursor-not-allowed" : ""
-                  }`}
-                >
-                  Intercambiar
-                </button>
+                  <h2 className="mt-1 text-sm md:text-base font-semibold">
+                    {p.titulo}
+                  </h2>
+
+                  <div className="mt-2 space-y-1 text-[0.7rem] md:text-xs">
+                    {p.usuario && (
+                      <p className="flex items-center gap-1">
+                        <span>👤</span>
+                        {p.usuario}
+                      </p>
+                    )}
+                    {p.ubicacion && (
+                      <p className="flex items-center gap-1">
+                        <span>📍</span>
+                        {p.ubicacion}
+                      </p>
+                    )}
+                    <p className="flex items-center gap-1 text-gray-700">
+                      <span>📦</span> {p.descripcion || "Sin descripción"}
+                    </p>
+                  </div>
+
+                  <div className="mt-auto pt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <p className="font-semibold text-lg">
+                          {p.valor_creditos}
+                        </p>
+                        <p className="text-[0.65rem] uppercase tracking-wide">
+                          Green Credits
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={() => esActiva && handleIntercambiar(p)}
+                      disabled={!esActiva}
+                      className={`w-full py-3 rounded-lg bg-[#0b7a35] hover:bg-[#0cb652] text-white font-semibold text-sm transition-all ${
+                        !esActiva ? "opacity-60 cursor-not-allowed" : ""
+                      }`}
+                    >
+                      Intercambiar
+                    </button>
+                  </div>
+                </div>
               </article>
             );
           })}

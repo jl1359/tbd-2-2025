@@ -169,7 +169,6 @@ export default function AppRouter() {
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/wallet/historial-compras"
         element={
@@ -192,7 +191,6 @@ export default function AppRouter() {
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/publicaciones/mias"
         element={
@@ -203,7 +201,6 @@ export default function AppRouter() {
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/publicaciones/nueva"
         element={
@@ -238,7 +235,6 @@ export default function AppRouter() {
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/actividades/mias"
         element={
@@ -249,7 +245,6 @@ export default function AppRouter() {
           </ProtectedRoute>
         }
       />
-
       {/* 👇 NUEVA RUTA: PANEL ADMIN DE ACTIVIDADES */}
       <Route
         path="/actividades/admin"
@@ -273,7 +268,6 @@ export default function AppRouter() {
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/logros"
         element={
@@ -284,7 +278,6 @@ export default function AppRouter() {
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/promociones"
         element={
@@ -331,7 +324,6 @@ export default function AppRouter() {
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/reportes/ingresos-creditos"
         element={
@@ -342,7 +334,6 @@ export default function AppRouter() {
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/reportes/creditos-generados-consumidos"
         element={
@@ -353,7 +344,6 @@ export default function AppRouter() {
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/reportes/intercambios-categoria"
         element={
@@ -364,7 +354,6 @@ export default function AppRouter() {
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/reportes/publicaciones-intercambios"
         element={
@@ -375,7 +364,6 @@ export default function AppRouter() {
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/reportes/impacto-acumulado"
         element={
@@ -386,7 +374,6 @@ export default function AppRouter() {
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/reportes/ranking-usuarios"
         element={
@@ -397,7 +384,6 @@ export default function AppRouter() {
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/reportes/usuarios-premium"
         element={
@@ -408,7 +394,6 @@ export default function AppRouter() {
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/reportes/saldos-usuarios"
         element={
@@ -419,7 +404,6 @@ export default function AppRouter() {
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/reportes/actividades-sostenibles"
         element={
@@ -430,7 +414,6 @@ export default function AppRouter() {
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/reportes/impacto-categoria"
         element={

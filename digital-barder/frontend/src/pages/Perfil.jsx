@@ -39,6 +39,10 @@ export default function Perfil() {
     );
   }
 
+  // intento de teléfono genérico
+  const telefonoUsuario =
+    usuario.telefono || usuario.celular || usuario.telefono_celular || "";
+
   return (
     <div className="min-h-screen bg-[#082b1f] text-white p-6 md:p-10">
       {/* Header */}
@@ -64,6 +68,7 @@ export default function Perfil() {
               {usuario.nombre}
             </h2>
 
+            {/* correo principal (texto simple como ya lo tenías) */}
             <p className="opacity-90">{usuario.correo}</p>
 
             <p className="mt-2 text-sm">
@@ -76,6 +81,27 @@ export default function Perfil() {
                 {usuario.es_premium ? "Premium" : "Cuenta Normal"}
               </span>
             </p>
+
+            {/* Bloque visual de contacto: correo + teléfono */}
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 max-w-md">
+              <div className="bg-[#0b3325] rounded-lg px-4 py-3 border border-emerald-600/70">
+                <p className="text-[0.7rem] uppercase tracking-wide text-emerald-200/80 font-semibold">
+                  Correo electrónico
+                </p>
+                <p className="text-sm mt-1 break-all">
+                  {usuario.correo || "No registrado"}
+                </p>
+              </div>
+
+              <div className="bg-[#0b3325] rounded-lg px-4 py-3 border border-emerald-600/70">
+                <p className="text-[0.7rem] uppercase tracking-wide text-emerald-200/80 font-semibold">
+                  Teléfono
+                </p>
+                <p className="text-sm mt-1">
+                  {telefonoUsuario || "No registrado"}
+                </p>
+              </div>
+            </div>
 
             <button
               onClick={() => navigate("/perfil/editar")}

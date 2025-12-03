@@ -53,7 +53,7 @@ export default function Wallet() {
   if (cargando) {
     return (
       <div className="min-h-screen bg-[#082b1f] text-white flex items-center justify-center">
-        Cargando billeterat.
+        Cargando billetera.
       </div>
     );
   }
@@ -81,11 +81,7 @@ export default function Wallet() {
           <p className="text-4xl font-bold text-emerald-300">{saldo}</p>
         </div>
 
-        {/* Créditos bloqueados */}
-        <div className="rounded-2xl border border-emerald-700 bg-[#0f3f2d] p-6 shadow-lg">
-          <p className="text-emerald-200 text-sm mb-2">Créditos bloqueados</p>
-          <p className="text-4xl font-bold text-yellow-300">{bloqueado}</p>
-        </div>
+        
 
         {/* Acciones rápidas */}
         <div className="rounded-2xl border border-emerald-700 bg-[#0f3f2d] p-6 shadow-lg flex flex-col justify-between">

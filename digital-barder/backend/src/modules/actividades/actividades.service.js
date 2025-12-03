@@ -105,3 +105,35 @@ export async function listarActividadesAdminService({
 
   return prisma.$queryRawUnsafe(sql, ...params);
 }
+export async function aprobarActividadService({ idActividad, idAdmin }) {
+  // Llamar al SP que APRUEBA la actividad y otorga créditos
+  await prisma.$executeRawUnsafe(
+    "CALL sp_aprobar_actividad_sostenible(?, ?)",
+    idActividad,
+    idAdmin
+  );
+
+  // Devolver la actividad actualizada
+  const [act] = await prisma.$queryRaw`
+    SELECT *
+    FROM ACTIVIDAD_SOSTENIBLE
+    WHERE id_actividad = ${idActividad}
+  `;
+  return act;
+}
+
+export async function rechazarActividadService({ idActividad, idAdmin }) {
+  // Llamar al SP que marca la actividad como RECHAZADA
+  await prisma.$executeRawUnsafe(
+    "CALL sp_rechazar_actividad_sostenible(?, ?)",
+    idActividad,
+    idAdmin
+  );
+
+  const [act] = await prisma.$queryRaw`
+    SELECT *
+    FROM ACTIVIDAD_SOSTENIBLE
+    WHERE id_actividad = ${idActividad}
+  `;
+  return act;
+}

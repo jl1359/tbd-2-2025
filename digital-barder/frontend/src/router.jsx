@@ -31,6 +31,7 @@ import Intercambios from "./pages/Intercambios.jsx";
 // Actividades
 import Actividades from "./pages/Actividades.jsx";
 import MisActividades from "./pages/MisActividades.jsx";
+import ActividadesAdmin from "./pages/ActividadesAdmin.jsx"; // 👈 IMPORT NUEVO
 
 // Premium / otros módulos
 import Premium from "./pages/Premium.jsx";
@@ -158,7 +159,6 @@ export default function AppRouter() {
       />
 
       {/* HISTORIAL COMPRAS WALLET */}
-      // Historial de compras (ruta “corta”)
       <Route
         path="/wallet/compras"
         element={
@@ -170,7 +170,6 @@ export default function AppRouter() {
         }
       />
 
-      // Alias: /wallet/historial-compras
       <Route
         path="/wallet/historial-compras"
         element={
@@ -246,6 +245,18 @@ export default function AppRouter() {
           <ProtectedRoute>
             <Layout>
               <MisActividades />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* 👇 NUEVA RUTA: PANEL ADMIN DE ACTIVIDADES */}
+      <Route
+        path="/actividades/admin"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ActividadesAdmin />
             </Layout>
           </ProtectedRoute>
         }

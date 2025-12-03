@@ -5,6 +5,21 @@ import { registrarActividadSostenible } from "../services/api";
 import { ArrowLeft, Leaf, CheckCircle2 } from "lucide-react";
 import hoja from "../assets/hoja.png";
 
+// Lista fija basada en la tabla TIPO_ACTIVIDAD de la BD
+const TIPOS_ACTIVIDAD = [
+  { id: 1, nombre: "RECICLAJE" },
+  { id: 2, nombre: "Reciclaje de Plástico" },
+  { id: 3, nombre: "Reciclaje de Papel" },
+  { id: 4, nombre: "Reciclaje de Electrónicos" },
+  { id: 5, nombre: "Limpieza de Parques" },
+  { id: 6, nombre: "Limpieza de Calles" },
+  { id: 7, nombre: "Reforestación" },
+  { id: 8, nombre: "Educación Ambiental" },
+  { id: 9, nombre: "Compostaje" },
+  { id: 10, nombre: "Transporte Sostenible" },
+  { id: 11, nombre: "Reciclaje de Vidrio" },
+];
+
 export default function Actividades() {
   const navigate = useNavigate();
 
@@ -32,7 +47,7 @@ export default function Actividades() {
       !descripcion.trim()
     ) {
       setError(
-        "id_tipo_actividad, descripción y créditos otorgados son obligatorios y deben ser válidos."
+        "Tipo de actividad, descripción y créditos otorgados son obligatorios y deben ser válidos."
       );
       return;
     }
@@ -91,6 +106,16 @@ export default function Actividades() {
           >
             Mis actividades
           </button>
+
+          {/* 👇 NUEVO BOTÓN: ver pendientes (panel admin) */}
+          <button
+            type="button"
+            onClick={() => navigate("/actividades/admin")}
+            className="px-4 py-2 rounded-lg border border-amber-400 text-sm hover:bg-amber-400/10 font-semibold"
+          >
+            Actividades pendientes
+          </button>
+
           <img src={hoja} alt="logo" className="w-9 h-9 drop-shadow-md" />
         </div>
       </header>
@@ -103,8 +128,8 @@ export default function Actividades() {
         <p className="text-sm text-emerald-100/80">
           Aquí puedes registrar acciones ecológicas que realizaste (reciclaje,
           voluntariado, movilidad sostenible, etc.). El sistema las guardará en
-          tu historial y te otorgará créditos verdes según las reglas
-          definidas por el administrador.
+          tu historial y te otorgará créditos verdes según las reglas definidas
+          por el administrador.
         </p>
       </section>
 
@@ -127,20 +152,25 @@ export default function Actividades() {
         onSubmit={handleSubmit}
         className="max-w-3xl bg-[#0f3f2d] border border-emerald-700 rounded-2xl p-5 shadow-md space-y-4"
       >
-        {/* id_tipo_actividad */}
+        {/* id_tipo_actividad como SELECT */}
         <div>
           <label className="block text-xs mb-1">
-            ID tipo de actividad (id_tipo_actividad) *
+            Tipo de actividad (id_tipo_actividad) *
           </label>
-          <input
-            type="number"
+          <select
             value={idTipoActividad}
             onChange={(e) => setIdTipoActividad(e.target.value)}
             className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
-            placeholder="Ej. 1 (Reciclaje), 2 (Movilidad sostenible), etc."
-          />
+          >
+            <option value="">Selecciona un tipo de actividad</option>
+            {TIPOS_ACTIVIDAD.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.id} - {t.nombre}
+              </option>
+            ))}
+          </select>
           <p className="text-[11px] text-emerald-100/70 mt-1">
-            Usa los IDs definidos en la tabla TIPO_ACTIVIDAD_SOSTENIBLE.
+            La lista está basada en la tabla TIPO_ACTIVIDAD de la base de datos.
           </p>
         </div>
 

@@ -5,20 +5,19 @@ import {
   registrarActividadController,
   misActividadesController,
   listarActividadesAdminController,
+  aprobarActividadController,
+  rechazarActividadController,
 } from "./actividades.controller.js";
 
 const router = Router();
 
-// Todas las rutas requieren estar logueado
 router.use(authMiddleware);
 
-// Registrar actividad sostenible (usuario)
-router.post("/", registrarActividadController);
+router.post("/", registrarActividadController);            // POST /api/actividades-sostenibles
+router.get("/mias", misActividadesController);             // GET  /api/actividades-sostenibles/mias
+router.get("/admin", isAdmin, listarActividadesAdminController); // GET /api/actividades-sostenibles/admin
 
-// Ver MIS actividades
-router.get("/mias", misActividadesController);
-
-// Listado ADMIN de actividades con filtros
-router.get("/admin", isAdmin, listarActividadesAdminController);
+router.patch("/:id/aprobar", isAdmin, aprobarActividadController);   // PATCH /api/actividades-sostenibles/:id/aprobar
+router.patch("/:id/rechazar", isAdmin, rechazarActividadController); // PATCH /api/actividades-sostenibles/:id/rechazar
 
 export default router;

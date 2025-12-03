@@ -1,5 +1,7 @@
-// frontend/src/services/api.js
+// ================== CONFIGURACIÓN BASE ==================
+
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000/api";
+const API_BASE_URL = API_URL.replace(/\/api\/?$/, "");
 
 function authHeaders() {
   const token = localStorage.getItem("token");
@@ -42,9 +44,7 @@ export async function api(path, { method = "GET", body, headers = {} } = {}) {
     throw new Error(message);
   }
 
-  if (!text) {
-    return null;
-  }
+  if (!text) return null;
 
   try {
     return JSON.parse(text);
@@ -53,6 +53,8 @@ export async function api(path, { method = "GET", body, headers = {} } = {}) {
     return text;
   }
 }
+
+// ================== AUTENTICACIÓN ==================
 
 export async function login({ correo, password }) {
   const data = await api("/auth/login", {
@@ -79,14 +81,6 @@ export async function getHealth() {
   return api("/health");
 }
 
-function buildRangeQuery(desde, hasta) {
-  const params = new URLSearchParams();
-  if (desde) params.append("desde", desde);
-  if (hasta) params.append("hasta", hasta);
-  const qs = params.toString();
-  return qs ? `?${qs}` : "";
-}
-
 export async function register({ nombre, apellido, correo, password, telefono }) {
   return api("/auth/register", {
     method: "POST",
@@ -94,7 +88,17 @@ export async function register({ nombre, apellido, correo, password, telefono })
   });
 }
 
-//REPORTES
+// =====================================================
+// ======================= REPORTES =====================
+// =====================================================
+
+function buildRangeQuery(desde, hasta) {
+  const params = new URLSearchParams();
+  if (desde) params.append("desde", desde);
+  if (hasta) params.append("hasta", hasta);
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
+}
 
 // Usuarios activos
 export function getReporteUsuariosActivos({ desde, hasta } = {}) {
@@ -106,7 +110,7 @@ export function getReporteUsuariosAbandonados({ desde, hasta } = {}) {
   return api(`/reportes/usuarios-abandonados${buildRangeQuery(desde, hasta)}`);
 }
 
-// Ingresos por venta de créditos
+// Ingresos por créditos
 export function getReporteIngresosCreditos({ desde, hasta } = {}) {
   return api(`/reportes/ingresos-creditos${buildRangeQuery(desde, hasta)}`);
 }
@@ -132,7 +136,7 @@ export function getReportePublicacionesVsIntercambios({ desde, hasta } = {}) {
   );
 }
 
-// Impacto acumulado (REPORTE_IMPACTO)
+// Impacto acumulado
 export function getReporteImpactoAcumulado({ idTipoReporte, idPeriodo }) {
   const params = new URLSearchParams();
   if (idTipoReporte != null) params.append("idTipoReporte", idTipoReporte);
@@ -141,19 +145,12 @@ export function getReporteImpactoAcumulado({ idTipoReporte, idPeriodo }) {
   return api(`/reportes/impacto-acumulado?${qs}`);
 }
 
-//REPORTES 
-
-// Ranking de usuarios por impacto
+// Ranking de usuarios
 export function getReporteRankingUsuarios({ idPeriodo = null, limit = 10 } = {}) {
   const params = new URLSearchParams();
-  if (idPeriodo != null && idPeriodo !== "") {
-    params.append("idPeriodo", idPeriodo);
-  }
-  if (limit != null) {
-    params.append("limit", String(limit));
-  }
-  const qs = params.toString();
-  return api(`/reportes/ranking-usuarios?${qs}`);
+  if (idPeriodo != null && idPeriodo !== "") params.append("idPeriodo", idPeriodo);
+  params.append("limit", String(limit));
+  return api(`/reportes/ranking-usuarios?${params.toString()}`);
 }
 
 // Usuarios premium
@@ -161,75 +158,61 @@ export function getReporteUsuariosPremium({ desde, hasta } = {}) {
   return api(`/reportes/usuarios-premium${buildRangeQuery(desde, hasta)}`);
 }
 
-// Usuarios nuevos (primer login)
+// Usuarios nuevos
 export function getReporteUsuariosNuevos({ desde, hasta } = {}) {
   return api(`/reportes/usuarios-nuevos${buildRangeQuery(desde, hasta)}`);
 }
 
-// Saldos de créditos por usuario (top N)
+// Saldos de créditos
 export function getReporteSaldosUsuarios({ limit = 20 } = {}) {
   const params = new URLSearchParams();
   params.append("limit", String(limit));
-  const qs = params.toString();
-  return api(`/reportes/saldos-usuarios?${qs}`);
+  return api(`/reportes/saldos-usuarios?${params.toString()}`);
 }
 
-// Actividades sostenibles por usuario
+// Reporte Actividades Sostenibles
 export function getReporteActividadesSostenibles({ desde, hasta } = {}) {
-  return api(
-    `/reportes/actividades-sostenibles${buildRangeQuery(desde, hasta)}`
-  );
+  return api(`/reportes/actividades-sostenibles${buildRangeQuery(desde, hasta)}`);
 }
 
-// Impacto ambiental por categoría
+// Impacto por categoría
 export function getReporteImpactoPorCategoria({ idPeriodo }) {
   const params = new URLSearchParams();
   if (idPeriodo != null) params.append("idPeriodo", idPeriodo);
-  const qs = params.toString();
-  return api(`/reportes/impacto-categoria?${qs}`);
+  return api(`/reportes/impacto-categoria?${params.toString()}`);
 }
-// ================= WALLET / CRÉDITOS =================
 
-// Saldo de créditos del usuario logueado
-// GET /api/wallet/mis-creditos
+// =====================================================
+// ======================== WALLET ======================
+// =====================================================
+
 export function getMisCreditos() {
   return api("/wallet/mis-creditos");
 }
 
-// Movimientos de la billetera
-// GET /api/wallet/mis-movimientos
 export function getMisMovimientos() {
   return api("/wallet/mis-movimientos");
 }
 
-// Paquetes de créditos disponibles
-// GET /api/catalogos/paquetes-creditos  (ajusta si tu ruta es otra)
 export function getPaquetesCreditos() {
   return api("/catalogos/paquetes-creditos");
 }
 
-// Registrar compra de un paquete de créditos
-// POST /api/wallet/compra-creditos
 export function crearCompraCreditos({ idPaquete, idTransaccionPago = null }) {
   return api("/wallet/compra-creditos", {
     method: "POST",
-    body: {
-      idPaquete,
-      idTransaccionPago,
-    },
+    body: { idPaquete, idTransaccionPago },
   });
 }
 
-// Historial de compras de créditos
-// GET /api/wallet/compras
 export function getMisComprasCreditos() {
   return api("/wallet/compras");
 }
 
-// ================= INTERCAMBIOS =================
+// =====================================================
+// ===================== INTERCAMBIOS ===================
+// =====================================================
 
-// Crear un intercambio (comprar una publicación con créditos)
-// body: { id_publicacion, creditos }
 export function crearIntercambio({ id_publicacion, creditos }) {
   return api("/intercambios", {
     method: "POST",
@@ -237,30 +220,30 @@ export function crearIntercambio({ id_publicacion, creditos }) {
   });
 }
 
-// Listar mis compras (donde yo soy el comprador)
 export function getMisComprasIntercambios() {
   return api("/intercambios/mis-compras");
 }
 
-// Listar mis ventas (donde yo soy el vendedor)
 export function getMisVentasIntercambios() {
   return api("/intercambios/mis-ventas");
 }
 
-// Detalle de una transacción individual
 export function getDetalleTransaccion(idTransaccion) {
   return api(`/intercambios/${idTransaccion}`);
 }
-// =============== ACTIVIDADES SOSTENIBLES ===============
 
-// Registrar una nueva actividad sostenible del usuario actual
-export function registrarActividadSostenible({
+// =====================================================
+// ================= ACTIVIDADES SOSTENIBLES ============
+// =====================================================
+
+// ⭐ Opción A aplicada: devolver SOLO la actividad
+export async function registrarActividadSostenible({
   id_tipo_actividad,
   descripcion,
   creditos_otorgados,
   evidencia_url,
 }) {
-  return api("/actividades-sostenibles", {
+  const data = await api("/actividades-sostenibles", {
     method: "POST",
     body: {
       id_tipo_actividad,
@@ -269,27 +252,64 @@ export function registrarActividadSostenible({
       evidencia_url,
     },
   });
+
+  return data.actividad; // devolvemos solo la fila registrada
 }
 
-// Obtener MIS actividades sostenibles (historial)
+// MIS actividades (usuario actual)
 export function getMisActividadesSostenibles() {
   return api("/actividades-sostenibles/mias");
 }
 
-// =============== LOGROS ===============
+// 👇 NUEVO: listado ADMIN de actividades con filtros opcionales
+export async function getActividadesAdmin(params = {}) {
+  const search = new URLSearchParams();
 
-// Lista de logros ganados por el usuario actual
+  if (params.id_usuario) search.append("id_usuario", params.id_usuario);
+  if (params.id_tipo_actividad)
+    search.append("id_tipo_actividad", params.id_tipo_actividad);
+  if (params.desde) search.append("desde", params.desde);
+  if (params.hasta) search.append("hasta", params.hasta);
+
+  const qs = search.toString();
+  const data = await api(
+    `/actividades-sostenibles/admin${qs ? `?${qs}` : ""}`
+  );
+
+  // backend responde: { message, filtros, data: [...] }
+  return Array.isArray(data?.data) ? data.data : [];
+}
+
+// Aprobar actividad (ADMIN)
+export function aprobarActividad(idActividad) {
+  return api(`/actividades-sostenibles/${idActividad}/aprobar`, {
+    method: "PATCH",
+  });
+}
+
+// Rechazar actividad (ADMIN)
+export function rechazarActividad(idActividad) {
+  return api(`/actividades-sostenibles/${idActividad}/rechazar`, {
+    method: "PATCH",
+  });
+}
+
+// =====================================================
+// ======================== LOGROS ======================
+// =====================================================
+
 export function getMisLogros() {
   return api("/logros/mios");
 }
-// =============== PROMOCIONES ===============
 
-// Listar todas las promociones (admin)
+// =====================================================
+// ===================== PROMOCIONES ====================
+// =====================================================
+
 export function getPromociones() {
   return api("/promociones");
 }
 
-// Crear una nueva promoción
 export function crearPromocion(body) {
   return api("/promociones", {
     method: "POST",
@@ -297,7 +317,6 @@ export function crearPromocion(body) {
   });
 }
 
-// Cambiar estado de una promoción (ACTIVA / INACTIVA / etc.)
 export function cambiarEstadoPromocion(id_promocion, estado) {
   return api(`/promociones/${id_promocion}/estado`, {
     method: "PATCH",
@@ -305,24 +324,40 @@ export function cambiarEstadoPromocion(id_promocion, estado) {
   });
 }
 
-// Vincular una publicación a una promoción
 export function vincularPublicacionPromocion(id_promocion, id_publicacion) {
   return api(`/promociones/${id_promocion}/publicaciones`, {
     method: "POST",
     body: { id_publicacion },
   });
 }
-// =============== PUBLICIDAD ===============
 
-// Listar publicidad activa (usa GET /api/publicidad)
+// =====================================================
+// ======================= PUBLICIDAD ===================
+// =====================================================
+
 export function getPublicidadActiva() {
-  return api("/publicidad");          // 👈 AQUÍ EL CAMBIO
+  return api("/publicidad");
 }
 
-// Crear una nueva campaña de publicidad
 export function crearPublicidad(body) {
   return api("/publicidad", {
     method: "POST",
     body,
   });
+}
+
+// =====================================================
+// ===================== UTILIDADES =====================
+// =====================================================
+
+export function buildUploadUrl(url) {
+  if (!url) return "";
+
+  if (/^https?:\/\//i.test(url)) return url;
+
+  if (url.startsWith("/")) {
+    return `${API_BASE_URL}${url}`;
+  }
+
+  return `${API_BASE_URL}/${url}`;
 }

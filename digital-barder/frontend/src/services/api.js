@@ -81,7 +81,13 @@ export async function getHealth() {
   return api("/health");
 }
 
-export async function register({ nombre, apellido, correo, password, telefono }) {
+export async function register({
+  nombre,
+  apellido,
+  correo,
+  password,
+  telefono,
+}) {
   return api("/auth/register", {
     method: "POST",
     body: { nombre, apellido, correo, password, telefono },
@@ -107,7 +113,9 @@ export function getReporteUsuariosActivos({ desde, hasta } = {}) {
 
 // Usuarios abandonados
 export function getReporteUsuariosAbandonados({ desde, hasta } = {}) {
-  return api(`/reportes/usuarios-abandonados${buildRangeQuery(desde, hasta)}`);
+  return api(
+    `/reportes/usuarios-abandonados${buildRangeQuery(desde, hasta)}`
+  );
 }
 
 // Ingresos por créditos
@@ -116,7 +124,10 @@ export function getReporteIngresosCreditos({ desde, hasta } = {}) {
 }
 
 // Créditos generados vs consumidos
-export function getReporteCreditosGeneradosVsConsumidos({ desde, hasta } = {}) {
+export function getReporteCreditosGeneradosVsConsumidos({
+  desde,
+  hasta,
+} = {}) {
   return api(
     `/reportes/creditos-generados-consumidos${buildRangeQuery(desde, hasta)}`
   );
@@ -130,7 +141,10 @@ export function getReporteIntercambiosCategoria({ desde, hasta } = {}) {
 }
 
 // Publicaciones vs intercambios
-export function getReportePublicacionesVsIntercambios({ desde, hasta } = {}) {
+export function getReportePublicacionesVsIntercambios({
+  desde,
+  hasta,
+} = {}) {
   return api(
     `/reportes/publicaciones-vs-intercambios${buildRangeQuery(desde, hasta)}`
   );
@@ -148,7 +162,8 @@ export function getReporteImpactoAcumulado({ idTipoReporte, idPeriodo }) {
 // Ranking de usuarios
 export function getReporteRankingUsuarios({ idPeriodo = null, limit = 10 } = {}) {
   const params = new URLSearchParams();
-  if (idPeriodo != null && idPeriodo !== "") params.append("idPeriodo", idPeriodo);
+  if (idPeriodo != null && idPeriodo !== "")
+    params.append("idPeriodo", idPeriodo);
   params.append("limit", String(limit));
   return api(`/reportes/ranking-usuarios?${params.toString()}`);
 }
@@ -172,7 +187,9 @@ export function getReporteSaldosUsuarios({ limit = 20 } = {}) {
 
 // Reporte Actividades Sostenibles
 export function getReporteActividadesSostenibles({ desde, hasta } = {}) {
-  return api(`/reportes/actividades-sostenibles${buildRangeQuery(desde, hasta)}`);
+  return api(
+    `/reportes/actividades-sostenibles${buildRangeQuery(desde, hasta)}`
+  );
 }
 
 // Impacto por categoría
@@ -305,6 +322,12 @@ export function getMisLogros() {
 // =====================================================
 // ===================== PROMOCIONES ====================
 // =====================================================
+
+// catálogo: tipos de promoción
+export function getTiposPromocion() {
+  // backend: GET /api/catalogos/tipos-promocion
+  return api("/catalogos/tipos-promocion");
+}
 
 export function getPromociones() {
   return api("/promociones");

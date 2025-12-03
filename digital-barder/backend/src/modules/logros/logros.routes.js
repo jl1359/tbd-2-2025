@@ -8,7 +8,7 @@ import {
 
 const router = Router();
 
-// Todas las rutas requieren estar logueado
+// Todas las rutas de logros requieren estar logueado
 router.use(authMiddleware);
 
 // Ver mis logros (usuario normal)

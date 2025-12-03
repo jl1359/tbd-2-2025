@@ -1,11 +1,11 @@
-// digital-barder/frontend/src/pages/Actividades.jsx
+// frontend/src/pages/Actividades.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { registrarActividadSostenible } from "../services/api";
 import { ArrowLeft, Leaf, CheckCircle2 } from "lucide-react";
 import hoja from "../assets/hoja.png";
 
-// Lista fija basada en la tabla TIPO_ACTIVIDAD de la BD
+// Lista REAL de actividades según la base de datos
 const TIPOS_ACTIVIDAD = [
   { id: 1, nombre: "RECICLAJE" },
   { id: 2, nombre: "Reciclaje de Plástico" },
@@ -17,225 +17,209 @@ const TIPOS_ACTIVIDAD = [
   { id: 8, nombre: "Educación Ambiental" },
   { id: 9, nombre: "Compostaje" },
   { id: 10, nombre: "Transporte Sostenible" },
-  { id: 11, nombre: "Reciclaje de Vidrio" },
+  { id: 11, nombre: "Reciclaje de Vidrio" }
 ];
 
 export default function Actividades() {
   const navigate = useNavigate();
 
+  // Estados
   const [idTipoActividad, setIdTipoActividad] = useState("");
   const [descripcion, setDescripcion] = useState("");
-  const [creditos, setCreditos] = useState("");
-  const [evidenciaUrl, setEvidenciaUrl] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [mensajeOk, setMensajeOk] = useState("");
-  const [ultimaActividad, setUltimaActividad] = useState(null);
+  const [creditosOtorgados, setCreditosOtorgados] = useState("");
+  const [fileEvidencia, setFileEvidencia] = useState(null);
 
+  const [loading, setLoading] = useState(false);
+  const [mensajeOk, setMensajeOk] = useState("");
+  const [mensajeError, setMensajeError] = useState("");
+
+  // Enviar formulario
   async function handleSubmit(e) {
     e.preventDefault();
-    setError("");
     setMensajeOk("");
-    setUltimaActividad(null);
+    setMensajeError("");
 
-    const id_tipo_actividad = Number(idTipoActividad);
-    const creditos_otorgados = Number(creditos);
-
-    if (
-      Number.isNaN(id_tipo_actividad) ||
-      Number.isNaN(creditos_otorgados) ||
-      !descripcion.trim()
-    ) {
-      setError(
-        "Tipo de actividad, descripción y créditos otorgados son obligatorios y deben ser válidos."
-      );
+    if (!idTipoActividad || !descripcion || !creditosOtorgados) {
+      setMensajeError("Todos los campos obligatorios deben ser completados.");
       return;
     }
 
     try {
       setLoading(true);
 
-      const act = await registrarActividadSostenible({
-        id_tipo_actividad,
-        descripcion,
-        creditos_otorgados,
-        evidencia_url: evidenciaUrl || null,
-      });
+      // FormData para enviar archivos
+      const formData = new FormData();
+      formData.append("id_tipo_actividad", Number(idTipoActividad));
+      formData.append("descripcion", descripcion);
+      formData.append("creditos_otorgados", Number(creditosOtorgados));
+      if (fileEvidencia) {
+        formData.append("evidencia", fileEvidencia);
+      }
 
-      setMensajeOk("Actividad registrada correctamente 🌱");
-      setUltimaActividad(act);
+      await registrarActividadSostenible(formData);
 
-      // limpiar parcialmente
+      setMensajeOk("Actividad registrada correctamente ✔");
+      setIdTipoActividad("");
       setDescripcion("");
-      setCreditos("");
-      setEvidenciaUrl("");
+      setCreditosOtorgados("");
+      setFileEvidencia(null);
+      e.target.reset();
     } catch (err) {
-      console.error(err);
-      setError(
-        err.message || "Ocurrió un error al registrar la actividad sostenible."
-      );
+      setMensajeError(err.message || "Error registrando la actividad.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-[#082b1f] text-white p-6 md:p-10">
-      {/* HEADER */}
-      <header className="flex items-center justify-between gap-3 mb-8">
+    <div className="min-h-screen bg-emerald-950 text-emerald-50">
+
+      {/* Header */}
+      <header className="flex items-center justify-between px-6 py-4 border-b border-emerald-800 bg-emerald-950/80 backdrop-blur">
         <div className="flex items-center gap-3">
           <button
-            type="button"
             onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-2 rounded-full bg-black/30 px-3 py-1 text-sm hover:bg-black/40"
+            className="inline-flex items-center gap-2 text-sm text-emerald-200 hover:text-emerald-50"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft className="w-4 h-4" />
             Volver
           </button>
-          <div className="flex items-center gap-2 rounded-2xl bg-emerald-900/70 px-3 py-2 text-sm">
-            <Leaf size={18} className="text-emerald-300" />
-            <span className="font-semibold">Actividades sostenibles</span>
+
+          <div className="flex items-center gap-2 ml-4">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20">
+              <Leaf className="w-4 h-4 text-emerald-300" />
+            </span>
+            <h1 className="text-lg font-semibold">Actividades Sostenibles</h1>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           <button
-            type="button"
-            onClick={() => navigate("/actividades/mias")}
-            className="px-4 py-2 rounded-lg border border-emerald-500 text-sm hover:bg-emerald-500/10 font-semibold"
+            onClick={() => navigate("/mis-actividades")}
+            className="px-4 py-2 text-sm rounded-full border border-emerald-600 hover:bg-emerald-800"
           >
             Mis actividades
           </button>
 
-          {/* 👇 NUEVO BOTÓN: ver pendientes (panel admin) */}
           <button
-            type="button"
-            onClick={() => navigate("/actividades/admin")}
-            className="px-4 py-2 rounded-lg border border-amber-400 text-sm hover:bg-amber-400/10 font-semibold"
+            onClick={() => navigate("/actividades-pendientes")}
+            className="px-4 py-2 text-sm rounded-full border border-amber-400 text-amber-200 hover:bg-amber-500/10"
           >
             Actividades pendientes
           </button>
 
-          <img src={hoja} alt="logo" className="w-9 h-9 drop-shadow-md" />
+          <img src={hoja} alt="hoja" className="w-8 h-8" />
         </div>
       </header>
 
-      {/* DESCRIPCIÓN */}
-      <section className="mb-6 max-w-3xl">
-        <h1 className="text-2xl font-semibold mb-2">
-          Registrar actividad sostenible
-        </h1>
-        <p className="text-sm text-emerald-100/80">
-          Aquí puedes registrar acciones ecológicas que realizaste (reciclaje,
-          voluntariado, movilidad sostenible, etc.). El sistema las guardará en
-          tu historial y te otorgará créditos verdes según las reglas definidas
-          por el administrador.
-        </p>
-      </section>
+      {/* Contenido */}
+      <main className="px-4 py-8 flex justify-center">
+        <div className="w-full max-w-3xl bg-emerald-900/50 p-8 border border-emerald-700 rounded-3xl">
 
-      {/* MENSAJES */}
-      {error && (
-        <div className="mb-4 rounded-md border border-red-400 bg-red-900/40 px-4 py-2 text-sm text-red-100">
-          {error}
-        </div>
-      )}
-
-      {mensajeOk && (
-        <div className="mb-4 rounded-md border border-emerald-400 bg-emerald-900/40 px-4 py-2 text-sm text-emerald-100 flex items-center gap-2">
-          <CheckCircle2 size={18} />
-          <span>{mensajeOk}</span>
-        </div>
-      )}
-
-      {/* FORMULARIO */}
-      <form
-        onSubmit={handleSubmit}
-        className="max-w-3xl bg-[#0f3f2d] border border-emerald-700 rounded-2xl p-5 shadow-md space-y-4"
-      >
-        {/* id_tipo_actividad como SELECT */}
-        <div>
-          <label className="block text-xs mb-1">
-            Tipo de actividad (id_tipo_actividad) *
-          </label>
-          <select
-            value={idTipoActividad}
-            onChange={(e) => setIdTipoActividad(e.target.value)}
-            className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
-          >
-            <option value="">Selecciona un tipo de actividad</option>
-            {TIPOS_ACTIVIDAD.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.id} - {t.nombre}
-              </option>
-            ))}
-          </select>
-          <p className="text-[11px] text-emerald-100/70 mt-1">
-            La lista está basada en la tabla TIPO_ACTIVIDAD de la base de datos.
+          <h2 className="text-2xl font-semibold mb-2">Registrar actividad sostenible</h2>
+          <p className="text-sm text-emerald-200 mb-6">
+            Registra acciones ecológicas que realizaste. El sistema calculará los créditos según las políticas definidas.
           </p>
-        </div>
 
-        {/* descripción */}
-        <div>
-          <label className="block text-xs mb-1">Descripción *</label>
-          <textarea
-            value={descripcion}
-            onChange={(e) => setDescripcion(e.target.value)}
-            rows={3}
-            className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
-            placeholder="Ej. Participé 3 horas en una campaña de reforestación en el parque..."
-          />
-        </div>
+          <form onSubmit={handleSubmit} className="space-y-5" encType="multipart/form-data">
 
-        {/* créditos */}
-        <div>
-          <label className="block text-xs mb-1">
-            Créditos otorgados (creditos_otorgados) *
-          </label>
-          <input
-            type="number"
-            value={creditos}
-            onChange={(e) => setCreditos(e.target.value)}
-            className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
-            placeholder="Ej. 10"
-          />
-        </div>
+            {/* Tipo de actividad */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Tipo de actividad *</label>
 
-        {/* evidencia_url */}
-        <div>
-          <label className="block text-xs mb-1">
-            URL de evidencia (opcional)
-          </label>
-          <input
-            type="url"
-            value={evidenciaUrl}
-            onChange={(e) => setEvidenciaUrl(e.target.value)}
-            className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
-            placeholder="Link a foto, drive, formulario, etc."
-          />
-        </div>
+              <select
+                className="w-full rounded-2xl bg-emerald-900 text-white border border-emerald-700 px-4 py-2 text-sm
+                  focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                value={idTipoActividad}
+                onChange={(e) => setIdTipoActividad(e.target.value)}
+              >
+                <option value="" className="bg-emerald-900 text-white">
+                  Selecciona un tipo de actividad
+                </option>
 
-        <div className="pt-2 flex justify-end">
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-6 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 disabled:cursor-not-allowed text-sm font-semibold text-emerald-950"
-          >
-            {loading ? "Guardando..." : "Registrar actividad"}
-          </button>
-        </div>
-      </form>
+                {TIPOS_ACTIVIDAD.map((tipo) => (
+                  <option
+                    key={tipo.id}
+                    value={tipo.id}
+                    className="bg-emerald-900 text-white"
+                  >
+                    {tipo.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-      {/* ÚLTIMA ACTIVIDAD REGISTRADA (respuesta del backend) */}
-      {ultimaActividad && (
-        <section className="max-w-3xl mt-6 bg-[#0f3f2d] border border-emerald-700 rounded-2xl p-4 text-sm text-emerald-100/90">
-          <p className="font-semibold mb-1">
-            Última actividad registrada (respuesta del backend):
-          </p>
-          <pre className="text-xs overflow-x-auto">
-            {JSON.stringify(ultimaActividad, null, 2)}
-          </pre>
-        </section>
-      )}
+            {/* Descripción */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Descripción *</label>
+              <textarea
+                className="w-full rounded-2xl bg-emerald-900/80 border border-emerald-700 px-4 py-2 text-sm min-h-[90px]
+                  focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                placeholder="Describe lo que realizaste..."
+                value={descripcion}
+                onChange={(e) => setDescripcion(e.target.value)}
+              />
+            </div>
+
+            {/* Créditos otorgados */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Créditos otorgados *</label>
+              <input
+                type="number"
+                min="1"
+                className="w-full rounded-2xl bg-emerald-900/80 border border-emerald-700 px-4 py-2 text-sm
+                  focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                placeholder="Ej. 10"
+                value={creditosOtorgados}
+                onChange={(e) => setCreditosOtorgados(e.target.value)}
+              />
+            </div>
+
+            {/* Evidencia (archivo opcional) */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Evidencia (opcional)</label>
+
+              <input
+                type="file"
+                accept="image/*,application/pdf,video/*"
+                className="block w-full text-sm text-emerald-100
+                  file:mr-4 file:py-2 file:px-4
+                  file:rounded-full file:border-0
+                  file:text-sm file:font-semibold
+                  file:bg-emerald-600 file:text-emerald-50
+                  hover:file:bg-emerald-500"
+                onChange={(e) =>
+                  setFileEvidencia(e.target.files ? e.target.files[0] : null)
+                }
+              />
+            </div>
+
+            {/* Mensajes */}
+            {mensajeOk && (
+              <div className="flex items-center gap-2 text-sm text-emerald-200 bg-emerald-800/60 border border-emerald-500 px-3 py-2 rounded-2xl">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>{mensajeOk}</span>
+              </div>
+            )}
+
+            {mensajeError && (
+              <div className="text-sm text-red-200 bg-red-900/60 border border-red-500 px-3 py-2 rounded-2xl">
+                {mensajeError}
+              </div>
+            )}
+
+            {/* Botón */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full inline-flex justify-center py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm disabled:opacity-60"
+            >
+              {loading ? "Registrando..." : "Registrar actividad"}
+            </button>
+
+          </form>
+        </div>
+      </main>
     </div>
   );
 }

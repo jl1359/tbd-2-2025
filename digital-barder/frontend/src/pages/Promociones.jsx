@@ -5,6 +5,7 @@ import {
   crearPromocion,
   cambiarEstadoPromocion,
   vincularPublicacionPromocion,
+  getTiposPromocion,
 } from "../services/api";
 import { useNavigate } from "react-router-dom";
 import {
@@ -26,6 +27,9 @@ export default function Promociones() {
   const [error, setError] = useState("");
   const [mensajeOk, setMensajeOk] = useState("");
 
+  // catálogo de tipos de promoción
+  const [tiposPromocion, setTiposPromocion] = useState([]);
+
   // formulario nueva promo
   const [idTipoPromo, setIdTipoPromo] = useState("");
   const [nombre, setNombre] = useState("");
@@ -40,6 +44,7 @@ export default function Promociones() {
 
   useEffect(() => {
     cargarPromociones();
+    cargarTiposPromocion();
   }, []);
 
   async function cargarPromociones() {
@@ -53,6 +58,26 @@ export default function Promociones() {
       setError(err.message || "No se pudieron cargar las promociones.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function cargarTiposPromocion() {
+    try {
+      const data = await getTiposPromocion();
+
+      // La API puede devolver { ok, data: [...] } o directamente un array
+      const lista =
+        data?.data && Array.isArray(data.data)
+          ? data.data
+          : Array.isArray(data)
+          ? data
+          : [];
+
+      setTiposPromocion(lista);
+    } catch (err) {
+      console.error(err);
+      // Si quieres, puedes mostrar error visual:
+      // setError("No se pudieron cargar los tipos de promoción");
     }
   }
 
@@ -93,14 +118,13 @@ export default function Promociones() {
       await cargarPromociones();
     } catch (err) {
       console.error(err);
-      setError(
-        err.message || "Ocurrió un error al crear la promoción."
-      );
+      setError(err.message || "Ocurrió un error al crear la promoción.");
     }
   }
 
   async function handleToggleEstado(promo) {
-    const nuevoEstado = promo.estado === "ACTIVA" ? "INACTIVA" : "ACTIVA";
+    // usamos CANCELADA como "inactiva" porque sí existe en el ENUM de la BD
+    const nuevoEstado = promo.estado === "ACTIVA" ? "CANCELADA" : "ACTIVA";
 
     const ok = window.confirm(
       `¿Deseas cambiar el estado de la promoción "${promo.nombre}" a ${nuevoEstado}?`
@@ -188,7 +212,6 @@ export default function Promociones() {
 
       {/* CONTENIDO: LISTADO + FORMULARIO */}
       <div className="grid gap-6 lg:grid-cols-[2fr,1.5fr]">
-
         {/* LISTADO DE PROMOCIONES */}
         <section className="bg-[#0f3f2d] border border-emerald-700 rounded-2xl p-4 md:p-5 shadow-md">
           <h2 className="text-lg font-semibold text-emerald-200 flex items-center gap-2 mb-3">
@@ -197,7 +220,9 @@ export default function Promociones() {
           </h2>
 
           {loading ? (
-            <p className="text-emerald-100/80 text-sm">Cargando promociones...</p>
+            <p className="text-emerald-100/80 text-sm">
+              Cargando promociones...
+            </p>
           ) : promociones.length === 0 ? (
             <p className="text-emerald-100/80 text-sm">
               No hay promociones registradas.
@@ -265,8 +290,7 @@ export default function Promociones() {
                     )}
                     {promo.fecha_fin && (
                       <span>
-                        Fin:{" "}
-                        {new Date(promo.fecha_fin).toLocaleDateString()}
+                        Fin: {new Date(promo.fecha_fin).toLocaleDateString()}
                       </span>
                     )}
                   </div>
@@ -288,15 +312,23 @@ export default function Promociones() {
             <form onSubmit={handleCrearPromocion} className="space-y-3 text-sm">
               <div>
                 <label className="block text-xs mb-1">
-                  ID tipo de promoción (id_tipo_promocion) *
+                  Tipo de promoción *
                 </label>
-                <input
-                  type="number"
+                <select
                   value={idTipoPromo}
                   onChange={(e) => setIdTipoPromo(e.target.value)}
                   className="w-full rounded-lg border border-emerald-700 bg-emerald-950/80 px-3 py-2 text-sm outline-none focus:ring focus:ring-emerald-500/60"
-                  placeholder="Ej. 1 (descuento), 2 (bonus créditos)..."
-                />
+                >
+                  <option value="">Selecciona un tipo...</option>
+                  {tiposPromocion.map((t) => (
+                    <option
+                      key={t.id_tipo_promocion}
+                      value={t.id_tipo_promocion}
+                    >
+                      {t.nombre}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -377,7 +409,9 @@ export default function Promociones() {
               <>
                 <p className="text-xs text-emerald-100/90 mb-2">
                   Promoción seleccionada:{" "}
-                  <span className="font-semibold">{promoSeleccionada.nombre}</span>{" "}
+                  <span className="font-semibold">
+                    {promoSeleccionada.nombre}
+                  </span>{" "}
                   (ID #{promoSeleccionada.id_promocion})
                 </p>
 

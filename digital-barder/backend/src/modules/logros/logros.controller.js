@@ -3,11 +3,15 @@ import {
   listarLogrosService,
 } from "./logros.service.js";
 
+/**
+ * Devolver logros del usuario logueado
+ * GET /api/logros/mios
+ */
 export const misLogrosController = async (req, res, next) => {
   try {
-    const idUsuario = req.user.id_usuario;
+    const idUsuario = req.user.id_usuario; // viene del JWT
     const logros = await misLogrosService(idUsuario);
-    res.json(logros);
+    res.json(logros); // el front espera un array directo
   } catch (e) {
     next(e);
   }
@@ -29,6 +33,7 @@ export const listarLogrosController = async (req, res, next) => {
     }
 
     const logros = await listarLogrosService(idTipo);
+
     res.json({
       message: "Listado de logros",
       filtro: idTipo ? { id_tipo_logro: idTipo } : null,

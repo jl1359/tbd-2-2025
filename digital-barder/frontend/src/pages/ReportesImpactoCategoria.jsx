@@ -14,6 +14,13 @@ import {
   Cell,
 } from "recharts";
 import hoja from "../assets/hoja.png";
+import {
+  Leaf,
+  Droplets,
+  Bolt,
+  BarChart3,
+  PieChart as PieChartIcon,
+} from "lucide-react";
 
 export default function ReportesImpactoCategoria() {
   const [idPeriodo, setIdPeriodo] = useState("1");
@@ -112,14 +119,14 @@ export default function ReportesImpactoCategoria() {
   }, [datos]);
 
   const COLORS = ["#047857", "#1e3a8a", "#0d9488", "#6d28d9", "#f59e0b"];
-
   const hasData = datos.length > 0;
 
   return (
     <div
       className="min-h-screen p-6 md:p-8"
       style={{
-        background: "radial-gradient(circle at top left, #bbf7d0, #ecfdf5)",
+        background:
+          "radial-gradient(circle at top left, #bbf7d0 0, #ecfdf5 40%, #ffffff 100%)",
         backgroundImage: `url(${hoja})`,
         backgroundRepeat: "no-repeat",
         backgroundPosition: "top right",
@@ -130,11 +137,11 @@ export default function ReportesImpactoCategoria() {
         {/* HEADER */}
         <header className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="flex items-start gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-white shadow-md flex items-center justify-center border border-emerald-700/20">
+            <div className="w-16 h-16 rounded-2xl bg-white/80 shadow-md flex items-center justify-center border border-emerald-700/15">
               <img src={hoja} alt="Hoja" className="w-9 h-9 opacity-90" />
             </div>
             <div className="space-y-1">
-              <h1 className="text-3xl md:text-4xl font-extrabold text-emerald-900 drop-shadow-sm">
+              <h1 className="text-3xl md:text-4xl font-extrabold text-emerald-900 tracking-tight drop-shadow-sm">
                 Impacto ambiental por categoría
               </h1>
               <p className="text-sm md:text-base text-emerald-800/80 max-w-xl">
@@ -145,8 +152,8 @@ export default function ReportesImpactoCategoria() {
                 </span>
                 .
               </p>
-              <div className="inline-flex items-center gap-2 mt-1 text-xs text-emerald-900/80">
-                <span className="inline-flex items-center gap-1 bg-white/70 px-2.5 py-1 rounded-full shadow-sm border border-emerald-200/60">
+              <div className="inline-flex flex-wrap items-center gap-2 mt-2 text-xs text-emerald-900/80">
+                <span className="inline-flex items-center gap-1 bg-white/80 px-2.5 py-1 rounded-full shadow-sm border border-emerald-200/60">
                   <span className="w-2 h-2 rounded-full bg-emerald-500" />
                   Período seleccionado:{" "}
                   <span className="font-semibold">#{idPeriodo}</span>
@@ -164,7 +171,7 @@ export default function ReportesImpactoCategoria() {
           </div>
 
           {/* Filtros */}
-          <div className="bg-white/80 backdrop-blur rounded-2xl shadow-lg border border-emerald-100 px-4 py-3 flex flex-col gap-3 min-w-[240px]">
+          <div className="bg-white/85 backdrop-blur rounded-2xl shadow-lg border border-emerald-100 px-4 py-3 flex flex-col gap-3 min-w-[240px]">
             <p className="text-xs font-semibold text-emerald-900 tracking-wide">
               Filtros
             </p>
@@ -185,13 +192,14 @@ export default function ReportesImpactoCategoria() {
                 type="button"
                 onClick={cargar}
                 disabled={loading}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold shadow-md transition
+                className={`px-4 py-2 rounded-xl text-sm font-semibold shadow-md flex items-center gap-2 transition
                 ${
                   loading
                     ? "bg-emerald-300 text-emerald-900 cursor-wait"
                     : "bg-emerald-700 hover:bg-emerald-800 text-white"
                 }`}
               >
+                <BarChart3 className="w-4 h-4" />
                 {loading ? "Cargando…" : "Actualizar"}
               </button>
             </div>
@@ -205,56 +213,71 @@ export default function ReportesImpactoCategoria() {
         </header>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-2 rounded-xl shadow-sm">
+          <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl shadow-sm">
             {error}
           </div>
         )}
 
         {/* KPIs */}
         <section className="grid md:grid-cols-4 gap-4 md:gap-6">
-          <div className="bg-white shadow-sm border border-emerald-100 rounded-xl p-4 flex flex-col justify-between">
-            <div>
-              <p className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wide">
-                CO₂ total (kg)
-              </p>
-              <p className="mt-2 text-3xl font-extrabold text-emerald-900 tabular-nums">
-                {metrics.totalCo2.toLocaleString()}
-              </p>
+          <div className="bg-white shadow-md border border-emerald-100 rounded-2xl p-4 flex flex-col justify-between hover:shadow-lg transition">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wide">
+                  CO₂ total (kg)
+                </p>
+                <p className="mt-2 text-3xl font-extrabold text-emerald-900 tabular-nums">
+                  {metrics.totalCo2.toLocaleString()}
+                </p>
+              </div>
+              <span className="inline-flex items-center justify-center rounded-full bg-emerald-50 p-2">
+                <Leaf className="w-5 h-5 text-emerald-700" />
+              </span>
             </div>
-            <p className="mt-1 text-[11px] text-emerald-700/75">
+            <p className="mt-2 text-[11px] text-emerald-700/75">
               Suma de emisiones evitadas por todas las categorías.
             </p>
           </div>
 
-          <div className="bg-white shadow-sm border border-blue-100 rounded-xl p-4 flex flex-col justify-between">
-            <div>
-              <p className="text-[11px] font-semibold text-blue-700 uppercase tracking-wide">
-                Agua total (L)
-              </p>
-              <p className="mt-2 text-3xl font-extrabold text-blue-900 tabular-nums">
-                {metrics.totalAgua.toLocaleString()}
-              </p>
+          <div className="bg-white shadow-md border border-sky-100 rounded-2xl p-4 flex flex-col justify-between hover:shadow-lg transition">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-[11px] font-semibold text-sky-700 uppercase tracking-wide">
+                  Agua total (L)
+                </p>
+                <p className="mt-2 text-3xl font-extrabold text-sky-900 tabular-nums">
+                  {metrics.totalAgua.toLocaleString()}
+                </p>
+              </div>
+              <span className="inline-flex items-center justify-center rounded-full bg-sky-50 p-2">
+                <Droplets className="w-5 h-5 text-sky-700" />
+              </span>
             </div>
-            <p className="mt-1 text-[11px] text-blue-800/75">
+            <p className="mt-2 text-[11px] text-sky-800/80">
               Litros de agua ahorrada en el período.
             </p>
           </div>
 
-          <div className="bg-white shadow-sm border border-teal-100 rounded-xl p-4 flex flex-col justify-between">
-            <div>
-              <p className="text-[11px] font-semibold text-teal-700 uppercase tracking-wide">
-                Energía total (kWh)
-              </p>
-              <p className="mt-2 text-3xl font-extrabold text-teal-900 tabular-nums">
-                {metrics.totalEnergia.toLocaleString()}
-              </p>
+          <div className="bg-white shadow-md border border-teal-100 rounded-2xl p-4 flex flex-col justify-between hover:shadow-lg transition">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-[11px] font-semibold text-teal-700 uppercase tracking-wide">
+                  Energía total (kWh)
+                </p>
+                <p className="mt-2 text-3xl font-extrabold text-teal-900 tabular-nums">
+                  {metrics.totalEnergia.toLocaleString()}
+                </p>
+              </div>
+              <span className="inline-flex items-center justify-center rounded-full bg-teal-50 p-2">
+                <Bolt className="w-5 h-5 text-teal-700" />
+              </span>
             </div>
-            <p className="mt-1 text-[11px] text-teal-800/75">
+            <p className="mt-2 text-[11px] text-teal-800/80">
               Energía equivalente ahorrada en el período.
             </p>
           </div>
 
-          <div className="bg-white shadow-sm border border-slate-200 rounded-xl p-4 flex flex-col justify-between">
+          <div className="bg-white shadow-md border border-slate-200 rounded-2xl p-4 flex flex-col justify-between hover:shadow-lg transition">
             <div>
               <p className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">
                 Categorías registradas
@@ -273,7 +296,7 @@ export default function ReportesImpactoCategoria() {
                 </p>
               )}
             </div>
-            <p className="mt-1 text-[11px] text-slate-600/80">
+            <p className="mt-2 text-[11px] text-slate-600/80">
               Número de categorías con impacto registrado.
             </p>
           </div>
@@ -292,10 +315,11 @@ export default function ReportesImpactoCategoria() {
         {/* GRÁFICOS */}
         <section className="grid lg:grid-cols-2 gap-6">
           {/* Barras */}
-          <div className="bg-white rounded-2xl border border-emerald-100 shadow-sm p-4 md:p-5">
+          <div className="bg-white rounded-2xl border border-emerald-100 shadow-md p-4 md:p-5">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h2 className="text-base md:text-lg font-semibold text-emerald-900">
+                <h2 className="text-base md:text-lg font-semibold text-emerald-900 flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-emerald-700" />
                   Impacto por categoría (CO₂, Agua, Energía)
                 </h2>
                 <p className="text-xs text-emerald-700/80">
@@ -333,10 +357,11 @@ export default function ReportesImpactoCategoria() {
           </div>
 
           {/* Pie */}
-          <div className="bg-white rounded-2xl border border-emerald-100 shadow-sm p-4 md:p-5">
+          <div className="bg-white rounded-2xl border border-emerald-100 shadow-md p-4 md:p-5">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h2 className="text-base md:text-lg font-semibold text-emerald-900">
+                <h2 className="text-base md:text-lg font-semibold text-emerald-900 flex items-center gap-2">
+                  <PieChartIcon className="w-5 h-5 text-emerald-700" />
                   Distribución de impacto por categoría
                 </h2>
                 <p className="text-xs text-emerald-700/80">
@@ -379,7 +404,7 @@ export default function ReportesImpactoCategoria() {
         </section>
 
         {/* TABLA DETALLADA */}
-        <section className="bg-white border border-emerald-100 rounded-2xl shadow-sm overflow-hidden">
+        <section className="bg-white border border-emerald-100 rounded-2xl shadow-md overflow-hidden">
           <div className="px-4 py-3 border-b bg-emerald-50 flex items-center justify-between">
             <h2 className="font-semibold text-emerald-900 text-sm md:text-base">
               Detalle de impacto por categoría

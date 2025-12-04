@@ -74,14 +74,17 @@ export const buscarPublicacionesParaPublicidadController = async (
 };
 
 /* =====================================================
-   NUEVO: CAMBIAR ESTADO
+   CAMBIAR ESTADO (SOLO ADMIN)
 ===================================================== */
 export const cambiarEstadoPublicidadController = async (req, res, next) => {
   try {
     const idPublicidad = Number(req.params.id);
     const { estado } = req.body;
 
-    const data = await cambiarEstadoPublicidadService(idPublicidad, estado);
+    const data = await cambiarEstadoPublicidadService(idPublicidad, estado, {
+      esAdmin: true, // Ya pasó por isAdmin en el router
+    });
+
     res.json({
       message: "Estado actualizado correctamente",
       publicidad: toPlain(data),
@@ -92,7 +95,7 @@ export const cambiarEstadoPublicidadController = async (req, res, next) => {
 };
 
 /* =====================================================
-   NUEVO: ELIMINAR (LOGICO)
+   ELIMINAR (LÓGICO)
 ===================================================== */
 export const eliminarPublicidadController = async (req, res, next) => {
   try {

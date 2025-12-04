@@ -1,3 +1,4 @@
+// backend/src/modules/intercambios/intercambios.controller.js
 import {
   crearIntercambioService,
   misComprasService,
@@ -8,7 +9,13 @@ import {
 export const crearIntercambioController = async (req, res, next) => {
   try {
     const idComprador = req.user.id_usuario;
-    const { id_publicacion, creditos } = req.body;
+    const { id_publicacion, creditos } = req.body; // creditos opcional
+
+    if (!id_publicacion) {
+      return res
+        .status(400)
+        .json({ message: "id_publicacion es obligatorio" });
+    }
 
     const tx = await crearIntercambioService({
       idComprador,

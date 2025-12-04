@@ -1,4 +1,4 @@
-// src/pages/ReportesImpactoCategoria.jsx
+// frontend/src/pages/ReportesImpactoCategoria.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { getReporteImpactoPorCategoria } from "../services/api";
 import {
@@ -20,19 +20,28 @@ import {
   Bolt,
   BarChart3,
   PieChart as PieChartIcon,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
+const COLORS = ["#047857", "#1e3a8a", "#0d9488", "#6d28d9", "#f59e0b"];
+
+const formatNumber = (n) =>
+  Number(n || 0).toLocaleString("es-BO", { maximumFractionDigits: 2 });
+
 export default function ReportesImpactoCategoria() {
-  const [idPeriodo, setIdPeriodo] = useState("1");
+  const [idPeriodo, setIdPeriodo] = useState(1);
   const [datos, setDatos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function cargar() {
+  async function cargar(customPeriodo = idPeriodo) {
     try {
       setLoading(true);
       setError("");
-      const res = await getReporteImpactoPorCategoria({ idPeriodo });
+      const res = await getReporteImpactoPorCategoria({
+        idPeriodo: customPeriodo,
+      });
       setDatos(Array.isArray(res) ? res : []);
     } catch (e) {
       console.error(e);
@@ -45,9 +54,15 @@ export default function ReportesImpactoCategoria() {
 
   // Carga inicial
   useEffect(() => {
-    cargar();
+    cargar(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function cambiarPeriodo(delta) {
+    const nuevo = Math.max(1, Number(idPeriodo || 1) + delta);
+    setIdPeriodo(nuevo);
+    cargar(nuevo);
+  }
 
   // =========================
   // MÉTRICAS GLOBALES
@@ -93,33 +108,40 @@ export default function ReportesImpactoCategoria() {
     return { totalCo2, totalAgua, totalEnergia, categorias, topCategoria };
   }, [datos]);
 
+  const hasData = datos.length > 0;
+
   // =========================
   // DATOS PARA GRÁFICOS
   // =========================
   const barData = useMemo(
     () =>
-      datos.map((c) => ({
-        categoria: c.categoria,
-        co2: Number(c.co2_total || 0),
-        agua: Number(c.agua_total || 0),
-        energia: Number(c.energia_total || 0),
-      })),
+      datos
+        .map((c) => ({
+          categoria: c.categoria,
+          co2: Number(c.co2_total || 0),
+          agua: Number(c.agua_total || 0),
+          energia: Number(c.energia_total || 0),
+          total:
+            Number(c.co2_total || 0) +
+            Number(c.agua_total || 0) +
+            Number(c.energia_total || 0),
+        }))
+        .sort((a, b) => b.total - a.total),
     [datos]
   );
 
   const pieData = useMemo(() => {
     if (!datos.length) return [];
-    return datos.map((c) => ({
-      name: c.categoria,
-      value:
-        Number(c.co2_total || 0) +
-        Number(c.agua_total || 0) +
-        Number(c.energia_total || 0),
-    }));
+    return datos
+      .map((c) => ({
+        name: c.categoria,
+        value:
+          Number(c.co2_total || 0) +
+          Number(c.agua_total || 0) +
+          Number(c.energia_total || 0),
+      }))
+      .filter((d) => d.value > 0);
   }, [datos]);
-
-  const COLORS = ["#047857", "#1e3a8a", "#0d9488", "#6d28d9", "#f59e0b"];
-  const hasData = datos.length > 0;
 
   return (
     <div
@@ -171,7 +193,7 @@ export default function ReportesImpactoCategoria() {
           </div>
 
           {/* Filtros */}
-          <div className="bg-white/85 backdrop-blur rounded-2xl shadow-lg border border-emerald-100 px-4 py-3 flex flex-col gap-3 min-w-[240px]">
+          <div className="bg-white/85 backdrop-blur rounded-2xl shadow-lg border border-emerald-100 px-4 py-3 flex flex-col gap-3 min-w-[260px]">
             <p className="text-xs font-semibold text-emerald-900 tracking-wide">
               Filtros
             </p>
@@ -180,17 +202,37 @@ export default function ReportesImpactoCategoria() {
                 <label className="mb-1 text-xs font-semibold text-emerald-900">
                   ID período
                 </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={idPeriodo}
-                  onChange={(e) => setIdPeriodo(e.target.value)}
-                  className="border border-emerald-200 rounded-lg px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/70 focus:border-emerald-500"
-                />
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => cambiarPeriodo(-1)}
+                    className="p-1 rounded-full border border-emerald-200 bg-white hover:bg-emerald-50 text-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={loading || idPeriodo <= 1}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <input
+                    type="number"
+                    min="1"
+                    value={idPeriodo}
+                    onChange={(e) =>
+                      setIdPeriodo(Math.max(1, Number(e.target.value) || 1))
+                    }
+                    className="border border-emerald-200 rounded-lg px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/70 focus:border-emerald-500 w-20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => cambiarPeriodo(1)}
+                    className="p-1 rounded-full border border-emerald-200 bg-white hover:bg-emerald-50 text-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={loading}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
               <button
                 type="button"
-                onClick={cargar}
+                onClick={() => cargar()}
                 disabled={loading}
                 className={`px-4 py-2 rounded-xl text-sm font-semibold shadow-md flex items-center gap-2 transition
                 ${
@@ -227,7 +269,7 @@ export default function ReportesImpactoCategoria() {
                   CO₂ total (kg)
                 </p>
                 <p className="mt-2 text-3xl font-extrabold text-emerald-900 tabular-nums">
-                  {metrics.totalCo2.toLocaleString()}
+                  {formatNumber(metrics.totalCo2)}
                 </p>
               </div>
               <span className="inline-flex items-center justify-center rounded-full bg-emerald-50 p-2">
@@ -246,7 +288,7 @@ export default function ReportesImpactoCategoria() {
                   Agua total (L)
                 </p>
                 <p className="mt-2 text-3xl font-extrabold text-sky-900 tabular-nums">
-                  {metrics.totalAgua.toLocaleString()}
+                  {formatNumber(metrics.totalAgua)}
                 </p>
               </div>
               <span className="inline-flex items-center justify-center rounded-full bg-sky-50 p-2">
@@ -265,7 +307,7 @@ export default function ReportesImpactoCategoria() {
                   Energía total (kWh)
                 </p>
                 <p className="mt-2 text-3xl font-extrabold text-teal-900 tabular-nums">
-                  {metrics.totalEnergia.toLocaleString()}
+                  {formatNumber(metrics.totalEnergia)}
                 </p>
               </div>
               <span className="inline-flex items-center justify-center rounded-full bg-teal-50 p-2">
@@ -345,7 +387,11 @@ export default function ReportesImpactoCategoria() {
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     <Bar dataKey="co2" name="CO₂ (kg)" fill="#047857" />
                     <Bar dataKey="agua" name="Agua (L)" fill="#1e3a8a" />
-                    <Bar dataKey="energia" name="Energía (kWh)" fill="#0d9488" />
+                    <Bar
+                      dataKey="energia"
+                      name="Energía (kWh)"
+                      fill="#0d9488"
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
@@ -446,13 +492,13 @@ export default function ReportesImpactoCategoria() {
                       {c.categoria}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
-                      {c.co2_total}
+                      {formatNumber(c.co2_total)}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
-                      {c.agua_total}
+                      {formatNumber(c.agua_total)}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
-                      {c.energia_total}
+                      {formatNumber(c.energia_total)}
                     </td>
                   </tr>
                 ))}

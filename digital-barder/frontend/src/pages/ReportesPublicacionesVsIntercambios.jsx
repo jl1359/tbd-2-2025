@@ -26,25 +26,36 @@ function hoyISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function hace30DiasISO() {
-  const d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+function haceNDiasISO(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - (n - 1));
   return d.toISOString().slice(0, 10);
 }
 
+const RANGOS_RAPIDOS = [
+  { id: "7d", label: "Últimos 7 días", dias: 7 },
+  { id: "30d", label: "Últimos 30 días", dias: 30 },
+  { id: "90d", label: "Últimos 90 días", dias: 90 },
+  { id: "1y", label: "Último año", dias: 365 },
+];
+
+const COLORS = ["#047857", "#1e3a8a", "#0d9488", "#6d28d9", "#f59e0b"];
+
 export default function ReportesPublicacionesIntercambios() {
-  const [desde, setDesde] = useState(hace30DiasISO());
+  const [desde, setDesde] = useState(haceNDiasISO(30));
   const [hasta, setHasta] = useState(hoyISO());
   const [datos, setDatos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [rangoActivo, setRangoActivo] = useState("30d");
 
-  async function cargar() {
+  async function cargar(customDesde = desde, customHasta = hasta) {
     try {
       setLoading(true);
       setError("");
       const res = await getReportePublicacionesVsIntercambios({
-        desde,
-        hasta,
+        desde: customDesde,
+        hasta: customHasta,
       });
       setDatos(Array.isArray(res) ? res : []);
     } catch (e) {
@@ -57,13 +68,23 @@ export default function ReportesPublicacionesIntercambios() {
   }
 
   useEffect(() => {
-    cargar();
+    cargar(desde, hasta);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleSubmit(e) {
     e.preventDefault();
-    cargar();
+    setRangoActivo(null); // el usuario puso fechas manuales
+    cargar(desde, hasta);
+  }
+
+  function aplicarRangoRapido(rango) {
+    const nuevoHasta = hoyISO();
+    const nuevoDesde = haceNDiasISO(rango.dias);
+    setDesde(nuevoDesde);
+    setHasta(nuevoHasta);
+    setRangoActivo(rango.id);
+    cargar(nuevoDesde, nuevoHasta);
   }
 
   const sinDatos = !loading && datos.length === 0;
@@ -79,6 +100,7 @@ export default function ReportesPublicacionesIntercambios() {
         categorias: 0,
         promedioRatio: 0,
         mejorCategoria: null,
+        tasaConversionGlobal: 0,
       };
     }
 
@@ -110,12 +132,18 @@ export default function ReportesPublicacionesIntercambios() {
       null
     );
 
+    const tasaConversionGlobal =
+      totalPublicaciones > 0
+        ? (totalIntercambios / totalPublicaciones) * 100
+        : 0;
+
     return {
       totalPublicaciones,
       totalIntercambios,
       categorias,
       promedioRatio,
       mejorCategoria,
+      tasaConversionGlobal,
     };
   }, [datos]);
 
@@ -124,11 +152,14 @@ export default function ReportesPublicacionesIntercambios() {
   // ======================
   const barData = useMemo(
     () =>
-      datos.map((p) => ({
-        categoria: p.categoria,
-        publicaciones: Number(p.publicaciones || 0),
-        intercambios: Number(p.intercambios || 0),
-      })),
+      datos
+        .map((p) => ({
+          categoria: p.categoria,
+          publicaciones: Number(p.publicaciones || 0),
+          intercambios: Number(p.intercambios || 0),
+        }))
+        // Ordenamos por más intercambios (de mayor a menor)
+        .sort((a, b) => b.intercambios - a.intercambios),
     [datos]
   );
 
@@ -143,15 +174,12 @@ export default function ReportesPublicacionesIntercambios() {
     [datos]
   );
 
-  const COLORS = ["#047857", "#1e3a8a", "#0d9488", "#6d28d9", "#f59e0b"];
-
   const formatInt = (n) =>
     Number(n || 0).toLocaleString("es-BO", {
       maximumFractionDigits: 0,
     });
 
-  const formatRatio = (n) =>
-    `${Number(n || 0).toFixed(2)} : 1`;
+  const formatRatio = (n) => `${Number(n || 0).toFixed(2)} : 1`;
 
   const rangoLabel = `Del ${desde} al ${hasta}`;
 
@@ -186,48 +214,71 @@ export default function ReportesPublicacionesIntercambios() {
             </div>
           </div>
 
-          {/* FILTRO DE FECHAS */}
-          <form
-            onSubmit={handleSubmit}
-            className="flex flex-wrap gap-3 items-end bg-white/90 px-4 py-3 rounded-2xl shadow border border-emerald-100 backdrop-blur-sm text-sm w-full md:w-auto"
-          >
-            <div className="flex flex-col">
-              <label className="mb-1 font-semibold text-emerald-900 text-xs">
-                Desde
-              </label>
-              <input
-                type="date"
-                value={desde}
-                onChange={(e) => setDesde(e.target.value)}
-                className="border border-emerald-200 rounded-lg px-2 py-1 text-xs md:text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
-              />
+          {/* RANGOS RÁPIDOS + FILTRO DE FECHAS */}
+          <div className="flex flex-col gap-3 items-stretch md:items-end min-w-[260px]">
+            {/* Botones de rango rápido */}
+            <div className="flex flex-wrap gap-2 justify-end">
+              {RANGOS_RAPIDOS.map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => aplicarRangoRapido(r)}
+                  disabled={loading}
+                  className={`px-3 py-1 rounded-full text-[11px] font-semibold border transition
+                    ${
+                      rangoActivo === r.id
+                        ? "bg-emerald-700 text-white border-emerald-700 shadow-sm"
+                        : "bg-white text-emerald-800 border-emerald-200 hover:bg-emerald-50"
+                    }`}
+                >
+                  {r.label}
+                </button>
+              ))}
             </div>
-            <div className="flex flex-col">
-              <label className="mb-1 font-semibold text-emerald-900 text-xs">
-                Hasta
-              </label>
-              <input
-                type="date"
-                value={hasta}
-                onChange={(e) => setHasta(e.target.value)}
-                className="border border-emerald-200 rounded-lg px-2 py-1 text-xs md:text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-xl font-semibold shadow-md flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed text-xs md:text-sm"
+
+            {/* Fechas manuales */}
+            <form
+              onSubmit={handleSubmit}
+              className="flex flex-wrap gap-3 items-end bg-white/90 px-4 py-3 rounded-2xl shadow border border-emerald-100 backdrop-blur-sm text-sm w-full md:w-auto"
             >
-              {loading ? (
-                <>
-                  <span className="h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                  Actualizando…
-                </>
-              ) : (
-                <>Actualizar</>
-              )}
-            </button>
-          </form>
+              <div className="flex flex-col">
+                <label className="mb-1 font-semibold text-emerald-900 text-xs">
+                  Desde
+                </label>
+                <input
+                  type="date"
+                  value={desde}
+                  onChange={(e) => setDesde(e.target.value)}
+                  className="border border-emerald-200 rounded-lg px-2 py-1 text-xs md:text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
+                />
+              </div>
+              <div className="flex flex-col">
+                <label className="mb-1 font-semibold text-emerald-900 text-xs">
+                  Hasta
+                </label>
+                <input
+                  type="date"
+                  value={hasta}
+                  onChange={(e) => setHasta(e.target.value)}
+                  className="border border-emerald-200 rounded-lg px-2 py-1 text-xs md:text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-xl font-semibold shadow-md flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed text-xs md:text-sm"
+              >
+                {loading ? (
+                  <>
+                    <span className="h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                    Actualizando…
+                  </>
+                ) : (
+                  <>Aplicar fechas</>
+                )}
+              </button>
+            </form>
+          </div>
         </header>
 
         {/* RANGO INFO */}
@@ -300,7 +351,7 @@ export default function ReportesPublicacionesIntercambios() {
             </p>
           </div>
 
-          {/* Ratio promedio */}
+          {/* Ratio promedio + tasa global */}
           <div className="bg-white shadow-sm border border-emerald-200/70 rounded-2xl p-4 flex flex-col justify-between hover:shadow-md transition">
             <div className="flex items-center justify-between">
               <p className="text-[11px] font-semibold text-emerald-800 uppercase">
@@ -308,16 +359,23 @@ export default function ReportesPublicacionesIntercambios() {
               </p>
               <Percent className="w-4 h-4 text-emerald-700/80" />
             </div>
-            <p className="mt-2 text-2xl md:text-3xl font-extrabold text-emerald-900">
+            <p className="mt-1 text-xl md:text-2xl font-extrabold text-emerald-900">
               {formatRatio(metrics.promedioRatio)}
+            </p>
+            <p className="mt-1 text-[11px] text-emerald-900/80">
+              Tasa global de conversión:{" "}
+              <span className="font-semibold">
+                {metrics.tasaConversionGlobal.toFixed(1)}%
+              </span>
             </p>
             {metrics.mejorCategoria ? (
               <p className="mt-1 text-[11px] text-emerald-900/80">
                 Mejor categoría:{" "}
                 <span className="font-semibold">
                   {metrics.mejorCategoria.categoria} (
-                  {formatRatio(metrics.mejorCategoria.ratio_intercambio)})
+                  {formatRatio(metrics.mejorCategoria.ratio_intercambio)}
                 </span>
+                )
               </p>
             ) : (
               <p className="mt-1 text-[11px] text-emerald-900/70">
@@ -343,9 +401,23 @@ export default function ReportesPublicacionesIntercambios() {
               {barData.length > 0 ? (
                 <ResponsiveContainer>
                   <BarChart data={barData}>
-                    <XAxis dataKey="categoria" hide />
+                    <XAxis
+                      dataKey="categoria"
+                      tick={{ fontSize: 11 }}
+                      interval={0}
+                      height={50}
+                      tickLine={false}
+                      axisLine={{ stroke: "#e5e7eb" }}
+                    />
                     <YAxis allowDecimals={false} />
-                    <Tooltip />
+                    <Tooltip
+                      formatter={(value, name) => [
+                        formatInt(value),
+                        name === "publicaciones"
+                          ? "Publicaciones"
+                          : "Intercambios",
+                      ]}
+                    />
                     <Legend />
                     <Bar
                       dataKey="publicaciones"
@@ -398,7 +470,12 @@ export default function ReportesPublicacionesIntercambios() {
                         />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip
+                      formatter={(value, name) => [
+                        formatInt(value),
+                        `Intercambios en ${name}`,
+                      ]}
+                    />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>

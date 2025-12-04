@@ -13,16 +13,34 @@ import {
   Legend,
 } from "recharts";
 import hoja from "../assets/hoja.png";
-import { CreditCard, Wallet, Calendar, TrendingUp } from "lucide-react";
+import {
+  CreditCard,
+  Wallet,
+  Calendar,
+  TrendingUp,
+  BarChart3,
+} from "lucide-react";
 
 function hoyISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function hace30DiasISO() {
-  const d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+function haceNDiasISO(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - (n - 1));
   return d.toISOString().slice(0, 10);
 }
+
+function hace30DiasISO() {
+  return haceNDiasISO(30);
+}
+
+const RANGOS_RAPIDOS = [
+  { id: "7d", label: "Últimos 7 días", dias: 7 },
+  { id: "30d", label: "Últimos 30 días", dias: 30 },
+  { id: "90d", label: "Últimos 90 días", dias: 90 },
+  { id: "1y", label: "Último año", dias: 365 },
+];
 
 export default function ReportesIngresosCreditos() {
   const [desde, setDesde] = useState(hace30DiasISO());
@@ -30,12 +48,16 @@ export default function ReportesIngresosCreditos() {
   const [datos, setDatos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [rangoActivo, setRangoActivo] = useState("30d");
 
-  async function cargar() {
+  async function cargar(customDesde = desde, customHasta = hasta) {
     try {
       setLoading(true);
       setError("");
-      const res = await getReporteIngresosCreditos({ desde, hasta });
+      const res = await getReporteIngresosCreditos({
+        desde: customDesde,
+        hasta: customHasta,
+      });
       setDatos(Array.isArray(res) ? res : []);
     } catch (e) {
       console.error(e);
@@ -47,13 +69,24 @@ export default function ReportesIngresosCreditos() {
   }
 
   useEffect(() => {
-    cargar();
+    // Carga inicial con el rango por defecto (30 días)
+    cargar(desde, hasta);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleSubmit(e) {
     e.preventDefault();
-    cargar();
+    setRangoActivo(null); // el usuario escogió fechas manuales
+    cargar(desde, hasta);
+  }
+
+  function aplicarRangoRapido(rango) {
+    const nuevoHasta = hoyISO();
+    const nuevoDesde = haceNDiasISO(rango.dias);
+    setDesde(nuevoDesde);
+    setHasta(nuevoHasta);
+    setRangoActivo(rango.id);
+    cargar(nuevoDesde, nuevoHasta);
   }
 
   const sinDatos = !loading && datos.length === 0;
@@ -68,6 +101,7 @@ export default function ReportesIngresosCreditos() {
         totalBs: 0,
         diasConVentas: 0,
         promedioTicket: 0,
+        mejorDia: null,
       };
     }
 
@@ -85,7 +119,16 @@ export default function ReportesIngresosCreditos() {
     const promedioTicket =
       diasConVentas > 0 ? totalBs / diasConVentas : 0;
 
-    return { totalCreditos, totalBs, diasConVentas, promedioTicket };
+    const mejorDia = datos.reduce(
+      (best, r) =>
+        Number(r.total_bs || 0) >
+        Number(best?.total_bs || 0)
+          ? r
+          : best,
+      null
+    );
+
+    return { totalCreditos, totalBs, diasConVentas, promedioTicket, mejorDia };
   }, [datos]);
 
   // =========================
@@ -145,48 +188,64 @@ export default function ReportesIngresosCreditos() {
             </div>
           </div>
 
-          {/* FILTROS (fechas) */}
-          <form
-            onSubmit={handleSubmit}
-            className="flex flex-wrap gap-3 items-end bg-white/90 px-4 py-3 rounded-2xl shadow border border-emerald-100 backdrop-blur-sm text-sm w-full md:w-auto"
-          >
-            <div className="flex flex-col">
-              <label className="mb-1 font-semibold text-emerald-900 text-xs">
-                Desde
-              </label>
-              <input
-                type="date"
-                value={desde}
-                onChange={(e) => setDesde(e.target.value)}
-                className="border border-emerald-200 rounded-lg px-2 py-1 text-xs md:text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
-              />
+          {/* FILTROS (rangos rápidos + fechas) */}
+          <div className="flex flex-col gap-3 items-stretch md:items-end">
+            {/* Rangos rápidos */}
+            <div className="flex flex-wrap gap-2 justify-end">
+              {RANGOS_RAPIDOS.map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => aplicarRangoRapido(r)}
+                  className={`px-3 py-1 rounded-full text-[11px] font-semibold border transition ${
+                    rangoActivo === r.id
+                      ? "bg-emerald-700 text-white border-emerald-700 shadow-sm"
+                      : "bg-white text-emerald-800 border-emerald-200 hover:bg-emerald-50"
+                  }`}
+                  disabled={loading}
+                >
+                  {r.label}
+                </button>
+              ))}
             </div>
-            <div className="flex flex-col">
-              <label className="mb-1 font-semibold text-emerald-900 text-xs">
-                Hasta
-              </label>
-              <input
-                type="date"
-                value={hasta}
-                onChange={(e) => setHasta(e.target.value)}
-                className="border border-emerald-200 rounded-lg px-2 py-1 text-xs md:text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-xl font-semibold shadow-md flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed text-xs md:text-sm"
+
+            {/* Fechas manuales */}
+            <form
+              onSubmit={handleSubmit}
+              className="flex flex-wrap gap-3 items-end bg-white/90 px-4 py-3 rounded-2xl shadow border border-emerald-100 backdrop-blur-sm text-sm w-full md:w-auto"
             >
-              {loading ? (
-                <>
-                  <span className="h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                  Actualizando…
-                </>
-              ) : (
-                <>Actualizar</>
-              )}
-            </button>
-          </form>
+              <div className="flex flex-col">
+                <label className="mb-1 font-semibold text-emerald-900 text-xs">
+                  Desde
+                </label>
+                <input
+                  type="date"
+                  value={desde}
+                  onChange={(e) => setDesde(e.target.value)}
+                  className="border border-emerald-200 rounded-lg px-2 py-1 text-xs md:text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
+                />
+              </div>
+              <div className="flex flex-col">
+                <label className="mb-1 font-semibold text-emerald-900 text-xs">
+                  Hasta
+                </label>
+                <input
+                  type="date"
+                  value={hasta}
+                  onChange={(e) => setHasta(e.target.value)}
+                  className="border border-emerald-200 rounded-lg px-2 py-1 text-xs md:text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-xl font-semibold shadow-md flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed text-xs md:text-sm"
+              >
+                <BarChart3 className="w-4 h-4" />
+                {loading ? "Actualizando…" : "Aplicar fechas"}
+              </button>
+            </form>
+          </div>
         </header>
 
         {/* SUBINFO RANGO */}
@@ -202,6 +261,13 @@ export default function ReportesIngresosCreditos() {
             </span>
           )}
         </div>
+
+        {loading && (
+          <div className="bg-emerald-50 border border-emerald-100 text-emerald-800 text-xs px-3 py-2 rounded-xl shadow-sm inline-flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Cargando datos de ingresos…
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-2 rounded-xl shadow-sm">
@@ -259,7 +325,7 @@ export default function ReportesIngresosCreditos() {
             </p>
           </div>
 
-          {/* Ticket promedio */}
+          {/* Ticket promedio + mejor día */}
           <div className="bg-white shadow-sm border border-slate-200/80 rounded-2xl p-4 flex flex-col justify-between hover:shadow-md transition">
             <div className="flex items-center justify-between">
               <p className="text-[11px] font-semibold text-slate-800 uppercase">
@@ -270,11 +336,28 @@ export default function ReportesIngresosCreditos() {
             <p className="mt-2 text-2xl md:text-3xl font-extrabold text-slate-900">
               {formatBs(metrics.promedioTicket)}
             </p>
-            <p className="text-[11px] text-slate-900/70 mt-1">
-              Promedio de ingreso por día con ventas.
-            </p>
+            {metrics.mejorDia && (
+              <p className="mt-2 text-[11px] text-slate-900/80">
+                Mejor día:{" "}
+                <span className="font-semibold">{metrics.mejorDia.fecha}</span>{" "}
+                ({formatBs(metrics.mejorDia.total_bs)} Bs)
+              </p>
+            )}
+            {!metrics.mejorDia && (
+              <p className="text-[11px] text-slate-900/70 mt-1">
+                Aún no hay días con ventas en el rango.
+              </p>
+            )}
           </div>
         </section>
+
+        {/* Mensaje cuando no hay datos */}
+        {!loading && !error && sinDatos && (
+          <div className="bg-emerald-50 border border-emerald-100 text-emerald-800 text-sm px-4 py-3 rounded-xl shadow-sm">
+            No se registraron compras de créditos en el rango seleccionado.
+            Ajusta las fechas o el rango rápido para ver más información.
+          </div>
+        )}
 
         {/* GRÁFICOS */}
         <section className="grid lg:grid-cols-2 gap-6">
@@ -292,7 +375,13 @@ export default function ReportesIngresosCreditos() {
                   <BarChart data={chartData}>
                     <XAxis dataKey="fecha" hide />
                     <YAxis allowDecimals={false} />
-                    <Tooltip />
+                    <Tooltip
+                      formatter={(value, name) =>
+                        name === "Créditos"
+                          ? [formatInt(value), "Créditos"]
+                          : [value, name]
+                      }
+                    />
                     <Bar
                       dataKey="creditos"
                       name="Créditos"
@@ -323,7 +412,13 @@ export default function ReportesIngresosCreditos() {
                   <LineChart data={chartData}>
                     <XAxis dataKey="fecha" hide />
                     <YAxis />
-                    <Tooltip />
+                    <Tooltip
+                      formatter={(value, name) =>
+                        name === "Monto (Bs)"
+                          ? [formatBs(value), "Monto (Bs)"]
+                          : [value, name]
+                      }
+                    />
                     <Legend />
                     <Line
                       type="monotone"

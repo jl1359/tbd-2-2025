@@ -1,7 +1,9 @@
+// frontend/src/pages/Publicaciones.jsx
 // digital-barder/frontend/src/pages/Publicaciones.jsx
 import { useEffect, useState } from "react";
-import { api, crearIntercambio } from "../services/api";
+import { api, crearIntercambio, buildUploadUrl } from "../services/api";
 import hoja from "../assets/hoja.png";
+import PublicidadSlot from "../components/PublicidadSlot.jsx";
 
 // Base de la API (ej: http://localhost:4000/api)
 const API_BASE_URL =
@@ -34,7 +36,7 @@ export default function Publicaciones() {
     }
   }
 
-  // Lista de categorías únicas
+  // Lista de categorías únicas + "TODAS"
   const categorias = [
     "TODAS",
     ...Array.from(
@@ -101,12 +103,13 @@ export default function Publicaciones() {
   return (
     <div className="min-h-screen bg-[#082b1f] text-white p-6 md:p-10">
       {/* HEADER + FILTROS SUPERIORES */}
-      <div className="flex flex-col gap-4 mb-8">
+      <div className="flex flex-col gap-4 mb-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-3">
             <img src={hoja} alt="logo" className="w-10 h-10 drop-shadow-lg" />
             <h1 className="text-3xl font-bold text-emerald-400">Marketplace</h1>
           </div>
+
           <div className="w-full md:flex-1">
             <div className="flex flex-col md:flex-row md:items-end gap-4">
               {/* Buscador */}
@@ -116,18 +119,19 @@ export default function Publicaciones() {
                     type="text"
                     value={filtroTexto}
                     onChange={(e) => setFiltroTexto(e.target.value)}
-                    placeholder="Buscar..."
-                    className="w-full md:max-w-md bg-[#0e4330] border border-emerald-600 rounded-lg px-3 py-2 pl-3 outline-none focus:ring-2 focus:ring-emerald-400"
+                    placeholder="Buscar por título o descripción..."
+                    className="w-full md:max-w-md bg-[#0e4330] border border-emerald-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-emerald-400"
                   />
                 </div>
               </div>
+
               {/* Categoría */}
               <div className="w-full md:w-64">
                 <div className="relative">
                   <select
                     value={filtroCategoria}
                     onChange={(e) => setFiltroCategoria(e.target.value)}
-                    className="appearance-none w-full bg-[#038547] border border-[#026636] rounded-lg px-3 py-2 pr-12 text-sm text-white outline-none focus:ring-2 focus:ring-emerald-400"
+                    className="appearance-none w-full bg-[#038547] border border-emerald-800 rounded-lg px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-emerald-400"
                   >
                     {categorias.map((c) => (
                       <option key={c} value={c}>
@@ -135,7 +139,7 @@ export default function Publicaciones() {
                       </option>
                     ))}
                   </select>
-                  <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none">
+                  <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
                     <svg
                       className="h-4 w-4 text-white"
                       xmlns="http://www.w3.org/2000/svg"
@@ -154,19 +158,25 @@ export default function Publicaciones() {
         </div>
       </div>
 
+      {/* PUBLICIDAD SUPERIOR PARA LA SECCIÓN PUBLICACIONES */}
+      <section className="mb-6">
+        {/* Usa el nombre de ubicación que hayas definido en UBICACION_PUBLICIDAD.nombre */}
+        <PublicidadSlot ubicacion="PUBLICACIONES_TOP" />
+      </section>
+
       {/* BOTONES SUPERIORES */}
       <div className="rounded-xl p-4 mb-6">
         <div className="flex flex-wrap gap-3">
           <a
             href="/publicaciones/nueva"
-            className="flex items-center gap-2 bg-[#038547] hover:bg-[#026636] px-4 py-2 rounded-lg font-semibold text-sm shadow-md transition-all"
+            className="flex items-center gap-2 bg-[#038547] hover:bg-[#02a355] px-4 py-2 rounded-lg font-semibold text-sm shadow-md transition-all"
           >
             <span className="text-lg">＋</span>
             <span>Crear Publicación</span>
           </a>
           <a
             href="/publicaciones/mias"
-            className="flex items-center gap-2 bg-[#038547] hover:bg-[#026636] px-4 py-2 rounded-lg font-semibold text-sm shadow-md transition-all"
+            className="flex items-center gap-2 bg-[#038547] hover:bg-[#02a355] px-4 py-2 rounded-lg font-semibold text-sm shadow-md transition-all"
           >
             <span className="text-lg">📁</span>
             <span>Mis Publicaciones</span>
@@ -194,19 +204,18 @@ export default function Publicaciones() {
             const estado = (p.estado || "").toUpperCase();
             const esActiva = estado === "PUBLICADA";
 
-            // Construir URL completa del archivo
+            // Construir URL completa del archivo usando helper
             let archivoUrl = null;
+
             if (p.imagen_url) {
-              const path = p.imagen_url.startsWith("/")
-                ? p.imagen_url
-                : "/" + p.imagen_url;
-              archivoUrl = p.imagen_url.startsWith("http")
-                ? p.imagen_url
-                : FILE_BASE_URL + path;
+              archivoUrl = buildUploadUrl(p.imagen_url);
+            } else if (p.archivo_url) {
+              archivoUrl = buildUploadUrl(p.archivo_url);
             }
 
             const esImagenVisible =
-              archivoUrl && /\.(png|jpe?g|gif|webp|bmp)$/i.test(archivoUrl || "");
+              archivoUrl &&
+              /\.(png|jpe?g|gif|webp|bmp)$/i.test(archivoUrl || "");
             const esVideoVisible =
               archivoUrl &&
               /\.(mp4|webm|ogg|mov|avi|m4v)$/i.test(archivoUrl || "");
@@ -217,7 +226,7 @@ export default function Publicaciones() {
                 className="bg-[#E9FFD9] text-[#013726] rounded-3xl shadow-lg overflow-hidden flex flex-col min-h-[360px]"
               >
                 {/* MEDIA (imagen o video) */}
-                <div className="w-full h-40 bg-[#E9FFD9] border-b border-[#c5f0b8] overflow-hidden flex items-center justify-center">
+                <div className="w-full h-40 bg-[#E9FFD9] border border-[#c5f0b8] overflow-hidden flex items-center justify-center">
                   {esImagenVisible && (
                     <img
                       src={archivoUrl}
@@ -227,7 +236,7 @@ export default function Publicaciones() {
                   )}
                   {!esImagenVisible && esVideoVisible && (
                     <video
-                      src={archivoUrl}
+                      src={archivoUrl || undefined}
                       className="w-full h-full object-cover"
                       controls
                       muted
@@ -291,8 +300,10 @@ export default function Publicaciones() {
                     <button
                       onClick={() => esActiva && handleIntercambiar(p)}
                       disabled={!esActiva}
-                      className={`w-full py-3 rounded-lg bg-[#0b7a35] hover:bg-[#0cb652] text-white font-semibold text-sm transition-all ${
-                        !esActiva ? "opacity-60 cursor-not-allowed" : ""
+                      className={`w-full py-3 rounded-lg text-white font-semibold text-sm transition-all ${
+                        esActiva
+                          ? "bg-[#0cb652] hover:bg-[#0aa144]"
+                          : "bg-[#0cb652] opacity-60 cursor-not-allowed"
                       }`}
                     >
                       Intercambiar
@@ -304,6 +315,11 @@ export default function Publicaciones() {
           })}
         </div>
       )}
+
+      {/* PUBLICIDAD INFERIOR OPCIONAL PARA PUBLICACIONES */}
+      <section className="mt-6">
+        <PublicidadSlot ubicacion="PUBLICACIONES_BOTTOM" variant="card" />
+      </section>
     </div>
   );
 }

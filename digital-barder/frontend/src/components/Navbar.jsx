@@ -79,12 +79,12 @@ export default function Navbar() {
         >
           Reportes
         </a>
-        {/*<a
+        <a
           href="/publicidad"
           className="text-white hover:text-emerald-400 transition font-semibold"
         >
           Publicidad
-        </a>*/}
+        </a>
 
         {/* CERRAR SESIÓN */}
         <button

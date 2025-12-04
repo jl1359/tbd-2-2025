@@ -358,16 +358,54 @@ export function vincularPublicacionPromocion(id_promocion, id_publicacion) {
 // ======================= PUBLICIDAD ===================
 // =====================================================
 
+// Público: lista de publicidad ACTIVA dentro de fecha_inicio/fecha_fin
 export function getPublicidadActiva() {
-  return api("/publicidad");
+  return api("/publicidad/activa");
 }
 
+// Solo ADMIN (el backend valida con isAdmin):
+// Crear nueva campaña (queda en estado PROGRAMADA)
 export function crearPublicidad(body) {
   return api("/publicidad", {
     method: "POST",
     body,
   });
 }
+
+// Solo ADMIN: listar TODAS las campañas (cualquier estado)
+export function getPublicidadAdmin() {
+  return api("/publicidad/admin");
+}
+
+// Solo ADMIN: cambiar estado de una campaña (PROGRAMADA, ACTIVA, PAUSADA, etc.)
+export function cambiarEstadoPublicidad(id_publicidad, estado) {
+  return api(`/publicidad/${id_publicidad}/estado`, {
+    method: "PATCH",
+    body: { estado },
+  });
+}
+
+// Solo ADMIN: marcar una campaña como ELIMINADA (delete lógico)
+export function eliminarPublicidad(id_publicidad) {
+  return api(`/publicidad/${id_publicidad}`, {
+    method: "DELETE",
+  });
+}
+
+// Solo ADMIN: buscar publicaciones para vincularlas a una campaña de publicidad
+export function buscarPublicacionesParaPublicidad(q = "") {
+  const params = new URLSearchParams();
+  if (q) params.append("q", q);
+  const qs = params.toString();
+  return api(`/publicidad/buscar-publicaciones${qs ? `?${qs}` : ""}`);
+}
+
+// Catálogo de ubicaciones de publicidad (tabla UBICACION_PUBLICIDAD)
+export function getUbicacionesPublicidad() {
+  // backend: GET /api/catalogos/ubicaciones-publicidad
+  return api("/catalogos/ubicaciones-publicidad");
+}
+
 
 // =====================================================
 // ===================== UTILIDADES =====================

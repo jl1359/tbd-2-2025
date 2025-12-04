@@ -53,7 +53,7 @@ export default function Wallet() {
   if (cargando) {
     return (
       <div className="min-h-screen bg-[#082b1f] text-white flex items-center justify-center">
-        Cargando billeterat.
+        Cargando billetera...
       </div>
     );
   }
@@ -79,9 +79,20 @@ export default function Wallet() {
         <div className="rounded-2xl border border-emerald-700 bg-[#0f3f2d] p-6 shadow-lg">
           <p className="text-emerald-200 text-sm mb-2">Créditos disponibles</p>
           <p className="text-4xl font-bold text-emerald-300">{saldo}</p>
+          <p className="text-xs text-emerald-100/70 mt-2">
+            Créditos que puedes usar ahora mismo para compras, intercambios o publicidad.
+          </p>
         </div>
 
-        
+        {/* Créditos retenidos */}
+        <div className="rounded-2xl border border-emerald-700 bg-[#0f3f2d] p-6 shadow-lg">
+          <p className="text-emerald-200 text-sm mb-2">Créditos retenidos</p>
+          <p className="text-4xl font-bold text-amber-300">{bloqueado}</p>
+          <p className="text-xs text-emerald-100/70 mt-2">
+            Créditos reservados por intercambios o campañas de publicidad en curso.
+          </p>
+        </div>
+
         {/* Acciones rápidas */}
         <div className="rounded-2xl border border-emerald-700 bg-[#0f3f2d] p-6 shadow-lg flex flex-col justify-between">
           <div>
@@ -134,9 +145,10 @@ export default function Wallet() {
         ) : (
           <div className="mt-3 space-y-3 text-sm">
             {movimientos.map((m) => {
-              const fecha = m.creado_en || m.fecha || m.fecha_movimiento || null;
+              const fecha =
+                m.creado_en || m.fecha || m.fecha_movimiento || null;
 
-              // 👇 AQUÍ DEFINIMOS SI ES NEGATIVO O POSITIVO
+              // Determinar si es un movimiento negativo o positivo
               const esNegativo =
                 m.signo_mov === "NEGATIVO" ||
                 m.tipo_movimiento?.includes("OUT") ||
@@ -168,8 +180,7 @@ export default function Wallet() {
                       {esNegativo ? "-" : "+"} {cantidad} cr.
                     </p>
                     <p className="text-[11px] text-emerald-100/60 mt-1">
-                      Saldo:{" "}
-                      {m.saldo_posterior ?? m.saldo ?? "-"} cr.
+                      Saldo: {m.saldo_posterior ?? m.saldo ?? "-"} cr.
                     </p>
                   </div>
                 </div>

@@ -1,5 +1,5 @@
 // src/pages/ReportesRankingUsuarios.jsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { getReporteRankingUsuarios } from "../services/api";
 import {
   BarChart,
@@ -27,6 +27,18 @@ export default function ReportesRankingUsuarios() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const hasData = datos.length > 0;
+
+  const formatNumber = (n) =>
+    Number(n || 0).toLocaleString("es-BO", {
+      maximumFractionDigits: 2,
+    });
+
+  const formatInt = (n) =>
+    Number(n || 0).toLocaleString("es-BO", {
+      maximumFractionDigits: 0,
+    });
+
   async function cargar() {
     try {
       setLoading(true);
@@ -41,6 +53,12 @@ export default function ReportesRankingUsuarios() {
       setLoading(false);
     }
   }
+
+  // Carga inicial
+  useEffect(() => {
+    cargar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // =========================
   // MÉTRICAS GLOBALES
@@ -105,26 +123,28 @@ export default function ReportesRankingUsuarios() {
   // =========================
   const chartImpacto = useMemo(
     () =>
-      datos.map((r) => ({
-        usuario: `U${r.id_usuario}`,
-        impacto:
-          Number(r.co2_total || 0) +
-          Number(r.agua_total || 0) +
-          Number(r.energia_total || 0),
-      })),
+      datos
+        .map((r) => ({
+          usuario: `U${r.id_usuario}`,
+          impacto:
+            Number(r.co2_total || 0) +
+            Number(r.agua_total || 0) +
+            Number(r.energia_total || 0),
+        }))
+        .sort((a, b) => b.impacto - a.impacto),
     [datos]
   );
 
   const chartTransacciones = useMemo(
     () =>
-      datos.map((r) => ({
-        usuario: `U${r.id_usuario}`,
-        transacciones: Number(r.transacciones || 0),
-      })),
+      datos
+        .map((r) => ({
+          usuario: `U${r.id_usuario}`,
+          transacciones: Number(r.transacciones || 0),
+        }))
+        .sort((a, b) => b.transacciones - a.transacciones),
     [datos]
   );
-
-  const hasData = datos.length > 0;
 
   return (
     <div
@@ -204,6 +224,9 @@ export default function ReportesRankingUsuarios() {
                   className="border border-emerald-200 rounded-lg px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/70 focus:border-emerald-500"
                   placeholder="ej. 1"
                 />
+                <span className="mt-1 text-[10px] text-emerald-800/70">
+                  Corresponde al período de REPORTE_IMPACTO.
+                </span>
               </div>
 
               <div className="flex flex-col flex-1 min-w-[110px]">
@@ -219,6 +242,9 @@ export default function ReportesRankingUsuarios() {
                   }
                   className="border border-emerald-200 rounded-lg px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/70 focus:border-emerald-500"
                 />
+                <span className="mt-1 text-[10px] text-emerald-800/70">
+                  Cantidad máxima de usuarios en el ranking.
+                </span>
               </div>
             </div>
 
@@ -261,7 +287,7 @@ export default function ReportesRankingUsuarios() {
                   CO₂ total (kg)
                 </p>
                 <p className="mt-2 text-3xl font-extrabold text-emerald-900 tabular-nums">
-                  {metrics.totalCo2.toLocaleString()}
+                  {formatNumber(metrics.totalCo2)}
                 </p>
               </div>
               <span className="inline-flex items-center justify-center rounded-full bg-emerald-50 p-2">
@@ -280,7 +306,7 @@ export default function ReportesRankingUsuarios() {
                   Agua total (L)
                 </p>
                 <p className="mt-2 text-3xl font-extrabold text-sky-900 tabular-nums">
-                  {metrics.totalAgua.toLocaleString()}
+                  {formatNumber(metrics.totalAgua)}
                 </p>
               </div>
               <span className="inline-flex items-center justify-center rounded-full bg-sky-50 p-2">
@@ -299,7 +325,7 @@ export default function ReportesRankingUsuarios() {
                   Energía total (kWh)
                 </p>
                 <p className="mt-2 text-3xl font-extrabold text-teal-900 tabular-nums">
-                  {metrics.totalEnergia.toLocaleString()}
+                  {formatNumber(metrics.totalEnergia)}
                 </p>
               </div>
               <span className="inline-flex items-center justify-center rounded-full bg-teal-50 p-2">
@@ -317,7 +343,7 @@ export default function ReportesRankingUsuarios() {
                 Transacciones
               </p>
               <p className="mt-2 text-3xl font-extrabold text-slate-900 tabular-nums">
-                {metrics.totalTransacciones.toLocaleString()}
+                {formatInt(metrics.totalTransacciones)}
               </p>
             </div>
             <p className="mt-2 text-[11px] text-slate-600/80">
@@ -386,7 +412,9 @@ export default function ReportesRankingUsuarios() {
                       axisLine={{ stroke: "#e5e7eb" }}
                     />
                     <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip />
+                    <Tooltip
+                      formatter={(value) => [formatNumber(value), "Impacto"]}
+                    />
                     <Bar
                       dataKey="impacto"
                       name="Impacto total (unidades combinadas)"
@@ -428,7 +456,9 @@ export default function ReportesRankingUsuarios() {
                       axisLine={{ stroke: "#e5e7eb" }}
                     />
                     <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                    <Tooltip />
+                    <Tooltip
+                      formatter={(value) => [formatInt(value), "Transacciones"]}
+                    />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     <Bar
                       dataKey="transacciones"
@@ -491,16 +521,16 @@ export default function ReportesRankingUsuarios() {
                       U{r.id_usuario}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
-                      {r.co2_total}
+                      {formatNumber(r.co2_total)}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
-                      {r.agua_total}
+                      {formatNumber(r.agua_total)}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
-                      {r.energia_total}
+                      {formatNumber(r.energia_total)}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
-                      {r.transacciones}
+                      {formatInt(r.transacciones)}
                     </td>
                   </tr>
                 ))}

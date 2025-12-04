@@ -4,10 +4,15 @@ import { useNavigate } from "react-router-dom";
 import hoja from "../assets/hoja.png";
 import { api } from "../services/api";
 
+// 🔹 nuevos imports de publicidad
+import PublicidadSlot from "../components/PublicidadSlot.jsx";
+import FloatingAd from "../components/FloatingAd.jsx";
+
 export default function Home() {
   const [estado, setEstado] = useState(null);
   const [misCreditos, setMisCreditos] = useState(0);
   const [actividadReciente, setActividadReciente] = useState([]);
+  const [anuncios, setAnuncios] = useState([]); // 👈 publicidad activa
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -22,11 +27,12 @@ export default function Home() {
       setLoading(true);
       setError("");
 
+      // Estado API
       const estadoRes = await api("/health");
       setEstado(estadoRes);
 
+      // Mis créditos
       const creditos = await api("/wallet/mis-creditos");
-
       const saldo =
         creditos?.saldo_creditos ??
         creditos?.saldo ??
@@ -35,8 +41,16 @@ export default function Home() {
 
       setMisCreditos(Number(saldo) || 0);
 
+      // Movimientos recientes
       const act = await api("/wallet/mis-movimientos");
       setActividadReciente(Array.isArray(act) ? act.slice(0, 8) : []);
+
+      // Publicidad ACTIVA (para mostrar en Home + flotante)
+      const pubActivas = await api("/publicidad/activa");
+      const listaPub = Array.isArray(pubActivas)
+        ? pubActivas
+        : pubActivas?.data || [];
+      setAnuncios(listaPub);
     } catch (err) {
       console.error(err);
       setError("No se pudo cargar la información de inicio.");
@@ -95,8 +109,8 @@ export default function Home() {
         <img src={hoja} alt="logo" className="w-10 h-10 drop-shadow-lg" />
       </header>
 
-      {/* ESTADO API + SALDO */}
-      <section className="grid gap-4 md:grid-cols-3 mb-8">
+      {/* ESTADO API + SALDO + ACCESOS */}
+      <section className="grid gap-4 md:grid-cols-3 mb-6">
         <div className="bg-[#0f3f2d] rounded-xl p-5 border border-emerald-700 shadow-md">
           <p className="text-sm text-emerald-200 mb-1">Estado del sistema</p>
           <p className="text-lg font-semibold text-emerald-300">
@@ -145,6 +159,11 @@ export default function Home() {
             </button>
           </div>
         </div>
+      </section>
+
+      {/* BANNER DE PUBLICIDAD EN HOME (ubicación lógica: HOME_MIDDLE) */}
+      <section className="mb-6">
+        <PublicidadSlot ubicacion="HOME_MIDDLE" />
       </section>
 
       {/* ACTIVIDAD RECIENTE */}
@@ -218,6 +237,14 @@ export default function Home() {
           </div>
         )}
       </section>
+
+      {/* OPCIONAL: OTRO SLOT DE PUBLICIDAD AL FINAL (HOME_BOTTOM) */}
+      <section className="mt-6">
+        <PublicidadSlot ubicacion="HOME_BOTTOM" variant="card" />
+      </section>
+
+      {/* BANNER FLOTANTE (usa TODA la publicidad activa que haya) */}
+      <FloatingAd anuncios={anuncios} intervaloMs={8000} />
     </div>
   );
 }

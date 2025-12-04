@@ -8,13 +8,15 @@ datasource db {
 }
 
 model actividad_sostenible {
-  id_actividad       Int      @id @default(autoincrement())
+  id_actividad       Int                         @id @default(autoincrement())
   id_usuario         Int
   id_tipo_actividad  Int
-  descripcion        String   @db.Text
+  descripcion        String                      @db.Text
   creditos_otorgados Int
-  evidencia_url      String?  @db.VarChar(500)
-  creado_en          DateTime @default(now()) @db.DateTime(0)
+  estado             actividad_sostenible_estado @default(PENDIENTE)
+  aprobado_en        DateTime?                   @db.DateTime(0)
+  evidencia_url      String?                     @db.VarChar(500)
+  creado_en          DateTime                    @default(now()) @db.DateTime(0)
 
   @@index([id_tipo_actividad], map: "fk_act_tipo")
   @@index([id_usuario], map: "fk_act_usuario")
@@ -22,12 +24,13 @@ model actividad_sostenible {
 }
 
 model billetera {
-  id_billetera    Int               @id @default(autoincrement())
-  id_usuario      Int               @unique(map: "id_usuario")
-  estado          billetera_estado? @default(ACTIVA)
-  saldo_creditos  BigInt?           @default(0)
-  saldo_bs        Decimal?          @default(0.00) @db.Decimal(12, 2)
-  cuenta_bancaria String?           @db.VarChar(100)
+  id_billetera        Int               @id @default(autoincrement())
+  id_usuario          Int               @unique(map: "id_usuario")
+  estado              billetera_estado? @default(ACTIVA)
+  saldo_creditos      BigInt?           @default(0)
+  creditos_bloqueados BigInt            @default(0)
+  saldo_bs            Decimal?          @default(0.00) @db.Decimal(12, 2)
+  cuenta_bancaria     String?           @db.VarChar(100)
 }
 
 model bitacora_acceso {
@@ -277,16 +280,18 @@ model publicacion_servicio {
 }
 
 model publicidad {
-  id_publicidad  Int                @id @default(autoincrement())
+  id_publicidad  Int               @id @default(autoincrement())
   id_usuario     Int
   id_ubicacion   Int
-  estado         publicidad_estado? @default(PROGRAMADA)
-  titulo         String             @db.VarChar(200)
-  descripcion    String?            @db.VarChar(255)
-  url_destino    String?            @db.VarChar(500)
-  fecha_inicio   DateTime           @db.DateTime(0)
-  fecha_fin      DateTime           @db.DateTime(0)
+  estado         publicidad_estado @default(PROGRAMADA)
+  titulo         String            @db.VarChar(200)
+  descripcion    String?           @db.VarChar(255)
+  url_destino    String?           @db.VarChar(500)
+  fecha_inicio   DateTime          @db.DateTime(0)
+  fecha_fin      DateTime          @db.DateTime(0)
   costo_creditos BigInt
+  banner_url     String?           @db.VarChar(500)
+  archivo_url    String?           @db.VarChar(500)
 
   @@index([id_ubicacion], map: "fk_publicidad_ubipub")
   @@index([id_usuario], map: "fk_publicidad_usuario")
@@ -454,10 +459,12 @@ model usuario {
 }
 
 model usuario_logro {
-  id_usuario_logro Int     @id @default(autoincrement())
+  id_usuario_logro Int       @id @default(autoincrement())
   id_usuario       Int
   id_logro         Int
-  progreso_actual  BigInt? @default(0)
+  progreso_actual  BigInt?   @default(0)
+  creado_en        DateTime  @default(now()) @db.DateTime(0)
+  obtenido_en      DateTime? @db.DateTime(0)
 
   @@unique([id_usuario, id_logro], map: "id_usuario")
   @@index([id_logro], map: "fk_ulogro_logro")
@@ -500,14 +507,6 @@ enum evento_ambiental_fuente {
   TRANSACCION
 }
 
-enum publicidad_estado {
-  PROGRAMADA
-  ACTIVA
-  PAUSADA
-  FINALIZADA
-  CANCELADA
-}
-
 enum compra_creditos_estado {
   PENDIENTE
   APROBADO
@@ -546,4 +545,19 @@ enum suscripcion_premium_estado {
   ACTIVA
   CANCELADA
   VENCIDA
+}
+
+enum publicidad_estado {
+  PROGRAMADA
+  ACTIVA
+  PAUSADA
+  FINALIZADA
+  CANCELADA
+  ELIMINADA
+}
+
+enum actividad_sostenible_estado {
+  PENDIENTE
+  APROBADA
+  RECHAZADA
 }

@@ -19,29 +19,44 @@ import {
   Layers,
   BarChart3,
   PieChart as PieChartIcon,
+  Calendar,
 } from "lucide-react";
 
 function hoyISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function hace30DiasISO() {
-  const d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+function haceNDiasISO(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - (n - 1));
   return d.toISOString().slice(0, 10);
 }
 
+const RANGOS_RAPIDOS = [
+  { id: "7d", label: "Últimos 7 días", dias: 7 },
+  { id: "30d", label: "Últimos 30 días", dias: 30 },
+  { id: "90d", label: "Últimos 90 días", dias: 90 },
+  { id: "1y", label: "Último año", dias: 365 },
+];
+
+const COLORS = ["#047857", "#1e3a8a", "#0d9488", "#6d28d9", "#f59e0b"];
+
 export default function ReportesIntercambiosCategoria() {
-  const [desde, setDesde] = useState(hace30DiasISO());
+  const [desde, setDesde] = useState(haceNDiasISO(30));
   const [hasta, setHasta] = useState(hoyISO());
   const [datos, setDatos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [rangoActivo, setRangoActivo] = useState("30d");
 
-  async function cargar() {
+  async function cargar(customDesde = desde, customHasta = hasta) {
     try {
       setLoading(true);
       setError("");
-      const res = await getReporteIntercambiosCategoria({ desde, hasta });
+      const res = await getReporteIntercambiosCategoria({
+        desde: customDesde,
+        hasta: customHasta,
+      });
       setDatos(Array.isArray(res) ? res : []);
     } catch (e) {
       console.error(e);
@@ -53,13 +68,24 @@ export default function ReportesIntercambiosCategoria() {
   }
 
   useEffect(() => {
-    cargar();
+    // carga inicial
+    cargar(desde, hasta);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleSubmit(e) {
     e.preventDefault();
-    cargar();
+    setRangoActivo(null); // el usuario eligió fechas manuales
+    cargar(desde, hasta);
+  }
+
+  function aplicarRangoRapido(rango) {
+    const nuevoHasta = hoyISO();
+    const nuevoDesde = haceNDiasISO(rango.dias);
+    setDesde(nuevoDesde);
+    setHasta(nuevoHasta);
+    setRangoActivo(rango.id);
+    cargar(nuevoDesde, nuevoHasta);
   }
 
   // =========================
@@ -100,24 +126,32 @@ export default function ReportesIntercambiosCategoria() {
   // =========================
   const barData = useMemo(
     () =>
-      datos.map((c) => ({
-        categoria: c.categoria,
-        intercambios: Number(c.total_intercambios || 0),
-      })),
+      datos
+        .map((c) => ({
+          categoria: c.categoria,
+          intercambios: Number(c.total_intercambios || 0),
+        }))
+        .sort((a, b) => b.intercambios - a.intercambios),
     [datos]
   );
 
   const pieData = useMemo(
     () =>
-      datos.map((c) => ({
-        name: c.categoria,
-        value: Number(c.total_intercambios || 0),
-      })),
+      datos
+        .map((c) => ({
+          name: c.categoria,
+          value: Number(c.total_intercambios || 0),
+        }))
+        .filter((d) => d.value > 0),
     [datos]
   );
 
-  const COLORS = ["#047857", "#1e3a8a", "#0d9488", "#6d28d9", "#f59e0b"];
   const hasData = datos.length > 0;
+
+  const rangoLabel = `Del ${desde} al ${hasta}`;
+
+  const formatInt = (n) =>
+    Number(n || 0).toLocaleString("es-BO", { maximumFractionDigits: 0 });
 
   return (
     <div
@@ -148,7 +182,7 @@ export default function ReportesIntercambiosCategoria() {
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-emerald-900/80">
                 <span className="inline-flex items-center gap-1 bg-white/80 px-2.5 py-1 rounded-full shadow-sm border border-emerald-200/60">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <Calendar className="w-3 h-3" />
                   Rango:{" "}
                   <span className="font-semibold">
                     {desde} &nbsp;–&nbsp; {hasta}
@@ -160,6 +194,10 @@ export default function ReportesIntercambiosCategoria() {
                     <span className="font-semibold">
                       {metrics.topCategoria.categoria}
                     </span>
+                    <span className="ml-1 text-[11px]">
+                      ({formatInt(metrics.topCategoria.total_intercambios)}{" "}
+                      intercambios)
+                    </span>
                   </span>
                 )}
               </div>
@@ -167,57 +205,80 @@ export default function ReportesIntercambiosCategoria() {
           </div>
 
           {/* Filtros */}
-          <form
-            onSubmit={handleSubmit}
-            className="bg-white/85 backdrop-blur rounded-2xl shadow-lg border border-emerald-100 px-4 py-3 flex flex-col gap-3 min-w-[260px]"
-          >
-            <p className="text-xs font-semibold text-emerald-900 tracking-wide">
-              Filtros
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <div className="flex flex-col flex-1 min-w-[120px]">
-                <label className="mb-1 text-xs font-semibold text-emerald-900">
-                  Desde
-                </label>
-                <input
-                  type="date"
-                  value={desde}
-                  onChange={(e) => setDesde(e.target.value)}
-                  className="border border-emerald-200 rounded-lg px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/70 focus:border-emerald-500"
-                />
-              </div>
-              <div className="flex flex-col flex-1 min-w-[120px]">
-                <label className="mb-1 text-xs font-semibold text-emerald-900">
-                  Hasta
-                </label>
-                <input
-                  type="date"
-                  value={hasta}
-                  onChange={(e) => setHasta(e.target.value)}
-                  className="border border-emerald-200 rounded-lg px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/70 focus:border-emerald-500"
-                />
-              </div>
+          <div className="flex flex-col gap-3 items-stretch md:items-end min-w-[260px]">
+            {/* Rangos rápidos */}
+            <div className="flex flex-wrap gap-2 justify-end">
+              {RANGOS_RAPIDOS.map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => aplicarRangoRapido(r)}
+                  disabled={loading}
+                  className={`px-3 py-1 rounded-full text-[11px] font-semibold border transition
+                    ${
+                      rangoActivo === r.id
+                        ? "bg-emerald-700 text-white border-emerald-700 shadow-sm"
+                        : "bg-white text-emerald-800 border-emerald-200 hover:bg-emerald-50"
+                    }`}
+                >
+                  {r.label}
+                </button>
+              ))}
             </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className={`mt-1 px-4 py-2 rounded-xl text-sm font-semibold shadow-md flex items-center gap-2 transition
-              ${
-                loading
-                  ? "bg-emerald-300 text-emerald-900 cursor-wait"
-                  : "bg-emerald-700 hover:bg-emerald-800 text-white"
-              }`}
+
+            {/* Fechas manuales */}
+            <form
+              onSubmit={handleSubmit}
+              className="bg-white/85 backdrop-blur rounded-2xl shadow-lg border border-emerald-100 px-4 py-3 flex flex-col gap-3"
             >
-              <BarChart3 className="w-4 h-4" />
-              {loading ? "Cargando…" : "Actualizar"}
-            </button>
-            {loading && (
-              <p className="text-[11px] text-emerald-700/80 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                Calculando intercambios para el rango…
+              <p className="text-xs font-semibold text-emerald-900 tracking-wide">
+                Filtros personalizados
               </p>
-            )}
-          </form>
+              <div className="flex flex-wrap gap-3">
+                <div className="flex flex-col flex-1 min-w-[120px]">
+                  <label className="mb-1 text-xs font-semibold text-emerald-900">
+                    Desde
+                  </label>
+                  <input
+                    type="date"
+                    value={desde}
+                    onChange={(e) => setDesde(e.target.value)}
+                    className="border border-emerald-200 rounded-lg px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/70 focus:border-emerald-500"
+                  />
+                </div>
+                <div className="flex flex-col flex-1 min-w-[120px]">
+                  <label className="mb-1 text-xs font-semibold text-emerald-900">
+                    Hasta
+                  </label>
+                  <input
+                    type="date"
+                    value={hasta}
+                    onChange={(e) => setHasta(e.target.value)}
+                    className="border border-emerald-200 rounded-lg px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/70 focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className={`mt-1 px-4 py-2 rounded-xl text-sm font-semibold shadow-md flex items-center gap-2 transition
+                ${
+                  loading
+                    ? "bg-emerald-300 text-emerald-900 cursor-wait"
+                    : "bg-emerald-700 hover:bg-emerald-800 text-white"
+                }`}
+              >
+                <BarChart3 className="w-4 h-4" />
+                {loading ? "Cargando…" : "Aplicar fechas"}
+              </button>
+              {loading && (
+                <p className="text-[11px] text-emerald-700/80 flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Calculando intercambios para el rango…
+                </p>
+              )}
+            </form>
+          </div>
         </header>
 
         {error && (
@@ -225,6 +286,20 @@ export default function ReportesIntercambiosCategoria() {
             {error}
           </div>
         )}
+
+        {/* INFO RANGO / RESUMEN */}
+        <div className="flex items-center justify-between gap-2 text-xs text-emerald-900/70">
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100">
+            <Calendar className="w-3 h-3" />
+            <span>Rango analizado:</span>
+            <span className="font-semibold">{rangoLabel}</span>
+          </span>
+          {hasData && !loading && (
+            <span className="hidden sm:inline text-[11px]">
+              {datos.length} categoría(s) con actividad.
+            </span>
+          )}
+        </div>
 
         {/* KPIs */}
         <section className="grid md:grid-cols-4 gap-4 md:gap-6">
@@ -235,7 +310,7 @@ export default function ReportesIntercambiosCategoria() {
                   Intercambios totales
                 </p>
                 <p className="mt-2 text-3xl font-extrabold text-emerald-900 tabular-nums">
-                  {metrics.totalIntercambios.toLocaleString()}
+                  {formatInt(metrics.totalIntercambios)}
                 </p>
               </div>
               <span className="inline-flex items-center justify-center rounded-full bg-emerald-50 p-2">
@@ -291,7 +366,8 @@ export default function ReportesIntercambiosCategoria() {
                     {metrics.topCategoria.categoria}
                   </p>
                   <p className="text-xs text-emerald-700/80">
-                    {metrics.topCategoria.total_intercambios} intercambios
+                    {formatInt(metrics.topCategoria.total_intercambios)}{" "}
+                    intercambios
                   </p>
                 </>
               ) : (
@@ -344,7 +420,9 @@ export default function ReportesIntercambiosCategoria() {
                       axisLine={{ stroke: "#e5e7eb" }}
                     />
                     <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                    <Tooltip />
+                    <Tooltip
+                      formatter={(value) => [formatInt(value), "Intercambios"]}
+                    />
                     <Bar
                       dataKey="intercambios"
                       name="Intercambios"
@@ -394,7 +472,12 @@ export default function ReportesIntercambiosCategoria() {
                         />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip
+                      formatter={(value, name) => [
+                        formatInt(value),
+                        `Intercambios en ${name}`,
+                      ]}
+                    />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                   </PieChart>
                 </ResponsiveContainer>
@@ -430,27 +513,42 @@ export default function ReportesIntercambiosCategoria() {
                   <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">
                     Intercambios
                   </th>
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">
+                    % participación
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {datos.map((c, i) => (
-                  <tr
-                    key={i}
-                    className={i % 2 === 0 ? "bg-white" : "bg-slate-50/60"}
-                  >
-                    <td className="px-3 py-2 text-slate-800">
-                      {c.categoria}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {c.total_intercambios}
-                    </td>
-                  </tr>
-                ))}
+                {datos.map((c, i) => {
+                  const val = Number(c.total_intercambios || 0);
+                  const porcentaje =
+                    metrics.totalIntercambios > 0
+                      ? (val / metrics.totalIntercambios) * 100
+                      : 0;
+                  return (
+                    <tr
+                      key={i}
+                      className={
+                        i % 2 === 0 ? "bg-white" : "bg-slate-50/60"
+                      }
+                    >
+                      <td className="px-3 py-2 text-slate-800">
+                        {c.categoria}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {formatInt(c.total_intercambios)}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-slate-700">
+                        {porcentaje.toFixed(1)}%
+                      </td>
+                    </tr>
+                  );
+                })}
                 {datos.length === 0 && (
                   <tr>
                     <td
                       className="px-3 py-4 text-center text-gray-400 text-sm"
-                      colSpan={2}
+                      colSpan={3}
                     >
                       No hay intercambios en el rango.
                     </td>

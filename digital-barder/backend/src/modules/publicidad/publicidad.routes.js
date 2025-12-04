@@ -15,23 +15,42 @@ import {
 const router = Router();
 
 /* ===========================
-   PUBLICA
-=========================== */
+   RUTAS PÚBLICAS
+   =========================== */
+
+// Publicidad visible en el sistema (HOME, publicaciones, etc.)
 router.get("/activa", listarPublicidadActivaController);
 
 /* ===========================
-   SOLO ADMIN
-=========================== */
-router.use(authMiddleware, isAdmin);
+   USUARIO AUTENTICADO
+   =========================== */
 
-router.get("/admin", listarPublicidadAdminController);
+// Desde aquí, solo usuarios logueados
+router.use(authMiddleware);
 
-router.get("/buscar-publicaciones", buscarPublicacionesParaPublicidadController);
-
+// Cualquier usuario logueado puede CREAR su campaña (queda PROGRAMADA)
 router.post("/", crearPublicidadController);
 
+/* ===========================
+   SOLO ADMIN (GESTIÓN)
+   =========================== */
+
+// Desde aquí, además debe ser ADMIN
+router.use(isAdmin);
+
+// Listado completo de campañas (todas, cualquier estado)
+router.get("/admin", listarPublicidadAdminController);
+
+// Búsqueda de publicaciones para asociar a campañas (si lo usas)
+router.get(
+  "/buscar-publicaciones",
+  buscarPublicacionesParaPublicidadController
+);
+
+// Cambiar estado (PROGRAMADA, ACTIVA, PAUSADA, FINALIZADA, CANCELADA, ELIMINADA)
 router.patch("/:id/estado", cambiarEstadoPublicidadController);
 
+// Eliminado lógico (estado = ELIMINADA)
 router.delete("/:id", eliminarPublicidadController);
 
 export default router;

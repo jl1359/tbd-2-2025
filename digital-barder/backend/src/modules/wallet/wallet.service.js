@@ -36,7 +36,12 @@ function normalizeBilleteraRow(row) {
 
   const saldoCreditos = toNumberSafe(row.saldo_creditos, 0);
   const saldoBs = toNumberSafe(row.saldo_bs, 0);
-  const saldoBloqueado = toNumberSafe(row.saldo_bloqueado ?? 0, 0);
+
+  // Soportamos tanto alias saldo_bloqueado como la columna cruda creditos_bloqueados
+  const saldoBloqueado = toNumberSafe(
+    row.saldo_bloqueado ?? row.creditos_bloqueados ?? 0,
+    0
+  );
 
   return {
     // nombres originales de la consulta
@@ -91,7 +96,10 @@ function normalizeCompraRow(row) {
 // Saldo actual de la billetera del usuario logueado
 export async function obtenerMisCreditosService(idUsuario) {
   const rows = await prisma.$queryRaw`
-    SELECT saldo_creditos, saldo_bs
+    SELECT
+      saldo_creditos,
+      saldo_bs,
+      creditos_bloqueados AS saldo_bloqueado
     FROM BILLETERA
     WHERE id_usuario = ${idUsuario}
     LIMIT 1
@@ -103,23 +111,32 @@ export async function obtenerMisCreditosService(idUsuario) {
 // Movimientos de la billetera del usuario
 export async function obtenerMisMovimientosService(idUsuario) {
   const rows = await prisma.$queryRaw`
-    SELECT m.id_movimiento,
-           m.cantidad,
-           m.saldo_anterior,
-           m.saldo_posterior,
-           m.id_referencia,
-           m.creado_en,
-           tm.nombre AS tipo_movimiento,
-           tr.nombre AS tipo_referencia
+    SELECT 
+      m.id_movimiento,
+      m.cantidad,
+      m.saldo_anterior,
+      m.saldo_posterior,
+      m.id_referencia,
+      m.creado_en,
+      tm.nombre AS tipo_movimiento,
+      tr.nombre AS tipo_referencia,
+      sm.nombre AS signo_mov
     FROM MOVIMIENTO_CREDITOS m
-    JOIN TIPO_MOVIMIENTO tm ON tm.id_tipo_movimiento = m.id_tipo_movimiento
-    JOIN TIPO_REFERENCIA tr ON tr.id_tipo_referencia = m.id_tipo_referencia
+    JOIN TIPO_MOVIMIENTO tm 
+      ON tm.id_tipo_movimiento = m.id_tipo_movimiento
+    JOIN TIPO_REFERENCIA tr 
+      ON tr.id_tipo_referencia = m.id_tipo_referencia
+    LEFT JOIN SIGNO_TIPO_MOV stm 
+      ON stm.id_tipo_movimiento = m.id_tipo_movimiento
+    LEFT JOIN SIGNO_MOVIMIENTO sm 
+      ON sm.id_signo = stm.id_signo
     WHERE m.id_usuario = ${idUsuario}
     ORDER BY m.creado_en DESC, m.id_movimiento DESC
   `;
 
   return rows.map(normalizeMovimientoRow);
 }
+
 
 // Compra de un paquete de créditos (llama al SP y devuelve la billetera actualizada)
 export async function comprarCreditosService({
@@ -136,7 +153,10 @@ export async function comprarCreditosService({
   );
 
   const rows = await prisma.$queryRaw`
-    SELECT saldo_creditos, saldo_bs
+    SELECT
+      saldo_creditos,
+      saldo_bs,
+      creditos_bloqueados AS saldo_bloqueado
     FROM BILLETERA
     WHERE id_usuario = ${idUsuario}
     LIMIT 1

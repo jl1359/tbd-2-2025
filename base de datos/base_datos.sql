@@ -749,22 +749,25 @@ Inserta la billetera si no existe.
 Inserta la compra como APROBADO con el precio del paquete.
 Obtiene el tipo de movimiento RECARGA.
 Inserta un MOVIMIENTO_CREDITOS por la cantidad de créditos del paquete.*/
+USE CREDITOS_VERDES2;
+
 DROP PROCEDURE IF EXISTS sp_realizar_intercambio;
 DELIMITER $$
 
 CREATE PROCEDURE sp_realizar_intercambio(
   IN p_id_comprador INT,
   IN p_id_publicacion INT,
-  IN p_creditos BIGINT       -- lo usamos como validación, pero NO para calcular
+  IN p_creditos BIGINT
 )
 BEGIN
-  DECLARE v_id_vendedor   INT;
+  DECLARE v_id_vendedor    INT;
   DECLARE v_valor_creditos BIGINT;
-  DECLARE v_creditos_tx   BIGINT;
-  DECLARE v_id_tx         INT;
-  DECLARE v_mov_in        INT;
-  DECLARE v_mov_out       INT;
-  DECLARE v_saldo_comp    BIGINT;
+  DECLARE v_creditos_tx    BIGINT;
+  DECLARE v_id_tx          INT;
+  DECLARE v_mov_in         INT;
+  DECLARE v_mov_out        INT;
+  DECLARE v_saldo_comp     BIGINT;
+  DECLARE v_estado_pub     VARCHAR(20);
 
   DECLARE EXIT HANDLER FOR SQLEXCEPTION
   BEGIN
@@ -772,49 +775,56 @@ BEGIN
     RESIGNAL;
   END;
 
-  -- Obtener vendedor y valor de la publicación
-  SELECT id_usuario, valor_creditos
-  INTO v_id_vendedor, v_valor_creditos
+  -- 1) Obtener vendedor, valor y estado de la publicación (y bloquearla)
+  SELECT id_usuario, valor_creditos, estado
+    INTO v_id_vendedor, v_valor_creditos, v_estado_pub
   FROM PUBLICACION
-  WHERE id_publicacion = p_id_publicacion;
+  WHERE id_publicacion = p_id_publicacion
+  FOR UPDATE;
 
   IF v_id_vendedor IS NULL THEN
     SIGNAL SQLSTATE '45000'
-      SET MESSAGE_TEXT = 'Publicación no existe';
+      SET MESSAGE_TEXT = 'Publicacion no existe';
+  END IF;
+
+  -- Solo se puede intercambiar si esta PUBLICADA
+  IF UPPER(v_estado_pub) <> 'PUBLICADA' THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'La publicacion no esta disponible para intercambio';
   END IF;
 
   IF p_id_comprador = v_id_vendedor THEN
     SIGNAL SQLSTATE '45000'
-      SET MESSAGE_TEXT = 'No puedes intercambiar con tu propia publicación';
+      SET MESSAGE_TEXT = 'No puedes intercambiar con tu propia publicacion';
   END IF;
 
-  -- Validar valor de la publicación
+  -- 2) Validar valor de la publicacion
   IF v_valor_creditos IS NULL OR v_valor_creditos <= 0 THEN
     SIGNAL SQLSTATE '45000'
-      SET MESSAGE_TEXT = 'La publicación no tiene un valor de créditos válido';
+      SET MESSAGE_TEXT = 'La publicacion no tiene un valor de creditos valido';
   END IF;
 
-  -- Créditos que realmente usará la transacción (siempre el valor de la publicación)
+  -- 3) Creditos que realmente usara la transaccion
   SET v_creditos_tx = v_valor_creditos;
 
   -- Validar que lo que mande el backend coincida (defensa extra)
   IF p_creditos IS NOT NULL AND p_creditos <> v_creditos_tx THEN
     SIGNAL SQLSTATE '45000'
-      SET MESSAGE_TEXT = 'La cantidad de créditos debe coincidir con el valor de la publicación';
+      SET MESSAGE_TEXT = 'La cantidad de creditos debe coincidir con el valor de la publicacion';
   END IF;
 
   START TRANSACTION;
 
-    -- Asegurar billeteras
+    -- 4) Asegurar billeteras
     INSERT IGNORE INTO BILLETERA (id_usuario, estado, saldo_creditos, saldo_bs, cuenta_bancaria)
     VALUES (p_id_comprador, 'ACTIVA', 0, 0.00, NULL);
 
     INSERT IGNORE INTO BILLETERA (id_usuario, estado, saldo_creditos, saldo_bs, cuenta_bancaria)
     VALUES (v_id_vendedor, 'ACTIVA', 0, 0.00, NULL);
 
-    -- Verificar saldo del comprador con EL VALOR DE LA PUBLICACIÓN
+    -- 5) Verificar saldo del comprador
     SELECT saldo_creditos
-    INTO v_saldo_comp
+      INTO v_saldo_comp
     FROM BILLETERA
     WHERE id_usuario = p_id_comprador
     FOR UPDATE;
@@ -824,13 +834,13 @@ BEGIN
         SET MESSAGE_TEXT = 'Saldo insuficiente';
     END IF;
 
-    -- Crear la transacción con el valor real de la publicación
+    -- 6) Crear la transaccion
     INSERT INTO TRANSACCION (id_comprador, id_vendedor, id_publicacion, cantidad_creditos, estado)
     VALUES (p_id_comprador, v_id_vendedor, p_id_publicacion, v_creditos_tx, 'ACEPTADA');
 
     SET v_id_tx = LAST_INSERT_ID();
 
-    -- Tipos de movimiento de intercambio
+    -- 7) Tipos de movimiento de intercambio
     SET v_mov_in  = fn_get_tipo_mov('INTERCAMBIO_IN');
     SET v_mov_out = fn_get_tipo_mov('INTERCAMBIO_OUT');
 
@@ -839,33 +849,43 @@ BEGIN
         SET MESSAGE_TEXT = 'Tipos de movimiento de intercambio no configurados';
     END IF;
 
-    -- Movimientos de créditos: comprador (OUT) y vendedor (IN)
+    -- 8) Movimientos de creditos: comprador (OUT) y vendedor (IN)
     INSERT INTO MOVIMIENTO_CREDITOS
       (id_usuario, id_tipo_movimiento, id_tipo_referencia,
        cantidad, descripcion, saldo_anterior, saldo_posterior, id_referencia)
     VALUES
       -- Comprador: egreso
-      (p_id_comprador, v_mov_out,
-       (SELECT id_tipo_referencia FROM TIPO_REFERENCIA WHERE nombre='TRANSACCION' LIMIT 1),
-       v_creditos_tx,
-       CONCAT('Pago por transacción #', v_id_tx),
-       0, 0, v_id_tx),
-
+      (
+        p_id_comprador,
+        v_mov_out,
+        (SELECT id_tipo_referencia FROM TIPO_REFERENCIA WHERE nombre='TRANSACCION' LIMIT 1),
+        v_creditos_tx,
+        CONCAT('Pago por transaccion #', v_id_tx),
+        0, 0, v_id_tx
+      ),
       -- Vendedor: ingreso
-      (v_id_vendedor, v_mov_in,
-       (SELECT id_tipo_referencia FROM TIPO_REFERENCIA WHERE nombre='TRANSACCION' LIMIT 1),
-       v_creditos_tx,
-       CONCAT('Crédito recibido por transacción #', v_id_tx),
-       0, 0, v_id_tx);
+      (
+        v_id_vendedor,
+        v_mov_in,
+        (SELECT id_tipo_referencia FROM TIPO_REFERENCIA WHERE nombre='TRANSACCION' LIMIT 1),
+        v_creditos_tx,
+        CONCAT('Credito recibido por transaccion #', v_id_tx),
+        0, 0, v_id_tx
+      );
 
-    -- Bitácora de intercambio (acción principal)
+    -- 9) Bitacora de intercambio
     INSERT INTO BITACORA_INTERCAMBIO
       (id_transaccion, id_usuario_origen, id_usuario_destino, cantidad_creditos, descripcion)
     VALUES
       (v_id_tx, p_id_comprador, v_id_vendedor, v_creditos_tx, 'Intercambio realizado');
 
-    -- Impacto ambiental de la transacción
+    -- 10) Impacto ambiental
     CALL sp_calcular_e_insertar_impacto(v_id_tx);
+
+    -- 11) Marcar la publicacion como AGOTADA
+    UPDATE PUBLICACION
+    SET estado = 'AGOTADA'
+    WHERE id_publicacion = p_id_publicacion;
 
   COMMIT;
 END$$
@@ -932,8 +952,16 @@ Inserta la actividad en ACTIVIDAD_SOSTENIBLE.
 Se asegura de que el usuario tenga billetera.
 Obtiene tipo de movimiento BONO_ACTIVIDAD.
 Inserta un MOVIMIENTO_CREDITOS positivo (créditos_otorgados).*/
+ALTER TABLE ACTIVIDAD_SOSTENIBLE
+  ADD COLUMN estado ENUM('PENDIENTE','APROBADA','RECHAZADA')
+    NOT NULL DEFAULT 'PENDIENTE'
+    AFTER creditos_otorgados,
+  ADD COLUMN aprobado_en DATETIME NULL
+    AFTER estado;
+
 DROP PROCEDURE IF EXISTS sp_registrar_actividad_sostenible;
 DELIMITER $$
+
 CREATE PROCEDURE sp_registrar_actividad_sostenible(
   IN p_id_usuario INT,
   IN p_id_tipo_actividad INT,
@@ -942,27 +970,152 @@ CREATE PROCEDURE sp_registrar_actividad_sostenible(
   IN p_evidencia_url VARCHAR(500)
 )
 BEGIN
-  DECLARE v_mov_bono INT;
+  INSERT INTO ACTIVIDAD_SOSTENIBLE (
+    id_usuario,
+    id_tipo_actividad,
+    descripcion,
+    creditos_otorgados,
+    evidencia_url,
+    estado
+  )
+  VALUES (
+    p_id_usuario,
+    p_id_tipo_actividad,
+    p_descripcion,
+    p_creditos_otorgados,
+    p_evidencia_url,
+    'PENDIENTE'
+  );
+END$$
 
-  INSERT INTO ACTIVIDAD_SOSTENIBLE (id_usuario, id_tipo_actividad, descripcion, creditos_otorgados, evidencia_url)
-  VALUES (p_id_usuario, p_id_tipo_actividad, p_descripcion, p_creditos_otorgados, p_evidencia_url);
+DELIMITER ;
 
-  INSERT IGNORE INTO BILLETERA (id_usuario, estado, saldo_creditos, saldo_bs, cuenta_bancaria)
-  VALUES (p_id_usuario, 'ACTIVA', 0, 0.00, NULL);
+DROP PROCEDURE IF EXISTS sp_aprobar_actividad_sostenible;
+DELIMITER $$
 
-  SET v_mov_bono = fn_get_tipo_mov('BONO_ACTIVIDAD');
-  IF v_mov_bono IS NULL THEN
-    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'TIPO_MOVIMIENTO BONO_ACTIVIDAD no existe';
+CREATE PROCEDURE sp_aprobar_actividad_sostenible(
+  IN p_id_actividad INT,
+  IN p_id_admin INT     -- por ahora solo para futura auditoría
+)
+BEGIN
+  DECLARE v_id_usuario INT;
+  DECLARE v_creditos   INT;
+  DECLARE v_estado     ENUM('PENDIENTE','APROBADA','RECHAZADA');
+  DECLARE v_mov_bono   INT;
+  DECLARE v_id_tiporef INT;
+
+  DECLARE EXIT HANDLER FOR SQLEXCEPTION
+  BEGIN
+    ROLLBACK;
+    RESIGNAL;
+  END;
+
+  -- Obtener datos de la actividad
+  SELECT id_usuario, creditos_otorgados, estado
+    INTO v_id_usuario, v_creditos, v_estado
+  FROM ACTIVIDAD_SOSTENIBLE
+  WHERE id_actividad = p_id_actividad
+  FOR UPDATE;
+
+  IF v_id_usuario IS NULL THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Actividad no existe';
   END IF;
 
-  INSERT INTO MOVIMIENTO_CREDITOS
-    (id_usuario, id_tipo_movimiento, id_tipo_referencia, cantidad, descripcion, saldo_anterior, saldo_posterior, id_referencia)
-  VALUES
-    (p_id_usuario, v_mov_bono,
-     (SELECT id_tipo_referencia FROM TIPO_REFERENCIA WHERE nombre='AJUSTE' LIMIT 1),
-     p_creditos_otorgados, 'Bono por actividad sostenible', 0, 0, LAST_INSERT_ID());
+  IF v_estado <> 'PENDIENTE' THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Solo se pueden aprobar actividades en estado PENDIENTE';
+  END IF;
+
+  -- Tipo de movimiento BONO_ACTIVIDAD
+  SET v_mov_bono = fn_get_tipo_mov('BONO_ACTIVIDAD');
+  IF v_mov_bono IS NULL THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'TIPO_MOVIMIENTO BONO_ACTIVIDAD no existe';
+  END IF;
+
+  -- Tipo de referencia ACTIVIDAD_SOSTENIBLE (ya lo tienes en tu seed)
+  SELECT id_tipo_referencia
+    INTO v_id_tiporef
+  FROM TIPO_REFERENCIA
+  WHERE nombre = 'ACTIVIDAD_SOSTENIBLE'
+  LIMIT 1;
+
+  IF v_id_tiporef IS NULL THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'TIPO_REFERENCIA ACTIVIDAD_SOSTENIBLE no existe';
+  END IF;
+
+  START TRANSACTION;
+
+    -- Asegurar billetera
+    INSERT IGNORE INTO BILLETERA (
+      id_usuario, estado, saldo_creditos, saldo_bs, cuenta_bancaria
+    )
+    VALUES (v_id_usuario, 'ACTIVA', 0, 0.00, NULL);
+
+    -- Movimiento de bono por actividad aprobada
+    INSERT INTO MOVIMIENTO_CREDITOS (
+      id_usuario,
+      id_tipo_movimiento,
+      id_tipo_referencia,
+      cantidad,
+      descripcion,
+      saldo_anterior,
+      saldo_posterior,
+      id_referencia
+    )
+    VALUES (
+      v_id_usuario,
+      v_mov_bono,
+      v_id_tiporef,
+      v_creditos,
+      CONCAT('Bono por actividad sostenible #', p_id_actividad),
+      0, 0,
+      p_id_actividad
+    );
+
+    -- Marcar la actividad como APROBADA
+    UPDATE ACTIVIDAD_SOSTENIBLE
+    SET estado      = 'APROBADA',
+        aprobado_en = NOW()
+    WHERE id_actividad = p_id_actividad;
+
+  COMMIT;
 END$$
+
 DELIMITER ;
+DROP PROCEDURE IF EXISTS sp_rechazar_actividad_sostenible;
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS sp_rechazar_actividad_sostenible;
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS sp_rechazar_actividad_sostenible;
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS sp_rechazar_actividad_sostenible;
+DELIMITER $$
+
+CREATE PROCEDURE sp_rechazar_actividad_sostenible(
+  IN p_id_actividad INT,
+  IN p_id_admin INT
+)
+BEGIN
+  UPDATE ACTIVIDAD_SOSTENIBLE
+  SET estado = 'RECHAZADA'
+  WHERE id_actividad = p_id_actividad
+    AND estado = 'PENDIENTE';
+
+  IF ROW_COUNT() = 0 THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Actividad no existe o no está en estado PENDIENTE';
+  END IF;
+END $$
+
+DELIMITER ;
+
+
 
 /*sp_obtener_historial_usuario
 Devuelve un historial mixto de:
@@ -999,60 +1152,114 @@ Busca equivalencias de impacto en EQUIVALENCIA_IMPACTO.
 Multiplica por las unidades para obtener CO₂, agua, energía.
 Toma el último PERIODO.
 Inserta el registro en IMPACTO_AMBIENTAL para el comprador.*/
+USE CREDITOS_VERDES2;
+
 DROP PROCEDURE IF EXISTS sp_calcular_e_insertar_impacto;
 DELIMITER $$
+
 CREATE PROCEDURE sp_calcular_e_insertar_impacto(IN p_id_transaccion INT)
 BEGIN
-  DECLARE v_id_usuario_c INT;
-  DECLARE v_id_usuario_v INT;
+  DECLARE v_id_usuario_c   INT;
+  DECLARE v_id_usuario_v   INT;
   DECLARE v_id_publicacion INT;
-  DECLARE v_id_categoria INT;
-  DECLARE v_creditos BIGINT;
+  DECLARE v_id_categoria   INT;
+
+  DECLARE v_creditos  BIGINT;
   DECLARE v_valor_pub BIGINT;
-  DECLARE v_unidades DECIMAL(18,6);
-  DECLARE v_co2 DECIMAL(12,6);
-  DECLARE v_agua DECIMAL(12,6);
-  DECLARE v_energia DECIMAL(12,6);
+  DECLARE v_unidades  DECIMAL(18,6);
+
+  DECLARE v_co2_unit     DECIMAL(12,6) DEFAULT 0;
+  DECLARE v_agua_unit    DECIMAL(12,6) DEFAULT 0;
+  DECLARE v_energia_unit DECIMAL(12,6) DEFAULT 0;
+
+  DECLARE v_co2     DECIMAL(12,6) DEFAULT 0;
+  DECLARE v_agua    DECIMAL(12,6) DEFAULT 0;
+  DECLARE v_energia DECIMAL(12,6) DEFAULT 0;
+
   DECLARE v_id_periodo INT;
 
+  /* Si el SELECT de equivalencias no encuentra fila,
+     mantenemos 0,0,0 y NO lanzamos error */
+  DECLARE CONTINUE HANDLER FOR NOT FOUND
+  BEGIN
+    SET v_co2_unit = 0;
+    SET v_agua_unit = 0;
+    SET v_energia_unit = 0;
+  END;
+
+  -- 1) Obtener datos básicos de la transacción
   SELECT id_comprador, id_vendedor, id_publicacion, cantidad_creditos
     INTO v_id_usuario_c, v_id_usuario_v, v_id_publicacion, v_creditos
-  FROM TRANSACCION WHERE id_transaccion = p_id_transaccion;
+  FROM TRANSACCION
+  WHERE id_transaccion = p_id_transaccion;
 
-  SELECT id_categoria, valor_creditos INTO v_id_categoria, v_valor_pub
-  FROM PUBLICACION WHERE id_publicacion = v_id_publicacion;
+  IF v_id_usuario_c IS NULL OR v_id_publicacion IS NULL THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Transacción no encontrada para cálculo de impacto';
+  END IF;
 
-  IF v_valor_pub IS NULL OR v_valor_pub = 0 THEN
-    SET v_unidades = 1;
+  -- 2) Categoría y valor de la publicación
+  SELECT id_categoria, valor_creditos
+    INTO v_id_categoria, v_valor_pub
+  FROM PUBLICACION
+  WHERE id_publicacion = v_id_publicacion;
+
+  -- 3) Unidades “equivalentes” de la transacción
+  IF v_valor_pub IS NULL OR v_valor_pub <= 0 THEN
+    SET v_unidades = 1;              -- fallback: 1 unidad
   ELSE
     SET v_unidades = v_creditos / v_valor_pub;
   END IF;
 
-  SELECT IFNULL(co2_por_unidad,0), IFNULL(agua_por_unidad,0), IFNULL(energia_por_unidad,0)
-    INTO v_co2, v_agua, v_energia
+  -- 4) Equivalencias de impacto por categoría
+  SET v_co2_unit = 0;
+  SET v_agua_unit = 0;
+  SET v_energia_unit = 0;
+
+  SELECT co2_por_unidad, agua_por_unidad, energia_por_unidad
+    INTO v_co2_unit, v_agua_unit, v_energia_unit
   FROM EQUIVALENCIA_IMPACTO
   WHERE id_categoria = v_id_categoria
   LIMIT 1;
 
-  SET v_co2     = v_co2 * v_unidades;
-  SET v_agua    = v_agua * v_unidades;
-  SET v_energia = v_energia * v_unidades;
+  -- 5) Cálculo final (garantizado ≠ NULL)
+  SET v_co2     = IFNULL(v_co2_unit, 0)    * v_unidades;
+  SET v_agua    = IFNULL(v_agua_unit, 0)   * v_unidades;
+  SET v_energia = IFNULL(v_energia_unit, 0)* v_unidades;
 
-  SELECT id_periodo INTO v_id_periodo
+  -- 6) Obtener período (último si no hay otro criterio)
+  SELECT id_periodo
+    INTO v_id_periodo
   FROM PERIODO
-  ORDER BY id_periodo DESC
+  ORDER BY fecha_inicio DESC, id_periodo DESC
   LIMIT 1;
 
   IF v_id_periodo IS NULL THEN
-    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No hay PERIODO definido para registrar impacto';
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'No hay PERIODO definido para registrar impacto';
   END IF;
 
+  -- 7) Insertar impacto ambiental para el COMPRADOR
   INSERT INTO IMPACTO_AMBIENTAL
-    (id_usuario, id_transaccion, id_categoria, co2_ahorrado, agua_ahorrada, energia_ahorrada, id_periodo)
+    (id_usuario,
+     id_transaccion,
+     id_categoria,
+     co2_ahorrado,
+     agua_ahorrada,
+     energia_ahorrada,
+     id_periodo)
   VALUES
-    (v_id_usuario_c, p_id_transaccion, v_id_categoria, v_co2, v_agua, v_energia, v_id_periodo);
+    (v_id_usuario_c,
+     p_id_transaccion,
+     v_id_categoria,
+     v_co2,
+     v_agua,
+     v_energia,
+     v_id_periodo);
 END$$
+
 DELIMITER ;
+
 
 -- 11) TRIGGERS
 
@@ -1297,19 +1504,46 @@ INSERT IGNORE INTO TIPO_MOVIMIENTO (nombre, descripcion) VALUES
 INSERT IGNORE INTO SIGNO_MOVIMIENTO (nombre) VALUES ('POSITIVO'),('NEGATIVO');
 
 -- Ambos son POSITIVOS: bonos por compras y bienvenida
-INSERT IGNORE INTO SIGNO_TIPO_MOV (id_tipo_movimiento, id_signo, creado_en)
-SELECT tm.id_tipo_movimiento, sm.id_signo, NOW()
-FROM TIPO_MOVIMIENTO tm
-JOIN SIGNO_MOVIMIENTO sm ON sm.id_signo = sm.id_signo
-WHERE sm.nombre = 'POSITIVO'
-  AND tm.nombre IN ('BONO_PRIMERA_COMPRA','BONO_RECOMPRAS','BONO_BIENVENIDA');
+USE CREDITOS_VERDES2;
 
+-- 1) Borramos las relaciones de signo actuales
+TRUNCATE TABLE SIGNO_TIPO_MOV;
+
+-- 2) Volvemos a crearlas bien
+
+-- POSITIVOS (suman créditos)
 INSERT IGNORE INTO SIGNO_TIPO_MOV (id_tipo_movimiento, id_signo, creado_en)
 SELECT tm.id_tipo_movimiento, sm.id_signo, NOW()
 FROM TIPO_MOVIMIENTO tm
-JOIN SIGNO_MOVIMIENTO sm
-ON ((tm.nombre IN ('RECARGA','INTERCAMBIO_IN','BONO_PUBLICACION','BONO_ACTIVIDAD') AND sm.nombre='POSITIVO')
- OR  (tm.nombre = 'INTERCAMBIO_OUT' AND sm.nombre='NEGATIVO'));
+JOIN SIGNO_MOVIMIENTO sm ON sm.nombre = 'POSITIVO'
+WHERE tm.nombre IN (
+  'RECARGA',
+  'INTERCAMBIO_IN',
+  'BONO_PUBLICACION',
+  'BONO_ACTIVIDAD',
+  'BONO_PRIMERA_COMPRA',
+  'BONO_RECOMPRAS',
+  'BONO_BIENVENIDA',
+  'BONO_METAS_LOGRO',
+  'RECOMPENSA_REFERIDO',
+  'BONO_EVENTO',
+  'BONO_TEMPORADA',
+  'CREDITO_DE_PROMOCION',
+  'AJUSTE_ADMIN_POSITIVO',
+  'REVERSO_INTERCAMBIO'
+);
+
+-- NEGATIVOS (restan créditos)
+INSERT IGNORE INTO SIGNO_TIPO_MOV (id_tipo_movimiento, id_signo, creado_en)
+SELECT tm.id_tipo_movimiento, sm.id_signo, NOW()
+FROM TIPO_MOVIMIENTO tm
+JOIN SIGNO_MOVIMIENTO sm ON sm.nombre = 'NEGATIVO'
+WHERE tm.nombre IN (
+  'INTERCAMBIO_OUT',
+  'AJUSTE_ADMIN_NEGATIVO',
+  'REVERSO_RECARGA',
+  'PENALIZACION'
+);
 
 INSERT IGNORE INTO TIPO_PROMOCION (nombre, descripcion) VALUES ('LANZAMIENTO','Promoción de lanzamiento');
 INSERT IGNORE INTO TIPO_LOGRO (nombre, descripcion) VALUES ('PRIMERA_VENTA','Primer intercambio exitoso');
@@ -1774,20 +2008,20 @@ CREATE PROCEDURE sp_generar_reporte_impacto(
   IN p_id_usuario      INT    -- NULL = global, no NULL = por usuario
 )
 BEGIN
-  DECLARE v_total_co2      DECIMAL(12,6) DEFAULT 0;
-  DECLARE v_total_ag       DECIMAL(12,6) DEFAULT 0;
-  DECLARE v_total_en       DECIMAL(12,6) DEFAULT 0;
+  DECLARE v_total_co2      DECIMAL(18,6) DEFAULT 0;
+  DECLARE v_total_ag       DECIMAL(18,6) DEFAULT 0;
+  DECLARE v_total_en       DECIMAL(18,6) DEFAULT 0;
   DECLARE v_total_tx       BIGINT        DEFAULT 0;
   DECLARE v_total_users    BIGINT        DEFAULT 0;
   DECLARE v_id_reporte_new INT;
   DECLARE v_periodo        INT;
 
-  -- 0) Resolver período: usar argumento o último PERIODO
+  -- 0) Resolver período: argumento o último PERIODO
   SET v_periodo = p_id_periodo;
 
   IF v_periodo IS NULL THEN
     SELECT id_periodo
-    INTO v_periodo
+      INTO v_periodo
     FROM PERIODO
     ORDER BY fecha_inicio DESC, id_periodo DESC
     LIMIT 1;
@@ -1799,7 +2033,6 @@ BEGIN
   END IF;
 
   -- 1) Calcular totales desde IMPACTO_AMBIENTAL
-
   IF p_id_usuario IS NULL THEN
     -- GLOBAL (todos los usuarios)
     SELECT
@@ -1844,38 +2077,26 @@ BEGIN
          OR id_usuario = p_id_usuario
         );
 
-  -- 3) Insertar nuevo registro de reporte
-  INSERT INTO REPORTE_IMPACTO (
-    id_usuario,
-    id_tipo_reporte,
-    id_periodo,
-    total_co2_ahorrado,
-    total_agua_ahorrada,
-    total_energia_ahorrada,
-    total_transacciones,
-    total_usuarios_activos
-  )
-  VALUES (
-    p_id_usuario,
-    p_id_tipo_reporte,
-    v_periodo,           -- período resuelto
-    v_total_co2,
-    v_total_ag,
-    v_total_en,
-    v_total_tx,
-    v_total_users
-  );
+  -- 3) Insertar nuevo reporte
+  INSERT INTO REPORTE_IMPACTO
+    (id_usuario, id_tipo_reporte, id_periodo,
+     total_co2_ahorrado, total_agua_ahorrada, total_energia_ahorrada,
+     total_transacciones, total_usuarios_activos)
+  VALUES
+    (p_id_usuario, p_id_tipo_reporte, v_periodo,
+     v_total_co2, v_total_ag, v_total_en,
+     v_total_tx, v_total_users);
 
   SET v_id_reporte_new = LAST_INSERT_ID();
 
   -- 4) Devolver el registro insertado
   SELECT *
-  FROM REPORTE_IMPACTO
-  WHERE id_reporte = v_id_reporte_new;
-
+  FROM   REPORTE_IMPACTO
+  WHERE  id_reporte = v_id_reporte_new;
 END$$
 
 DELIMITER ;
+
 
 ALTER TABLE USUARIO
   ADD COLUMN password_hash VARCHAR(255) NOT NULL DEFAULT ''
@@ -2213,3 +2434,799 @@ INSERT IGNORE INTO PERIODO (nombre, descripcion, fecha_inicio, fecha_fin) VALUES
 ('2025-10', 'Octubre 2025',   '2025-10-01', '2025-10-31'),
 ('2025-11', 'Noviembre 2025', '2025-11-01', '2025-11-30'),
 ('2025-12', 'Diciembre 2025', '2025-12-01', '2025-12-31');
+
+USE CREDITOS_VERDES2;
+
+-- LOGROS BASE (si ya existen con mismo tipo, no pasará nada)
+INSERT INTO LOGRO (id_tipo_logro, nombre, descripcion, meta_requerida, creditos_recompensa)
+SELECT tl.id_tipo_logro,
+       'Primera actividad sostenible',
+       'Completa tu primera actividad sostenible aprobada',
+       1,              -- meta: 1 actividad
+       10              -- recompensa en créditos
+FROM TIPO_LOGRO tl
+WHERE tl.nombre = 'PRIMERA_ACTIVIDAD'
+  AND NOT EXISTS (
+    SELECT 1 FROM LOGRO l WHERE l.id_tipo_logro = tl.id_tipo_logro
+  );
+
+INSERT INTO LOGRO (id_tipo_logro, nombre, descripcion, meta_requerida, creditos_recompensa)
+SELECT tl.id_tipo_logro,
+       'Reciclador experto',
+       'Completa 20 actividades sostenibles',
+       20,             -- meta: 20 actividades
+       50              -- recompensa
+FROM TIPO_LOGRO tl
+WHERE tl.nombre = 'RECICLADOR_EXPERTO'
+  AND NOT EXISTS (
+    SELECT 1 FROM LOGRO l WHERE l.id_tipo_logro = tl.id_tipo_logro
+  );
+
+INSERT INTO LOGRO (id_tipo_logro, nombre, descripcion, meta_requerida, creditos_recompensa)
+SELECT tl.id_tipo_logro,
+       'Primera compra',
+       'Realiza tu primera transacción como comprador',
+       1,
+       10
+FROM TIPO_LOGRO tl
+WHERE tl.nombre = 'PRIMERA_COMPRA'
+  AND NOT EXISTS (
+    SELECT 1 FROM LOGRO l WHERE l.id_tipo_logro = tl.id_tipo_logro
+  );
+
+INSERT INTO LOGRO (id_tipo_logro, nombre, descripcion, meta_requerida, creditos_recompensa)
+SELECT tl.id_tipo_logro,
+       'Comprador frecuente',
+       'Realiza 10 transacciones como comprador',
+       10,
+       40
+FROM TIPO_LOGRO tl
+WHERE tl.nombre = 'DIEZ_COMPRAS'
+  AND NOT EXISTS (
+    SELECT 1 FROM LOGRO l WHERE l.id_tipo_logro = tl.id_tipo_logro
+  );
+
+INSERT INTO LOGRO (id_tipo_logro, nombre, descripcion, meta_requerida, creditos_recompensa)
+SELECT tl.id_tipo_logro,
+       'Vendedor nivel 1',
+       'Realiza 5 transacciones como vendedor',
+       5,
+       30
+FROM TIPO_LOGRO tl
+WHERE tl.nombre = 'VENDENDOR_NIVEL_1'
+  AND NOT EXISTS (
+    SELECT 1 FROM LOGRO l WHERE l.id_tipo_logro = tl.id_tipo_logro
+  );
+
+INSERT INTO LOGRO (id_tipo_logro, nombre, descripcion, meta_requerida, creditos_recompensa)
+SELECT tl.id_tipo_logro,
+       'Vendedor nivel 2',
+       'Realiza 20 transacciones como vendedor',
+       20,
+       80
+FROM TIPO_LOGRO tl
+WHERE tl.nombre = 'VENDENDOR_NIVEL_2'
+  AND NOT EXISTS (
+    SELECT 1 FROM LOGRO l WHERE l.id_tipo_logro = tl.id_tipo_logro
+  );
+DROP PROCEDURE IF EXISTS sp_incrementar_progreso_logro;
+DELIMITER $$
+
+CREATE PROCEDURE sp_incrementar_progreso_logro(
+  IN p_id_usuario INT,
+  IN p_nombre_tipo_logro VARCHAR(100),
+  IN p_incremento BIGINT
+)
+proc: BEGIN
+  DECLARE v_id_logro INT;
+  DECLARE v_meta BIGINT;
+  DECLARE v_creditos BIGINT;
+
+  DECLARE v_id_ulogro INT;
+  DECLARE v_prog_actual BIGINT;
+  DECLARE v_prog_nuevo BIGINT;
+
+  DECLARE v_id_tipomov_bono INT;
+  DECLARE v_id_tiporef_premio INT;
+
+  -- Solo incrementos positivos
+  IF p_incremento IS NULL OR p_incremento <= 0 THEN
+    LEAVE proc;
+  END IF;
+
+  -- Buscar el LOGRO asociado al TIPO_LOGRO
+  SELECT l.id_logro, l.meta_requerida, l.creditos_recompensa
+  INTO v_id_logro, v_meta, v_creditos
+  FROM LOGRO l
+  JOIN TIPO_LOGRO tl ON tl.id_tipo_logro = l.id_tipo_logro
+  WHERE tl.nombre = p_nombre_tipo_logro
+  LIMIT 1;
+
+  IF v_id_logro IS NULL THEN
+    -- No hay logro definido para ese tipo, salimos silenciosamente
+    LEAVE proc;
+  END IF;
+
+  -- Buscar/crear USUARIO_LOGRO
+  SELECT id_usuario_logro, progreso_actual
+  INTO v_id_ulogro, v_prog_actual
+  FROM USUARIO_LOGRO
+  WHERE id_usuario = p_id_usuario
+    AND id_logro = v_id_logro
+  FOR UPDATE;
+
+  IF v_id_ulogro IS NULL THEN
+    SET v_prog_actual = 0;
+    INSERT INTO USUARIO_LOGRO (id_usuario, id_logro, progreso_actual)
+    VALUES (p_id_usuario, v_id_logro, 0);
+    SET v_id_ulogro = LAST_INSERT_ID();
+  END IF;
+
+  SET v_prog_nuevo = v_prog_actual + p_incremento;
+
+  UPDATE USUARIO_LOGRO
+  SET progreso_actual = v_prog_nuevo
+  WHERE id_usuario_logro = v_id_ulogro;
+
+  -- ¿Se acaba de cumplir la meta?
+  IF v_prog_actual < v_meta AND v_prog_nuevo >= v_meta THEN
+
+    -- Tipo de movimiento para logros
+    SELECT id_tipo_movimiento
+    INTO v_id_tipomov_bono
+    FROM TIPO_MOVIMIENTO
+    WHERE nombre = 'BONO_METAS_LOGRO'
+    LIMIT 1;
+
+    -- Tipo de referencia (usaremos PREMIO, ya existe)
+    SELECT id_tipo_referencia
+    INTO v_id_tiporef_premio
+    FROM TIPO_REFERENCIA
+    WHERE nombre = 'PREMIO'
+    LIMIT 1;
+
+    IF v_id_tipomov_bono IS NOT NULL AND v_id_tiporef_premio IS NOT NULL THEN
+      INSERT INTO MOVIMIENTO_CREDITOS (
+        id_usuario,
+        id_tipo_movimiento,
+        id_tipo_referencia,
+        cantidad,
+        descripcion,
+        saldo_anterior,
+        saldo_posterior,
+        id_referencia
+      )
+      VALUES (
+        p_id_usuario,
+        v_id_tipomov_bono,
+        v_id_tiporef_premio,
+        v_creditos,
+        CONCAT('Recompensa por logro ', p_nombre_tipo_logro),
+        0, 0,
+        v_id_logro
+      );
+    END IF;
+  END IF;
+
+END$$
+DELIMITER ;
+DROP TRIGGER IF EXISTS trg_logros_actividad_aprobada;
+DELIMITER $$
+
+CREATE TRIGGER trg_logros_actividad_aprobada
+AFTER UPDATE ON ACTIVIDAD_SOSTENIBLE
+FOR EACH ROW
+BEGIN
+  -- Solo cuando pasa a APROBADA
+  IF OLD.estado <> 'APROBADA' AND NEW.estado = 'APROBADA' THEN
+    CALL sp_incrementar_progreso_logro(NEW.id_usuario, 'PRIMERA_ACTIVIDAD', 1);
+    CALL sp_incrementar_progreso_logro(NEW.id_usuario, 'RECICLADOR_EXPERTO', 1);
+  END IF;
+END$$
+
+DELIMITER ;
+DROP TRIGGER IF EXISTS trg_logros_transaccion_insert;
+DELIMITER $$
+
+CREATE TRIGGER trg_logros_transaccion_insert
+AFTER INSERT ON TRANSACCION
+FOR EACH ROW
+BEGIN
+  -- Consideramos estado ACEPATADA o COMPLETADA como "transacción lograda"
+  IF NEW.estado IN ('ACEPTADA','COMPLETADA') THEN
+    -- Comprador
+    CALL sp_incrementar_progreso_logro(NEW.id_comprador, 'PRIMERA_COMPRA', 1);
+    CALL sp_incrementar_progreso_logro(NEW.id_comprador, 'DIEZ_COMPRAS', 1);
+
+    -- Vendedor
+    CALL sp_incrementar_progreso_logro(NEW.id_vendedor, 'VENDENDOR_NIVEL_1', 1);
+    CALL sp_incrementar_progreso_logro(NEW.id_vendedor, 'VENDENDOR_NIVEL_2', 1);
+  END IF;
+END$$
+
+DELIMITER ;
+ALTER TABLE USUARIO_LOGRO
+  ADD COLUMN creado_en   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  ADD COLUMN obtenido_en DATETIME NULL;
+
+use creditos_verdes2;
+ALTER TABLE PUBLICIDAD
+  ADD COLUMN banner_url  VARCHAR(500) NULL,
+  ADD COLUMN archivo_url VARCHAR(500) NULL;
+
+ALTER TABLE BILLETERA
+ADD COLUMN creditos_bloqueados BIGINT NOT NULL DEFAULT 0
+AFTER saldo_creditos;
+
+ALTER TABLE PUBLICIDAD
+  MODIFY COLUMN estado ENUM(
+    'PROGRAMADA',
+    'ACTIVA',
+    'PAUSADA',
+    'FINALIZADA',
+    'CANCELADA',
+    'ELIMINADA'
+  ) NOT NULL DEFAULT 'PROGRAMADA';
+
+-- Tipo de movimiento: consumo por publicidad (NEGATIVO)
+INSERT IGNORE INTO TIPO_MOVIMIENTO (nombre, descripcion)
+VALUES ('PUBLICIDAD_CONSUMO', 'Consumo de créditos por publicidad');
+
+-- Tipo de movimiento: reverso / devolución de publicidad (POSITIVO)
+INSERT IGNORE INTO TIPO_MOVIMIENTO (nombre, descripcion)
+VALUES ('REVERSO_PUBLICIDAD', 'Devolución de créditos por publicidad cancelada');
+
+-- Asignar signos en SIGNO_TIPO_MOV (usa tu tabla SIGNO_MOVIMIENTO)
+-- PUBLICIDAD_CONSUMO -> NEGATIVO
+INSERT IGNORE INTO SIGNO_TIPO_MOV (id_tipo_movimiento, id_signo, creado_en)
+SELECT tm.id_tipo_movimiento, sm.id_signo, NOW()
+FROM TIPO_MOVIMIENTO tm
+JOIN SIGNO_MOVIMIENTO sm ON sm.nombre = 'NEGATIVO'
+WHERE tm.nombre = 'PUBLICIDAD_CONSUMO';
+
+-- REVERSO_PUBLICIDAD -> POSITIVO
+INSERT IGNORE INTO SIGNO_TIPO_MOV (id_tipo_movimiento, id_signo, creado_en)
+SELECT tm.id_tipo_movimiento, sm.id_signo, NOW()
+FROM TIPO_MOVIMIENTO tm
+JOIN SIGNO_MOVIMIENTO sm ON sm.nombre = 'POSITIVO'
+WHERE tm.nombre = 'REVERSO_PUBLICIDAD';
+
+  
+DROP PROCEDURE IF EXISTS sp_iniciar_intercambio_retencion;
+DELIMITER $$
+
+CREATE PROCEDURE sp_iniciar_intercambio_retencion(
+  IN p_id_comprador   INT,
+  IN p_id_publicacion INT
+)
+BEGIN
+  DECLARE v_id_vendedor    INT;
+  DECLARE v_valor_creditos BIGINT;
+  DECLARE v_estado_pub     VARCHAR(20);
+  DECLARE v_id_tx          INT;
+
+  DECLARE EXIT HANDLER FOR SQLEXCEPTION
+  BEGIN
+    ROLLBACK;
+    RESIGNAL;
+  END;
+
+  -- 1) Obtener datos de la publicación
+  SELECT id_usuario, valor_creditos, estado
+    INTO v_id_vendedor, v_valor_creditos, v_estado_pub
+  FROM PUBLICACION
+  WHERE id_publicacion = p_id_publicacion
+  FOR UPDATE;
+
+  IF v_id_vendedor IS NULL THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Publicación no existe';
+  END IF;
+
+  IF UPPER(v_estado_pub) <> 'PUBLICADA' THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'La publicación no está disponible para intercambio';
+  END IF;
+
+  IF p_id_comprador = v_id_vendedor THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'No puedes intercambiar con tu propia publicación';
+  END IF;
+
+  IF v_valor_creditos IS NULL OR v_valor_creditos <= 0 THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'La publicación no tiene un valor de créditos válido';
+  END IF;
+
+  START TRANSACTION;
+
+    -- 2) Asegurar billeteras
+    INSERT IGNORE INTO BILLETERA (id_usuario, estado, saldo_creditos, saldo_bs, cuenta_bancaria)
+    VALUES (p_id_comprador, 'ACTIVA', 0, 0.00, NULL);
+
+    INSERT IGNORE INTO BILLETERA (id_usuario, estado, saldo_creditos, saldo_bs, cuenta_bancaria)
+    VALUES (v_id_vendedor, 'ACTIVA', 0, 0.00, NULL);
+
+    -- 3) Crear la transacción en estado SOLICITADA
+    --    AQUÍ se dispara trg_trans_before_ins que valida saldo (fn_verificar_saldo)
+    INSERT INTO TRANSACCION (id_comprador, id_vendedor, id_publicacion, cantidad_creditos, estado)
+    VALUES (p_id_comprador, v_id_vendedor, p_id_publicacion, v_valor_creditos, 'SOLICITADA');
+
+    SET v_id_tx = LAST_INSERT_ID();
+
+    -- 4) Retener créditos: bajar saldo_creditos y subir creditos_bloqueados
+    UPDATE BILLETERA
+    SET saldo_creditos      = saldo_creditos - v_valor_creditos,
+        creditos_bloqueados = creditos_bloqueados + v_valor_creditos
+    WHERE id_usuario = p_id_comprador;
+
+    -- 5) Registrar en bitácora
+    INSERT INTO BITACORA_INTERCAMBIO
+      (id_transaccion, id_usuario_origen, id_usuario_destino, cantidad_creditos, descripcion)
+    VALUES
+      (v_id_tx, p_id_comprador, v_id_vendedor, v_valor_creditos, 'Intercambio iniciado con créditos retenidos');
+
+  COMMIT;
+END$$
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS sp_confirmar_intercambio_retencion;
+DELIMITER $$
+
+CREATE PROCEDURE sp_confirmar_intercambio_retencion(
+  IN p_id_transaccion INT,
+  IN p_id_usuario_accion INT   -- por si quieres auditar quién confirma
+)
+BEGIN
+  DECLARE v_id_comprador   INT;
+  DECLARE v_id_vendedor    INT;
+  DECLARE v_id_publicacion INT;
+  DECLARE v_creditos       BIGINT;
+  DECLARE v_estado         VARCHAR(20);
+  DECLARE v_mov_in         INT;
+  DECLARE v_id_tiporef_tx  INT;
+
+  DECLARE EXIT HANDLER FOR SQLEXCEPTION
+  BEGIN
+    ROLLBACK;
+    RESIGNAL;
+  END;
+
+  -- 1) Datos de la transacción
+  SELECT id_comprador, id_vendedor, id_publicacion, cantidad_creditos, estado
+    INTO v_id_comprador, v_id_vendedor, v_id_publicacion, v_creditos, v_estado
+  FROM TRANSACCION
+  WHERE id_transaccion = p_id_transaccion
+  FOR UPDATE;
+
+  IF v_id_comprador IS NULL THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Transacción no existe';
+  END IF;
+
+  IF v_estado <> 'SOLICITADA' THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Solo se pueden confirmar transacciones en estado SOLICITADA';
+  END IF;
+
+  -- Tipo de movimiento ingreso por intercambio
+  SET v_mov_in = fn_get_tipo_mov('INTERCAMBIO_IN');
+  IF v_mov_in IS NULL THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'TIPO_MOVIMIENTO INTERCAMBIO_IN no existe';
+  END IF;
+
+  -- Tipo de referencia TRANSACCION
+  SELECT id_tipo_referencia
+    INTO v_id_tiporef_tx
+  FROM TIPO_REFERENCIA
+  WHERE nombre = 'TRANSACCION'
+  LIMIT 1;
+
+  IF v_id_tiporef_tx IS NULL THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'TIPO_REFERENCIA TRANSACCION no existe';
+  END IF;
+
+  START TRANSACTION;
+
+    -- 2) Liberar bloqueados del comprador (ya estaban descontados del saldo)
+    UPDATE BILLETERA
+    SET creditos_bloqueados = creditos_bloqueados - v_creditos
+    WHERE id_usuario = v_id_comprador;
+
+    -- 3) Asegurar billetera del vendedor
+    INSERT IGNORE INTO BILLETERA (id_usuario, estado, saldo_creditos, saldo_bs, cuenta_bancaria)
+    VALUES (v_id_vendedor, 'ACTIVA', 0, 0.00, NULL);
+
+    -- 4) Movimiento de ingreso para el vendedor
+    INSERT INTO MOVIMIENTO_CREDITOS
+      (id_usuario, id_tipo_movimiento, id_tipo_referencia,
+       cantidad, descripcion, saldo_anterior, saldo_posterior, id_referencia)
+    VALUES
+      (v_id_vendedor, v_mov_in, v_id_tiporef_tx,
+       v_creditos,
+       CONCAT('Créditos recibidos por transacción #', p_id_transaccion),
+       0, 0, p_id_transaccion);
+
+    -- 5) Actualizar estado transacción y publicación
+    UPDATE TRANSACCION
+    SET estado = 'COMPLETADA'
+    WHERE id_transaccion = p_id_transaccion;
+
+    UPDATE PUBLICACION
+    SET estado = 'AGOTADA'
+    WHERE id_publicacion = v_id_publicacion;
+
+    -- 6) Bitácora
+    INSERT INTO BITACORA_INTERCAMBIO
+      (id_transaccion, id_usuario_origen, id_usuario_destino, cantidad_creditos, descripcion)
+    VALUES
+      (p_id_transaccion, v_id_comprador, v_id_vendedor, v_creditos,
+       'Intercambio confirmado, créditos liberados al vendedor');
+
+  COMMIT;
+END$$
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS sp_cancelar_intercambio_retencion;
+DELIMITER $$
+
+CREATE PROCEDURE sp_cancelar_intercambio_retencion(
+  IN p_id_transaccion INT,
+  IN p_id_usuario_accion INT
+)
+BEGIN
+  DECLARE v_id_comprador   INT;
+  DECLARE v_id_vendedor    INT;
+  DECLARE v_creditos       BIGINT;
+  DECLARE v_estado         VARCHAR(20);
+
+  DECLARE EXIT HANDLER FOR SQLEXCEPTION
+  BEGIN
+    ROLLBACK;
+    RESIGNAL;
+  END;
+
+  SELECT id_comprador, id_vendedor, cantidad_creditos, estado
+    INTO v_id_comprador, v_id_vendedor, v_creditos, v_estado
+  FROM TRANSACCION
+  WHERE id_transaccion = p_id_transaccion
+  FOR UPDATE;
+
+  IF v_id_comprador IS NULL THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Transacción no existe';
+  END IF;
+
+  IF v_estado <> 'SOLICITADA' THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Solo se pueden cancelar transacciones en estado SOLICITADA';
+  END IF;
+
+  START TRANSACTION;
+
+    -- 1) Devolver créditos al comprador (soltar bloqueados)
+    UPDATE BILLETERA
+    SET saldo_creditos      = saldo_creditos + v_creditos,
+        creditos_bloqueados = creditos_bloqueados - v_creditos
+    WHERE id_usuario = v_id_comprador;
+
+    -- 2) Actualizar estado
+    UPDATE TRANSACCION
+    SET estado = 'CANCELADA'
+    WHERE id_transaccion = p_id_transaccion;
+
+    -- 3) Bitácora
+    INSERT INTO BITACORA_INTERCAMBIO
+      (id_transaccion, id_usuario_origen, id_usuario_destino, cantidad_creditos, descripcion)
+    VALUES
+      (p_id_transaccion, v_id_comprador, v_id_vendedor, v_creditos,
+       'Intercambio cancelado, créditos devueltos al comprador');
+
+  COMMIT;
+END$$
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS sp_publicidad_activar_retencion;
+DELIMITER $$
+
+CREATE PROCEDURE sp_publicidad_activar_retencion(
+  IN p_id_publicidad INT,
+  IN p_id_usuario INT   -- dueño o quien la activa
+)
+BEGIN
+  DECLARE v_id_usuario_pub INT;
+  DECLARE v_costo          BIGINT;
+  DECLARE v_estado         VARCHAR(20);
+  DECLARE v_saldo          BIGINT;
+  DECLARE v_id_tipomov     INT;
+  DECLARE v_id_tiporef     INT;
+
+  DECLARE EXIT HANDLER FOR SQLEXCEPTION
+  BEGIN
+    ROLLBACK;
+    RESIGNAL;
+  END;
+
+  -- 1) Datos de la publicidad
+  SELECT id_usuario, costo_creditos, estado
+    INTO v_id_usuario_pub, v_costo, v_estado
+  FROM PUBLICIDAD
+  WHERE id_publicidad = p_id_publicidad
+  FOR UPDATE;
+
+  IF v_id_usuario_pub IS NULL THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Publicidad no existe';
+  END IF;
+
+  -- Opcional: validar que quien activa sea el dueño
+  IF v_id_usuario_pub <> p_id_usuario THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'No eres dueño de esta publicidad';
+  END IF;
+
+  IF v_estado <> 'PROGRAMADA' THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Solo se pueden activar publicidades en estado PROGRAMADA';
+  END IF;
+
+  IF v_costo IS NULL OR v_costo <= 0 THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'La publicidad no tiene un costo de créditos válido';
+  END IF;
+
+  -- Tipo de movimiento PUBLICIDAD_CONSUMO
+  SET v_id_tipomov = fn_get_tipo_mov('PUBLICIDAD_CONSUMO');
+  IF v_id_tipomov IS NULL THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'TIPO_MOVIMIENTO PUBLICIDAD_CONSUMO no existe';
+  END IF;
+
+  -- Tipo de referencia PUBLICIDAD
+  SELECT id_tipo_referencia
+    INTO v_id_tiporef
+  FROM TIPO_REFERENCIA
+  WHERE nombre = 'PUBLICIDAD'
+  LIMIT 1;
+
+  IF v_id_tiporef IS NULL THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'TIPO_REFERENCIA PUBLICIDAD no existe';
+  END IF;
+
+  START TRANSACTION;
+
+    -- 2) Asegurar billetera
+    INSERT IGNORE INTO BILLETERA (id_usuario, estado, saldo_creditos, saldo_bs, cuenta_bancaria)
+    VALUES (v_id_usuario_pub, 'ACTIVA', 0, 0.00, NULL);
+
+    -- 3) Verificar saldo suficiente
+    SELECT saldo_creditos
+      INTO v_saldo
+    FROM BILLETERA
+    WHERE id_usuario = v_id_usuario_pub
+    FOR UPDATE;
+
+    IF v_saldo < v_costo THEN
+      SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Saldo insuficiente para activar publicidad';
+    END IF;
+
+    -- 4) Registrar MOVIMIENTO_CREDITOS NEGATIVO (consumo)
+    --    El trigger trg_movcred_before_ins hará el descuento real en saldo_creditos
+    INSERT INTO MOVIMIENTO_CREDITOS (
+      id_usuario,
+      id_tipo_movimiento,
+      id_tipo_referencia,
+      cantidad,
+      descripcion,
+      saldo_anterior,
+      saldo_posterior,
+      id_referencia
+    )
+    VALUES (
+      v_id_usuario_pub,
+      v_id_tipomov,
+      v_id_tiporef,
+      v_costo,
+      CONCAT('Consumo por activación publicidad #', p_id_publicidad),
+      0,
+      0,
+      p_id_publicidad
+    );
+
+    -- 5) Marcar créditos como bloqueados (para saber que están reservados para esta campaña)
+    UPDATE BILLETERA
+    SET creditos_bloqueados = creditos_bloqueados + v_costo
+    WHERE id_usuario = v_id_usuario_pub;
+
+    -- 6) Marcar publicidad como ACTIVA
+    UPDATE PUBLICIDAD
+    SET estado = 'ACTIVA'
+    WHERE id_publicidad = p_id_publicidad;
+
+  COMMIT;
+END$$
+
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS sp_publicidad_finalizar_retencion;
+DELIMITER $$
+
+CREATE PROCEDURE sp_publicidad_finalizar_retencion(
+  IN p_id_publicidad INT
+)
+BEGIN
+  DECLARE v_id_usuario_pub INT;
+  DECLARE v_costo          BIGINT;
+  DECLARE v_estado         VARCHAR(20);
+
+  DECLARE EXIT HANDLER FOR SQLEXCEPTION
+  BEGIN
+    ROLLBACK;
+    RESIGNAL;
+  END;
+
+  -- 1) Datos de la publicidad
+  SELECT id_usuario, costo_creditos, estado
+    INTO v_id_usuario_pub, v_costo, v_estado
+  FROM PUBLICIDAD
+  WHERE id_publicidad = p_id_publicidad
+  FOR UPDATE;
+
+  IF v_id_usuario_pub IS NULL THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Publicidad no existe';
+  END IF;
+
+  IF v_estado <> 'ACTIVA' THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Solo se pueden finalizar publicidades en estado ACTIVA';
+  END IF;
+
+  IF v_costo IS NULL OR v_costo <= 0 THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'La publicidad no tiene un costo de créditos válido';
+  END IF;
+
+  START TRANSACTION;
+
+    -- 2) Liberar bloqueados (los créditos ya fueron descontados al activar)
+    UPDATE BILLETERA
+    SET creditos_bloqueados = creditos_bloqueados - v_costo
+    WHERE id_usuario = v_id_usuario_pub;
+
+    -- 3) Marcar publicidad como FINALIZADA
+    UPDATE PUBLICIDAD
+    SET estado = 'FINALIZADA'
+    WHERE id_publicidad = p_id_publicidad;
+
+  COMMIT;
+END$$
+
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS sp_publicidad_cancelar_retencion;
+DELIMITER $$
+
+CREATE PROCEDURE sp_publicidad_cancelar_retencion(
+  IN p_id_publicidad INT,
+  IN p_id_usuario INT   -- quien solicita la cancelación (dueño o admin)
+)
+BEGIN
+  DECLARE v_id_usuario_pub INT;
+  DECLARE v_costo          BIGINT;
+  DECLARE v_estado         VARCHAR(20);
+  DECLARE v_id_tipomov     INT;
+  DECLARE v_id_tiporef     INT;
+
+  DECLARE EXIT HANDLER FOR SQLEXCEPTION
+  BEGIN
+    ROLLBACK;
+    RESIGNAL;
+  END;
+
+  -- 1) Datos de la publicidad
+  SELECT id_usuario, costo_creditos, estado
+    INTO v_id_usuario_pub, v_costo, v_estado
+  FROM PUBLICIDAD
+  WHERE id_publicidad = p_id_publicidad
+  FOR UPDATE;
+
+  IF v_id_usuario_pub IS NULL THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Publicidad no existe';
+  END IF;
+
+  -- Opcional: validar dueño (aquí podrías permitir ADMIN también)
+  IF v_id_usuario_pub <> p_id_usuario THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'No eres dueño de esta publicidad';
+  END IF;
+
+  IF v_estado NOT IN ('PROGRAMADA','ACTIVA','PAUSADA') THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Solo se pueden cancelar publicidades PROGRAMADAS/ACTIVAS/PAUSADAS';
+  END IF;
+
+  IF v_costo IS NULL OR v_costo <= 0 THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'La publicidad no tiene un costo de créditos válido';
+  END IF;
+
+  -- Tipo de referencia PUBLICIDAD
+  SELECT id_tipo_referencia
+    INTO v_id_tiporef
+  FROM TIPO_REFERENCIA
+  WHERE nombre = 'PUBLICIDAD'
+  LIMIT 1;
+
+  IF v_id_tiporef IS NULL THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'TIPO_REFERENCIA PUBLICIDAD no existe';
+  END IF;
+
+  START TRANSACTION;
+
+    -- Si estaba ACTIVA/PAUSADA, había consumo y bloqueo → devolver
+    IF v_estado IN ('ACTIVA','PAUSADA') THEN
+
+      -- Tipo de movimiento REVERSO_PUBLICIDAD (positivo)
+      SET v_id_tipomov = fn_get_tipo_mov('REVERSO_PUBLICIDAD');
+      IF v_id_tipomov IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+          SET MESSAGE_TEXT = 'TIPO_MOVIMIENTO REVERSO_PUBLICIDAD no existe';
+      END IF;
+
+      -- 1) Movimiento POSITIVO (devolución)
+      INSERT INTO MOVIMIENTO_CREDITOS (
+        id_usuario,
+        id_tipo_movimiento,
+        id_tipo_referencia,
+        cantidad,
+        descripcion,
+        saldo_anterior,
+        saldo_posterior,
+        id_referencia
+      )
+      VALUES (
+        v_id_usuario_pub,
+        v_id_tipomov,
+        v_id_tiporef,
+        v_costo,
+        CONCAT('Reverso por publicidad cancelada #', p_id_publicidad),
+        0,
+        0,
+        p_id_publicidad
+      );
+
+      -- 2) Bajar los bloqueados (ya no están reservados)
+      UPDATE BILLETERA
+      SET creditos_bloqueados = creditos_bloqueados - v_costo
+      WHERE id_usuario = v_id_usuario_pub;
+
+    END IF;
+
+    -- Si estaba PROGRAMADA, no hubo consumo ni bloqueo → solo estado
+
+    -- 3) Marcar publicidad como CANCELADA
+    UPDATE PUBLICIDAD
+    SET estado = 'CANCELADA'
+    WHERE id_publicidad = p_id_publicidad;
+
+  COMMIT;
+END$$
+
+DELIMITER ;
+
+ALTER TABLE REPORTE_IMPACTO
+  MODIFY total_co2_ahorrado     DECIMAL(18,6) NOT NULL,
+  MODIFY total_agua_ahorrada    DECIMAL(18,6) NOT NULL,
+  MODIFY total_energia_ahorrada DECIMAL(18,6) NOT NULL;
+
+ALTER TABLE IMPACTO_AMBIENTAL
+  MODIFY co2_ahorrado     DECIMAL(18,6) NOT NULL,
+  MODIFY agua_ahorrada    DECIMAL(18,6) NOT NULL,
+  MODIFY energia_ahorrada DECIMAL(18,6) NOT NULL;

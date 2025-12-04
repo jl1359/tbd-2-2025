@@ -26,10 +26,22 @@ function hoyISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function hace30DiasISO() {
-  const d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+function haceNDiasISO(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - (n - 1));
   return d.toISOString().slice(0, 10);
 }
+
+function hace30DiasISO() {
+  return haceNDiasISO(30);
+}
+
+const RANGOS_RAPIDOS = [
+  { id: "7d", label: "Últimos 7 días", dias: 7 },
+  { id: "30d", label: "Últimos 30 días", dias: 30 },
+  { id: "90d", label: "Últimos 90 días", dias: 90 },
+  { id: "1y", label: "Último año", dias: 365 },
+];
 
 export default function ReportesCreditosGenerados() {
   const [desde, setDesde] = useState(hace30DiasISO());
@@ -37,14 +49,15 @@ export default function ReportesCreditosGenerados() {
   const [resumen, setResumen] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [rangoActivo, setRangoActivo] = useState("30d");
 
-  async function cargar() {
+  async function cargar(customDesde = desde, customHasta = hasta) {
     try {
       setLoading(true);
       setError("");
       const res = await getReporteCreditosGeneradosVsConsumidos({
-        desde,
-        hasta,
+        desde: customDesde,
+        hasta: customHasta,
       });
       setResumen(res || null);
     } catch (e) {
@@ -57,13 +70,24 @@ export default function ReportesCreditosGenerados() {
   }
 
   useEffect(() => {
-    cargar();
+    // Carga inicial
+    cargar(desde, hasta);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleSubmit(e) {
     e.preventDefault();
-    cargar();
+    setRangoActivo(null); // el usuario eligió fechas manuales
+    cargar(desde, hasta);
+  }
+
+  function aplicarRangoRapido(rango) {
+    const nuevoHasta = hoyISO();
+    const nuevoDesde = haceNDiasISO(rango.dias);
+    setDesde(nuevoDesde);
+    setHasta(nuevoHasta);
+    setRangoActivo(rango.id);
+    cargar(nuevoDesde, nuevoHasta);
   }
 
   // =======================
@@ -124,6 +148,8 @@ export default function ReportesCreditosGenerados() {
       ? "bg-amber-50 text-amber-800 border-amber-200"
       : "bg-gray-100 text-gray-700 border-gray-200";
 
+  const rangoLabel = `${desde} – ${hasta}`;
+
   return (
     <div
       className="min-h-screen p-6 md:p-8"
@@ -154,47 +180,67 @@ export default function ReportesCreditosGenerados() {
               <p className="mt-2 inline-flex items-center gap-2 text-xs text-emerald-900/70 bg-emerald-50/70 border border-emerald-100 rounded-full px-3 py-1">
                 <Activity className="w-3 h-3" />
                 Rango analizado:{" "}
-                <span className="font-semibold">
-                  {desde} &nbsp;–&nbsp; {hasta}
-                </span>
+                <span className="font-semibold">{rangoLabel}</span>
               </p>
             </div>
           </div>
 
-          <form
-            onSubmit={handleSubmit}
-            className="flex flex-wrap gap-3 bg-white/80 px-4 py-3 rounded-2xl shadow-md backdrop-blur-sm border border-emerald-100"
-          >
-            <div className="flex flex-col text-xs md:text-sm">
-              <label className="font-semibold text-emerald-900 mb-1">
-                Desde
-              </label>
-              <input
-                type="date"
-                value={desde}
-                onChange={(e) => setDesde(e.target.value)}
-                className="border border-emerald-100 rounded-lg px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500"
-              />
+          {/* FILTROS: RANGOS RÁPIDOS + FECHAS */}
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap gap-2 justify-end">
+              {RANGOS_RAPIDOS.map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => aplicarRangoRapido(r)}
+                  className={`px-3 py-1 rounded-full text-[11px] font-semibold border transition ${
+                    rangoActivo === r.id
+                      ? "bg-emerald-700 text-white border-emerald-700 shadow-sm"
+                      : "bg-white/90 text-emerald-800 border-emerald-200 hover:bg-emerald-50"
+                  }`}
+                  disabled={loading}
+                >
+                  {r.label}
+                </button>
+              ))}
             </div>
-            <div className="flex flex-col text-xs md:text-sm">
-              <label className="font-semibold text-emerald-900 mb-1">
-                Hasta
-              </label>
-              <input
-                type="date"
-                value={hasta}
-                onChange={(e) => setHasta(e.target.value)}
-                className="border border-emerald-100 rounded-lg px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500"
-              />
-            </div>
-            <button
-              type="submit"
-              className="self-end md:self-center bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-xl font-semibold shadow-md text-sm flex items-center gap-2 transition"
+
+            <form
+              onSubmit={handleSubmit}
+              className="flex flex-wrap gap-3 bg-white/80 px-4 py-3 rounded-2xl shadow-md backdrop-blur-sm border border-emerald-100"
             >
-              <BarChart3 className="w-4 h-4" />
-              {loading ? "Actualizando…" : "Actualizar"}
-            </button>
-          </form>
+              <div className="flex flex-col text-xs md:text-sm">
+                <label className="font-semibold text-emerald-900 mb-1">
+                  Desde
+                </label>
+                <input
+                  type="date"
+                  value={desde}
+                  onChange={(e) => setDesde(e.target.value)}
+                  className="border border-emerald-100 rounded-lg px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500"
+                />
+              </div>
+              <div className="flex flex-col text-xs md:text-sm">
+                <label className="font-semibold text-emerald-900 mb-1">
+                  Hasta
+                </label>
+                <input
+                  type="date"
+                  value={hasta}
+                  onChange={(e) => setHasta(e.target.value)}
+                  className="border border-emerald-100 rounded-lg px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500"
+                />
+              </div>
+              <button
+                type="submit"
+                className="self-end md:self-center bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-xl font-semibold shadow-md text-sm flex items-center gap-2 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                disabled={loading}
+              >
+                <BarChart3 className="w-4 h-4" />
+                {loading ? "Actualizando…" : "Aplicar fechas"}
+              </button>
+            </form>
+          </div>
         </header>
 
         {loading && (
@@ -389,7 +435,7 @@ export default function ReportesCreditosGenerados() {
               Resumen detallado del periodo
             </h2>
             <span className="text-[11px] text-emerald-800/80">
-              {desde} &nbsp;–&nbsp; {hasta}
+              {rangoLabel}
             </span>
           </div>
           <div className="px-4 py-4 text-sm">
@@ -422,7 +468,9 @@ export default function ReportesCreditosGenerados() {
                   </p>
                   <p>
                     <span className="font-semibold">Estado global:</span>{" "}
-                    <span className={`px-2 py-0.5 rounded-full text-xs border ${estadoStyles}`}>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-xs border ${estadoStyles}`}
+                    >
                       {metrics.estado}
                     </span>
                   </p>

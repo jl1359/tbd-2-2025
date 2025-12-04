@@ -21,6 +21,8 @@ import {
   Repeat2,
   Users,
   Gauge,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 const TIPOS_REPORTE = [
@@ -33,6 +35,13 @@ function isArray(v) {
   return Array.isArray(v);
 }
 
+const COLORS = ["#1e3a8a", "#047857", "#0d9488"];
+
+const formatNumber = (n) =>
+  Number(n || 0).toLocaleString("es-BO", {
+    maximumFractionDigits: 2,
+  });
+
 export default function ReportesImpactoAcumulado() {
   const [tipoReporte, setTipoReporte] = useState(1);
   const [idPeriodo, setIdPeriodo] = useState(1);
@@ -40,14 +49,14 @@ export default function ReportesImpactoAcumulado() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  async function cargar() {
+  async function cargar(customTipo = tipoReporte, customPeriodo = idPeriodo) {
     try {
       setLoading(true);
       setError(null);
 
       const res = await getReporteImpactoAcumulado({
-        idTipoReporte: tipoReporte,
-        idPeriodo,
+        idTipoReporte: customTipo,
+        idPeriodo: customPeriodo,
       });
 
       setDatos(isArray(res) ? res : []);
@@ -62,9 +71,18 @@ export default function ReportesImpactoAcumulado() {
 
   // Cargar al entrar por primera vez
   useEffect(() => {
-    cargar();
+    cargar(1, 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const tipoLabel =
+    TIPOS_REPORTE.find((t) => t.id === tipoReporte)?.label || "—";
+
+  function cambiarPeriodo(delta) {
+    const nuevo = Math.max(1, Number(idPeriodo || 1) + delta);
+    setIdPeriodo(nuevo);
+    cargar(tipoReporte, nuevo);
+  }
 
   // =========================
   // MÉTRICAS IMPACTO ACUMULADO
@@ -125,16 +143,6 @@ export default function ReportesImpactoAcumulado() {
     [metrics]
   );
 
-  const COLORS = ["#1e3a8a", "#047857", "#0d9488"];
-
-  const formatNumber = (n) =>
-    Number(n || 0).toLocaleString("es-BO", {
-      maximumFractionDigits: 2,
-    });
-
-  const tipoLabel =
-    TIPOS_REPORTE.find((t) => t.id === tipoReporte)?.label || "—";
-
   return (
     <div
       className="min-h-screen p-4 md:p-8"
@@ -169,54 +177,80 @@ export default function ReportesImpactoAcumulado() {
 
           {/* FILTROS */}
           <div className="bg-white/90 px-4 py-3 rounded-2xl shadow border border-emerald-100 backdrop-blur-sm w-full md:w-auto">
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="flex flex-col">
-                <label className="text-[11px] font-semibold text-emerald-900 mb-1">
-                  Tipo de reporte
-                </label>
-                <select
-                  className="border border-emerald-200 rounded-xl px-3 py-2 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  value={tipoReporte}
-                  onChange={(e) => setTipoReporte(Number(e.target.value))}
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                {TIPOS_REPORTE.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => {
+                      setTipoReporte(t.id);
+                      cargar(t.id, idPeriodo);
+                    }}
+                    className={`px-3 py-1 rounded-full text-[11px] font-semibold border transition ${
+                      tipoReporte === t.id
+                        ? "bg-emerald-700 text-white border-emerald-700 shadow-sm"
+                        : "bg-white text-emerald-800 border-emerald-200 hover:bg-emerald-50"
+                    }`}
+                    disabled={loading}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="flex flex-col">
+                  <label className="text-[11px] font-semibold text-emerald-900 mb-1">
+                    ID período
+                  </label>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => cambiarPeriodo(-1)}
+                      className="p-1 rounded-full border border-emerald-200 bg-white hover:bg-emerald-50 text-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={loading || idPeriodo <= 1}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <input
+                      type="number"
+                      min={1}
+                      className="border border-emerald-200 rounded-xl px-3 py-2 text-xs md:text-sm w-24 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      value={idPeriodo}
+                      onChange={(e) =>
+                        setIdPeriodo(Math.max(1, Number(e.target.value) || 1))
+                      }
+                    />
+                    <button
+                      type="button"
+                      onClick={() => cambiarPeriodo(1)}
+                      className="p-1 rounded-full border border-emerald-200 bg-white hover:bg-emerald-50 text-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={loading}
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <span className="mt-1 text-[10px] text-emerald-800/70">
+                    Corresponde al período definido en PERIODO/REPORTE_IMPACTO.
+                  </span>
+                </div>
+
+                <button
+                  onClick={() => cargar()}
+                  disabled={loading}
+                  className="ml-auto bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold px-4 py-2 rounded-2xl shadow-md transition flex items-center gap-2 text-xs md:text-sm"
                 >
-                  {TIPOS_REPORTE.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
+                  {loading ? (
+                    <>
+                      <span className="h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                      Actualizando…
+                    </>
+                  ) : (
+                    <>Actualizar</>
+                  )}
+                </button>
               </div>
-
-              <div className="flex flex-col">
-                <label className="text-[11px] font-semibold text-emerald-900 mb-1">
-                  ID período
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  className="border border-emerald-200 rounded-xl px-3 py-2 text-xs md:text-sm w-24 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  value={idPeriodo}
-                  onChange={(e) => setIdPeriodo(Number(e.target.value))}
-                />
-                <span className="mt-1 text-[10px] text-emerald-800/70">
-                  Corresponde al período definido en REPORTE_IMPACTO.
-                </span>
-              </div>
-
-              <button
-                onClick={cargar}
-                disabled={loading}
-                className="ml-auto bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold px-4 py-2 rounded-2xl shadow-md transition flex items-center gap-2 text-xs md:text-sm"
-              >
-                {loading ? (
-                  <>
-                    <span className="h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                    Actualizando…
-                  </>
-                ) : (
-                  <>Actualizar</>
-                )}
-              </button>
             </div>
           </div>
         </header>

@@ -26,10 +26,22 @@ function hoyISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function hace30DiasISO() {
-  const d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+function haceNDiasISO(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - (n - 1));
   return d.toISOString().slice(0, 10);
 }
+
+function hace30DiasISO() {
+  return haceNDiasISO(30);
+}
+
+const RANGOS_RAPIDOS = [
+  { id: "7d", label: "Últimos 7 días", dias: 7 },
+  { id: "30d", label: "Últimos 30 días", dias: 30 },
+  { id: "90d", label: "Últimos 90 días", dias: 90 },
+  { id: "1y", label: "Último año", dias: 365 },
+];
 
 export default function ReportesActividadesSostenibles() {
   const [desde, setDesde] = useState(hace30DiasISO());
@@ -37,12 +49,16 @@ export default function ReportesActividadesSostenibles() {
   const [datos, setDatos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [rangoActivo, setRangoActivo] = useState("30d");
 
-  async function cargar() {
+  async function cargar(customDesde = desde, customHasta = hasta) {
     try {
       setLoading(true);
       setError("");
-      const res = await getReporteActividadesSostenibles({ desde, hasta });
+      const res = await getReporteActividadesSostenibles({
+        desde: customDesde,
+        hasta: customHasta,
+      });
       setDatos(Array.isArray(res) ? res : []);
     } catch (e) {
       console.error(e);
@@ -54,13 +70,24 @@ export default function ReportesActividadesSostenibles() {
   }
 
   useEffect(() => {
-    cargar();
+    // Carga inicial con rango por defecto (30 días)
+    cargar(desde, hasta);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleSubmit(e) {
     e.preventDefault();
-    cargar();
+    setRangoActivo(null); // el usuario eligió fechas manuales
+    cargar(desde, hasta);
+  }
+
+  function aplicarRangoRapido(rango) {
+    const nuevoHasta = hoyISO();
+    const nuevoDesde = haceNDiasISO(rango.dias);
+    setDesde(nuevoDesde);
+    setHasta(nuevoHasta);
+    setRangoActivo(rango.id);
+    cargar(nuevoDesde, nuevoHasta);
   }
 
   const sinDatos = !loading && datos.length === 0;
@@ -109,13 +136,25 @@ export default function ReportesActividadesSostenibles() {
   }, [datos]);
 
   // DATA GRÁFICOS
-  const dataBarActividades = datos.map((d) => ({
-    nombre: d.nombre,
-    actividades: Number(d.total_actividades) || 0,
-  }));
+  const dataBarActividades = useMemo(() => {
+    if (!datos.length) return [];
+    return [...datos]
+      .slice()
+      .sort(
+        (a, b) =>
+          Number(b.total_actividades || 0) -
+          Number(a.total_actividades || 0)
+      )
+      .map((d) => ({
+        nombre: d.nombre,
+        actividades: Number(d.total_actividades) || 0,
+        creditos: Number(d.creditos_otorgados) || 0,
+      }));
+  }, [datos]);
 
-  const dataPieTop5 = (() => {
+  const dataPieTop5 = useMemo(() => {
     const top5 = [...datos]
+      .slice()
       .sort(
         (a, b) =>
           Number(b.creditos_otorgados || 0) -
@@ -127,7 +166,7 @@ export default function ReportesActividadesSostenibles() {
       name: u.nombre,
       value: Number(u.creditos_otorgados) || 0,
     }));
-  })();
+  }, [datos]);
 
   const COLORS = ["#047857", "#0d9488", "#1e3a8a", "#6d28d9", "#0f766e"];
 
@@ -165,50 +204,70 @@ export default function ReportesActividadesSostenibles() {
             </div>
           </div>
 
-          {/* FILTRO DE FECHAS */}
-          <form
-            onSubmit={handleSubmit}
-            className="flex flex-wrap gap-3 bg-white/90 px-4 py-3 rounded-2xl shadow border border-emerald-100 backdrop-blur-sm"
-          >
-            <div className="flex flex-col text-xs md:text-sm">
-              <label className="font-semibold text-emerald-900 mb-0.5">
-                Desde
-              </label>
-              <input
-                type="date"
-                value={desde}
-                onChange={(e) => setDesde(e.target.value)}
-                className="border border-emerald-200 rounded-lg px-2 py-1 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-emerald-400 text-xs md:text-sm"
-              />
+          {/* FILTROS: RANGOS RÁPIDOS + FECHAS */}
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap gap-2 justify-end">
+              {RANGOS_RAPIDOS.map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => aplicarRangoRapido(r)}
+                  className={`px-3 py-1 rounded-full text-[11px] font-semibold border transition ${
+                    rangoActivo === r.id
+                      ? "bg-emerald-700 text-white border-emerald-700 shadow-sm"
+                      : "bg-white/90 text-emerald-800 border-emerald-200 hover:bg-emerald-50"
+                  }`}
+                  disabled={loading}
+                >
+                  {r.label}
+                </button>
+              ))}
             </div>
 
-            <div className="flex flex-col text-xs md:text-sm">
-              <label className="font-semibold text-emerald-900 mb-0.5">
-                Hasta
-              </label>
-              <input
-                type="date"
-                value={hasta}
-                onChange={(e) => setHasta(e.target.value)}
-                className="border border-emerald-200 rounded-lg px-2 py-1 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-emerald-400 text-xs md:text-sm"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="self-end md:self-center bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl font-semibold text-xs md:text-sm shadow-md flex items-center gap-2"
+            <form
+              onSubmit={handleSubmit}
+              className="flex flex-wrap gap-3 bg-white/90 px-4 py-3 rounded-2xl shadow border border-emerald-100 backdrop-blur-sm"
             >
-              {loading ? (
-                <>
-                  <span className="h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                  Actualizando…
-                </>
-              ) : (
-                <>Actualizar</>
-              )}
-            </button>
-          </form>
+              <div className="flex flex-col text-xs md:text-sm">
+                <label className="font-semibold text-emerald-900 mb-0.5">
+                  Desde
+                </label>
+                <input
+                  type="date"
+                  value={desde}
+                  onChange={(e) => setDesde(e.target.value)}
+                  className="border border-emerald-200 rounded-lg px-2 py-1 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-emerald-400 text-xs md:text-sm"
+                />
+              </div>
+
+              <div className="flex flex-col text-xs md:text-sm">
+                <label className="font-semibold text-emerald-900 mb-0.5">
+                  Hasta
+                </label>
+                <input
+                  type="date"
+                  value={hasta}
+                  onChange={(e) => setHasta(e.target.value)}
+                  className="border border-emerald-200 rounded-lg px-2 py-1 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-emerald-400 text-xs md:text-sm"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="self-end md:self-center bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl font-semibold text-xs md:text-sm shadow-md flex items-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <span className="h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                    Actualizando…
+                  </>
+                ) : (
+                  <>Aplicar fechas</>
+                )}
+              </button>
+            </form>
+          </div>
         </header>
 
         {/* RANGO ACTUAL */}
@@ -245,7 +304,7 @@ export default function ReportesActividadesSostenibles() {
               {metrics.totalUsuarios}
             </p>
             <p className="mt-1 text-[11px] text-emerald-900/70">
-              Personsa que reportaron al menos una actividad.
+              Personas que reportaron al menos una actividad.
             </p>
           </div>
 
@@ -337,10 +396,11 @@ export default function ReportesActividadesSostenibles() {
             <div className="flex items-center justify-between mb-2">
               <div>
                 <h2 className="text-base font-bold text-emerald-900">
-                  Actividades por usuario
+                  Actividades y créditos por usuario
                 </h2>
                 <p className="text-[11px] text-emerald-900/70">
-                  Muestra los usuarios más activos en el periodo.
+                  Usuarios más activos en el periodo, comparando actividades y
+                  créditos obtenidos.
                 </p>
               </div>
               <span className="text-[11px] text-emerald-700/70 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
@@ -359,9 +419,17 @@ export default function ReportesActividadesSostenibles() {
                     <XAxis dataKey="nombre" hide />
                     <YAxis allowDecimals={false} />
                     <Tooltip />
+                    <Legend />
                     <Bar
                       dataKey="actividades"
+                      name="Actividades"
                       fill="#047857"
+                      radius={[8, 8, 0, 0]}
+                    />
+                    <Bar
+                      dataKey="creditos"
+                      name="Créditos"
+                      fill="#0d9488"
                       radius={[8, 8, 0, 0]}
                     />
                   </BarChart>

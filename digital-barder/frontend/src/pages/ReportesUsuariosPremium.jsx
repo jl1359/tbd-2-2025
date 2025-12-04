@@ -143,8 +143,7 @@ export default function ReportesUsuariosPremium() {
       maximumFractionDigits: 0,
     });
 
-  const formatPercent = (n) =>
-    `${Number(n || 0).toFixed(1)}%`;
+  const formatPercent = (n) => `${Number(n || 0).toFixed(1)}%`;
 
   const rangoLabel = `Del ${desde} al ${hasta}`;
 
@@ -173,8 +172,8 @@ export default function ReportesUsuariosPremium() {
                 Usuarios premium
               </h1>
               <p className="text-sm text-emerald-800/80 mt-1">
-                Adopción del plan premium e ingresos por suscripción en el
-                rango seleccionado.
+                Adopción del plan premium e ingresos por suscripción en el rango
+                seleccionado.
               </p>
             </div>
           </div>
@@ -240,6 +239,16 @@ export default function ReportesUsuariosPremium() {
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-2 rounded-xl shadow-sm">
             {error}
+          </div>
+        )}
+
+        {/* MENSAJE SIN DATOS */}
+        {!loading && !error && sinDatos && (
+          <div className="bg-emerald-50 border border-emerald-100 text-emerald-800 text-sm px-4 py-3 rounded-xl shadow-sm flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            No se encontraron datos de suscripciones premium para el rango
+            seleccionado. Prueba con otras fechas o revisa la actividad
+            registrada.
           </div>
         )}
 

@@ -49,6 +49,7 @@ export default function ReportesSaldosUsuarios() {
   }, []);
 
   const sinDatos = !loading && datos.length === 0;
+  const hasData = datos.length > 0;
 
   // =========================
   // MÉTRICAS
@@ -88,11 +89,13 @@ export default function ReportesSaldosUsuarios() {
   // =========================
   const barData = useMemo(
     () =>
-      datos.map((u, index) => ({
-        etiqueta: `U${index + 1}`,
-        nombre: u.nombre,
-        saldo: Number(u.saldo_creditos || 0),
-      })),
+      datos
+        .map((u, index) => ({
+          etiqueta: `U${index + 1}`,
+          nombre: u.nombre,
+          saldo: Number(u.saldo_creditos || 0),
+        }))
+        .sort((a, b) => b.saldo - a.saldo),
     [datos]
   );
 
@@ -112,6 +115,11 @@ export default function ReportesSaldosUsuarios() {
   const formatCredits = (n) =>
     Number(n || 0).toLocaleString("es-BO", {
       maximumFractionDigits: 2,
+    });
+
+  const formatInt = (n) =>
+    Number(n || 0).toLocaleString("es-BO", {
+      maximumFractionDigits: 0,
     });
 
   return (
@@ -165,6 +173,9 @@ export default function ReportesSaldosUsuarios() {
                 }
                 className="border border-emerald-200 rounded-lg px-2 py-1 text-xs md:text-sm w-24 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
               />
+              <span className="mt-1 text-[10px] text-emerald-800/70">
+                Se consultan los usuarios con mayor saldo.
+              </span>
             </div>
             <button
               type="button"
@@ -190,6 +201,16 @@ export default function ReportesSaldosUsuarios() {
           </div>
         )}
 
+        {/* Mensaje vacío global */}
+        {!loading && !error && sinDatos && (
+          <div className="bg-emerald-50 border border-emerald-100 text-emerald-800 text-sm px-4 py-3 rounded-xl shadow-sm flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            No hay datos de saldos para mostrar. Ajusta el{" "}
+            <strong className="ml-1">Top N</strong> y vuelve a actualizar,
+            o verifica que existan billeteras con saldo.
+          </div>
+        )}
+
         {/* KPIs PRINCIPALES */}
         <section className="grid md:grid-cols-3 gap-4">
           <div className="bg-white shadow-sm border border-emerald-200/60 rounded-2xl p-4 flex flex-col justify-between hover:shadow-md transition">
@@ -200,7 +221,7 @@ export default function ReportesSaldosUsuarios() {
               <Users className="w-4 h-4 text-emerald-700/80" />
             </div>
             <p className="mt-2 text-2xl md:text-3xl font-extrabold text-emerald-900">
-              {metrics.totalUsuarios}
+              {formatInt(metrics.totalUsuarios)}
             </p>
             <p className="mt-1 text-[11px] text-emerald-900/70">
               Usuarios incluidos en el Top {limit}.

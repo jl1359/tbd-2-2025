@@ -114,7 +114,10 @@ export default function ReportesUsuarios() {
   );
 
   const hasData =
-    metrics.totalActivos + metrics.totalAbandonados + metrics.totalNuevos > 0;
+    metrics.totalActivos +
+      metrics.totalAbandonados +
+      metrics.totalNuevos >
+    0;
 
   return (
     <div
@@ -332,25 +335,31 @@ export default function ReportesUsuarios() {
               Comparación entre usuarios activos, abandonados y nuevos.
             </p>
             <div className="h-72">
-              <ResponsiveContainer>
-                <BarChart data={chartResumen}>
-                  <XAxis
-                    dataKey="tipo"
-                    tick={{ fontSize: 11 }}
-                    tickLine={false}
-                    axisLine={{ stroke: "#e5e7eb" }}
-                  />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar
-                    dataKey="cantidad"
-                    name="Usuarios"
-                    radius={[8, 8, 0, 0]}
-                    fill="#047857"
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+              {hasData ? (
+                <ResponsiveContainer>
+                  <BarChart data={chartResumen}>
+                    <XAxis
+                      dataKey="tipo"
+                      tick={{ fontSize: 11 }}
+                      tickLine={false}
+                      axisLine={{ stroke: "#e5e7eb" }}
+                    />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                    <Tooltip />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Bar
+                      dataKey="cantidad"
+                      name="Usuarios"
+                      radius={[8, 8, 0, 0]}
+                      fill="#047857"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-xs text-gray-400">
+                  Sin datos para mostrar el gráfico.
+                </div>
+              )}
             </div>
           </div>
 
@@ -396,9 +405,9 @@ export default function ReportesUsuarios() {
               Usuarios activos ({activos.length})
             </h2>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[320px]">
             <table className="min-w-full text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200/80">
+              <thead className="bg-slate-50 border-b border-slate-200/80 sticky top-0 z-10">
                 <tr>
                   <th className="px-2 py-1 text-left font-semibold text-slate-600">
                     Usuario
@@ -462,9 +471,9 @@ export default function ReportesUsuarios() {
               Usuarios abandonados ({abandonados.length})
             </h2>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[320px]">
             <table className="min-w-full text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200/80">
+              <thead className="bg-slate-50 border-b border-slate-200/80 sticky top-0 z-10">
                 <tr>
                   <th className="px-2 py-1 text-left font-semibold text-slate-600">
                     Usuario
@@ -516,9 +525,9 @@ export default function ReportesUsuarios() {
               Usuarios nuevos (primer login) ({nuevos.length})
             </h2>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[320px]">
             <table className="min-w-full text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200/80">
+              <thead className="bg-slate-50 border-b border-slate-200/80 sticky top-0 z-10">
                 <tr>
                   <th className="px-2 py-1 text-left font-semibold text-slate-600">
                     Usuario

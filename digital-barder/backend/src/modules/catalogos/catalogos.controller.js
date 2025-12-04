@@ -1,3 +1,4 @@
+// src/modules/catalogos/catalogos.controller.js
 import {
   listarCategorias,
   listarUnidadesMedida,
@@ -12,8 +13,10 @@ import {
 } from "./catalogos.service.js";
 
 // Helper para respuestas limpias
+// 🔴 ANTES: devolvía { ok: true, data }
+// 🔵 AHORA: devolvemos directamente data (array/objeto)
 function ok(res, data) {
-  return res.json({ ok: true, data });
+  return res.json(data);
 }
 
 /* =======================

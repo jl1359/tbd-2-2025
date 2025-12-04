@@ -14,6 +14,13 @@ import {
 } from "recharts";
 import { getReporteActividadesSostenibles } from "../services/api";
 import hoja from "../assets/hoja.png";
+import {
+  Users,
+  Activity as ActivityIcon,
+  Leaf,
+  Gauge,
+  Trophy,
+} from "lucide-react";
 
 function hoyISO() {
   return new Date().toISOString().slice(0, 10);
@@ -48,6 +55,7 @@ export default function ReportesActividadesSostenibles() {
 
   useEffect(() => {
     cargar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleSubmit(e) {
@@ -78,8 +86,9 @@ export default function ReportesActividadesSostenibles() {
       (acc, it) => acc + Number(it.creditos_otorgados || 0),
       0
     );
-    const promedioCreditos =
-      totalUsuarios ? totalCreditos / totalUsuarios : 0;
+    const promedioCreditos = totalUsuarios
+      ? totalCreditos / totalUsuarios
+      : 0;
 
     const top = datos.reduce(
       (best, it) =>
@@ -122,11 +131,14 @@ export default function ReportesActividadesSostenibles() {
 
   const COLORS = ["#047857", "#0d9488", "#1e3a8a", "#6d28d9", "#0f766e"];
 
+  const rangoLabel = `Del ${desde} al ${hasta}`;
+
   return (
     <div
-      className="min-h-screen p-6 md:p-8"
+      className="min-h-screen p-4 md:p-8"
       style={{
-        background: "radial-gradient(circle at top, #bbf7d0 0, #ecfdf5 40%, #f9fafb 100%)",
+        background:
+          "radial-gradient(circle at top, #bbf7d0 0, #ecfdf5 40%, #f9fafb 100%)",
       }}
     >
       <div className="max-w-6xl mx-auto space-y-8">
@@ -138,11 +150,17 @@ export default function ReportesActividadesSostenibles() {
             </div>
 
             <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-wide">
+                  Panel ambiental
+                </span>
+              </div>
               <h1 className="text-3xl md:text-4xl font-extrabold text-emerald-900 tracking-tight">
-                Reporte de actividades sostenibles
+                Actividades sostenibles
               </h1>
               <p className="text-sm text-emerald-800/80 mt-1">
-                Análisis por usuario de actividades registradas y créditos otorgados.
+                Visualiza qué usuarios generan más impacto, cuántas
+                actividades se registran y cuántos créditos se otorgan.
               </p>
             </div>
           </div>
@@ -150,7 +168,7 @@ export default function ReportesActividadesSostenibles() {
           {/* FILTRO DE FECHAS */}
           <form
             onSubmit={handleSubmit}
-            className="flex flex-wrap gap-3 bg-white/80 px-4 py-3 rounded-2xl shadow border border-emerald-100 backdrop-blur"
+            className="flex flex-wrap gap-3 bg-white/90 px-4 py-3 rounded-2xl shadow border border-emerald-100 backdrop-blur-sm"
           >
             <div className="flex flex-col text-xs md:text-sm">
               <label className="font-semibold text-emerald-900 mb-0.5">
@@ -160,7 +178,7 @@ export default function ReportesActividadesSostenibles() {
                 type="date"
                 value={desde}
                 onChange={(e) => setDesde(e.target.value)}
-                className="border border-emerald-200 rounded-lg px-2 py-1 shadow-sm focus:outline-none focus:ring focus:ring-emerald-400/60"
+                className="border border-emerald-200 rounded-lg px-2 py-1 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-emerald-400 text-xs md:text-sm"
               />
             </div>
 
@@ -172,19 +190,40 @@ export default function ReportesActividadesSostenibles() {
                 type="date"
                 value={hasta}
                 onChange={(e) => setHasta(e.target.value)}
-                className="border border-emerald-200 rounded-lg px-2 py-1 shadow-sm focus:outline-none focus:ring focus:ring-emerald-400/60"
+                className="border border-emerald-200 rounded-lg px-2 py-1 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-emerald-400 text-xs md:text-sm"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="self-end md:self-center bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl font-semibold text-sm shadow-md flex items-center gap-2"
+              className="self-end md:self-center bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl font-semibold text-xs md:text-sm shadow-md flex items-center gap-2"
             >
-              {loading ? "Actualizando…" : "Actualizar"}
+              {loading ? (
+                <>
+                  <span className="h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  Actualizando…
+                </>
+              ) : (
+                <>Actualizar</>
+              )}
             </button>
           </form>
         </header>
+
+        {/* RANGO ACTUAL */}
+        <div className="flex items-center justify-between gap-2 text-xs text-emerald-900/70">
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100">
+            <Leaf className="w-3 h-3" />
+            <span>Rango analizado:</span>
+            <span className="font-semibold">{rangoLabel}</span>
+          </span>
+          {!sinDatos && !loading && (
+            <span className="hidden sm:inline text-[11px]">
+              {datos.length} usuario(s) con al menos una actividad registrada.
+            </span>
+          )}
+        </div>
 
         {error && (
           <div className="bg-red-50 text-red-700 border border-red-200 px-4 py-2 rounded-xl shadow-sm text-sm">
@@ -194,51 +233,87 @@ export default function ReportesActividadesSostenibles() {
 
         {/* MÉTRICAS */}
         <section className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          {[
-            {
-              label: "Usuarios con actividades",
-              value: metrics.totalUsuarios,
-            },
-            {
-              label: "Total de actividades",
-              value: metrics.totalActividades,
-            },
-            {
-              label: "Créditos otorgados",
-              value: metrics.totalCreditos,
-            },
-            {
-              label: "Promedio por usuario",
-              value: metrics.promedioCreditos.toFixed(1),
-            },
-          ].map((m, i) => (
-            <div
-              key={i}
-              className="bg-white shadow-sm border border-emerald-100 rounded-2xl p-4 flex flex-col justify-between hover:shadow-md transition"
-            >
+          {/* Usuarios */}
+          <div className="bg-white shadow-sm border border-emerald-100 rounded-2xl p-4 flex flex-col justify-between hover:shadow-md transition">
+            <div className="flex items-center justify-between">
               <p className="text-[11px] font-semibold text-emerald-900/80 uppercase tracking-wide">
-                {m.label}
+                Usuarios con actividades
               </p>
-              <p className="mt-2 text-2xl font-extrabold text-emerald-900">
-                {m.value}
-              </p>
+              <Users className="w-4 h-4 text-emerald-700/80" />
             </div>
-          ))}
+            <p className="mt-2 text-2xl font-extrabold text-emerald-900">
+              {metrics.totalUsuarios}
+            </p>
+            <p className="mt-1 text-[11px] text-emerald-900/70">
+              Personsa que reportaron al menos una actividad.
+            </p>
+          </div>
+
+          {/* Actividades */}
+          <div className="bg-white shadow-sm border border-emerald-100 rounded-2xl p-4 flex flex-col justify-between hover:shadow-md transition">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-semibold text-emerald-900/80 uppercase tracking-wide">
+                Total de actividades
+              </p>
+              <ActivityIcon className="w-4 h-4 text-emerald-700/80" />
+            </div>
+            <p className="mt-2 text-2xl font-extrabold text-emerald-900">
+              {metrics.totalActividades}
+            </p>
+            <p className="mt-1 text-[11px] text-emerald-900/70">
+              Suma de actividades sostenibles registradas.
+            </p>
+          </div>
+
+          {/* Créditos otorgados */}
+          <div className="bg-white shadow-sm border border-emerald-100 rounded-2xl p-4 flex flex-col justify-between hover:shadow-md transition">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-semibold text-emerald-900/80 uppercase tracking-wide">
+                Créditos otorgados
+              </p>
+              <Leaf className="w-4 h-4 text-emerald-700/80" />
+            </div>
+            <p className="mt-2 text-2xl font-extrabold text-emerald-900">
+              {metrics.totalCreditos}
+            </p>
+            <p className="mt-1 text-[11px] text-emerald-900/70">
+              Total de créditos verdes entregados.
+            </p>
+          </div>
+
+          {/* Promedio por usuario */}
+          <div className="bg-white shadow-sm border border-emerald-100 rounded-2xl p-4 flex flex-col justify-between hover:shadow-md transition">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-semibold text-emerald-900/80 uppercase tracking-wide">
+                Promedio por usuario
+              </p>
+              <Gauge className="w-4 h-4 text-emerald-700/80" />
+            </div>
+            <p className="mt-2 text-2xl font-extrabold text-emerald-900">
+              {metrics.promedioCreditos.toFixed(1)}
+            </p>
+            <p className="mt-1 text-[11px] text-emerald-900/70">
+              Créditos otorgados en promedio por usuario.
+            </p>
+          </div>
 
           {/* TOP USUARIO */}
-          <div className="bg-emerald-900 text-emerald-50 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+          <div className="bg-emerald-900 text-emerald-50 rounded-2xl p-4 shadow-sm flex flex-col justify-between relative overflow-hidden">
+            <div className="absolute -right-8 -top-8 opacity-10">
+              <Trophy className="w-20 h-20" />
+            </div>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-100/90">
               Usuario destacado
             </p>
             {metrics.topUsuario ? (
               <>
-                <p className="mt-1 text-sm font-semibold">
+                <p className="mt-1 text-sm font-semibold relative z-10">
                   {metrics.topUsuario.nombre}
                 </p>
-                <p className="text-xs text-emerald-100/80">
+                <p className="text-xs text-emerald-100/80 relative z-10">
                   {metrics.topUsuario.correo}
                 </p>
-                <p className="mt-2 text-xs">
+                <p className="mt-2 text-xs relative z-10">
                   Créditos otorgados:{" "}
                   <span className="font-bold">
                     {Number(
@@ -260,11 +335,16 @@ export default function ReportesActividadesSostenibles() {
           {/* BARRAS */}
           <div className="bg-white rounded-2xl border border-emerald-100 shadow-sm p-4 flex flex-col">
             <div className="flex items-center justify-between mb-2">
-              <h2 className="text-base font-bold text-emerald-900">
-                Actividades registradas por usuario
-              </h2>
-              <span className="text-[11px] text-emerald-700/70">
-                Top {Math.min(dataBarActividades.length, 10)} usuarios
+              <div>
+                <h2 className="text-base font-bold text-emerald-900">
+                  Actividades por usuario
+                </h2>
+                <p className="text-[11px] text-emerald-900/70">
+                  Muestra los usuarios más activos en el periodo.
+                </p>
+              </div>
+              <span className="text-[11px] text-emerald-700/70 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                Top {Math.min(dataBarActividades.length || 0, 10)} usuarios
               </span>
             </div>
 
@@ -293,10 +373,15 @@ export default function ReportesActividadesSostenibles() {
           {/* PIE */}
           <div className="bg-white rounded-2xl border border-emerald-100 shadow-sm p-4 flex flex-col">
             <div className="flex items-center justify-between mb-2">
-              <h2 className="text-base font-bold text-emerald-900">
-                Top 5 usuarios por créditos otorgados
-              </h2>
-              <span className="text-[11px] text-emerald-700/70">
+              <div>
+                <h2 className="text-base font-bold text-emerald-900">
+                  Top 5 por créditos otorgados
+                </h2>
+                <p className="text-[11px] text-emerald-900/70">
+                  Distribución de créditos entre los usuarios más destacados.
+                </p>
+              </div>
+              <span className="text-[11px] text-emerald-700/70 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
                 Distribución porcentual
               </span>
             </div>
@@ -336,10 +421,16 @@ export default function ReportesActividadesSostenibles() {
         {/* TABLA */}
         <section className="bg-white border border-emerald-100 rounded-2xl shadow-sm overflow-hidden">
           <div className="px-4 py-3 border-b bg-emerald-50 flex items-center justify-between">
-            <h2 className="font-semibold text-emerald-900 text-sm">
-              Detalle de actividades por usuario
-            </h2>
-            <span className="text-[11px] text-emerald-800/70">
+            <div>
+              <h2 className="font-semibold text-emerald-900 text-sm">
+                Detalle de actividades por usuario
+              </h2>
+              <p className="text-[11px] text-emerald-900/70">
+                Listado completo de usuarios que registraron actividades
+                sostenibles.
+              </p>
+            </div>
+            <span className="text-[11px] text-emerald-800/70 bg-white px-2 py-0.5 rounded-full border border-emerald-100">
               {datos.length} registro(s)
             </span>
           </div>
@@ -347,23 +438,23 @@ export default function ReportesActividadesSostenibles() {
           {sinDatos ? (
             <div className="px-4 py-6 text-sm text-gray-500">
               No hay registros de actividades sostenibles para el rango
-              seleccionado.
+              seleccionado. Ajusta las fechas para ver más información.
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[420px]">
               <table className="min-w-full text-sm">
-                <thead className="bg-slate-50 border-b border-slate-200">
+                <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
                   <tr>
-                    <th className="px-3 py-2 text-left font-semibold text-slate-700">
+                    <th className="px-3 py-2 text-left font-semibold text-slate-700 text-xs">
                       Usuario
                     </th>
-                    <th className="px-3 py-2 text-left font-semibold text-slate-700">
+                    <th className="px-3 py-2 text-left font-semibold text-slate-700 text-xs">
                       Correo
                     </th>
-                    <th className="px-3 py-2 text-right font-semibold text-slate-700">
+                    <th className="px-3 py-2 text-right font-semibold text-slate-700 text-xs">
                       Actividades
                     </th>
-                    <th className="px-3 py-2 text-right font-semibold text-slate-700">
+                    <th className="px-3 py-2 text-right font-semibold text-slate-700 text-xs">
                       Créditos otorgados
                     </th>
                   </tr>
@@ -372,7 +463,9 @@ export default function ReportesActividadesSostenibles() {
                   {datos.map((a, i) => (
                     <tr
                       key={i}
-                      className={i % 2 === 0 ? "bg-white" : "bg-slate-50/60"}
+                      className={`${
+                        i % 2 === 0 ? "bg-white" : "bg-slate-50/60"
+                      } hover:bg-emerald-50/70 transition-colors`}
                     >
                       <td className="px-3 py-2 text-slate-800">
                         {a.nombre}

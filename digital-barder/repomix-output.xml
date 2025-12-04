@@ -2301,6 +2301,8 @@ import {
   misComprasService,
   misVentasService,
   detalleTransaccionService,
+  confirmarIntercambioService,
+  cancelarIntercambioService,
 } from "./intercambios.service.js";
 
 export const crearIntercambioController = async (req, res, next) => {
@@ -2320,9 +2322,56 @@ export const crearIntercambioController = async (req, res, next) => {
       creditos,
     });
 
-    res
-      .status(201)
-      .json({ message: "Intercambio creado correctamente", transaccion: tx });
+    res.status(201).json({
+      message: "Intercambio solicitado correctamente",
+      transaccion: tx,
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const confirmarIntercambioController = async (req, res, next) => {
+  try {
+    const idUsuarioAccion = req.user.id_usuario;
+    const id = Number(req.params.id);
+
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ message: "ID de transacción inválido" });
+    }
+
+    const tx = await confirmarIntercambioService({
+      idUsuarioAccion,
+      idTransaccion: id,
+    });
+
+    res.json({
+      message: "Intercambio confirmado correctamente",
+      transaccion: tx,
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const cancelarIntercambioController = async (req, res, next) => {
+  try {
+    const idUsuarioAccion = req.user.id_usuario;
+    const id = Number(req.params.id);
+
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ message: "ID de transacción inválido" });
+    }
+
+    const tx = await cancelarIntercambioService({
+      idUsuarioAccion,
+      idTransaccion: id,
+    });
+
+    res.json({
+      message: "Intercambio cancelado correctamente",
+      transaccion: tx,
+    });
   } catch (e) {
     next(e);
   }
@@ -2362,6 +2411,7 @@ export const detalleTransaccionController = async (req, res, next) => {
 </file>
 
 <file path="backend/src/modules/intercambios/intercambios.routes.js">
+// backend/src/modules/intercambios/intercambios.routes.js
 import { Router } from "express";
 import { authMiddleware } from "../../middlewares/auth.js";
 import {
@@ -2369,6 +2419,8 @@ import {
   misComprasController,
   misVentasController,
   detalleTransaccionController,
+  confirmarIntercambioController,
+  cancelarIntercambioController,
 } from "./intercambios.controller.js";
 
 const router = Router();
@@ -2376,8 +2428,14 @@ const router = Router();
 // Todas las rutas requieren estar logueado
 router.use(authMiddleware);
 
-// Crear nuevo intercambio
+// Crear nuevo intercambio (aplica retención)
 router.post("/", crearIntercambioController);
+
+// Confirmar intercambio (normalmente lo hace el vendedor)
+router.post("/:id/confirmar", confirmarIntercambioController);
+
+// Cancelar intercambio (comprador o admin, según política)
+router.post("/:id/cancelar", cancelarIntercambioController);
 
 // Ver mis compras
 router.get("/mis-compras", misComprasController);
@@ -2392,203 +2450,158 @@ export default router;
 </file>
 
 <file path="backend/src/modules/intercambios/intercambios.service.js">
-// src/modules/publicidad/publicidad.service.js
+// backend/src/modules/intercambios/intercambios.service.js
 import { prisma } from "../../config/prisma.js";
 
-const ESTADOS = [
-  "PROGRAMADA",
-  "ACTIVA",
-  "PAUSADA",
-  "FINALIZADA",
-  "CANCELADA",
-  "ELIMINADA",
-];
-
 /**
- * Lista de publicidad ACTIVA (para mostrar en el sistema)
+ * Inicia un intercambio con RETENCIÓN de créditos.
+ * Usa el SP: sp_iniciar_intercambio_retencion(p_id_comprador, p_id_publicacion)
  */
-export const listarPublicidadActivaService = () =>
-  prisma.$queryRaw`
-    SELECT 
-      p.*,
-      u.nombre AS usuario,
-      up.nombre AS nombre_ubicacion
-    FROM PUBLICIDAD p
-    JOIN USUARIO u ON u.id_usuario = p.id_usuario
-    LEFT JOIN UBICACION_PUBLICIDAD up 
-      ON up.id_ubicacion = p.id_ubicacion
-    WHERE p.estado = 'ACTIVA'
-      AND NOW() BETWEEN p.fecha_inicio AND p.fecha_fin
-    ORDER BY p.fecha_inicio DESC, p.id_publicidad DESC
-  `;
-
-/**
- * Listado completo (admin)
- */
-export const listarPublicidadAdminService = () =>
-  prisma.$queryRaw`
-    SELECT 
-      p.*,
-      u.nombre AS usuario,
-      up.nombre AS nombre_ubicacion
-    FROM PUBLICIDAD p
-    JOIN USUARIO u ON u.id_usuario = p.id_usuario
-    LEFT JOIN UBICACION_PUBLICIDAD up 
-      ON up.id_ubicacion = p.id_ubicacion
-    ORDER BY p.fecha_inicio DESC, p.id_publicidad DESC
-  `;
-
-/**
- * Crear nueva campaña de publicidad.
- * Siempre se crea como PROGRAMADA (sin cobrar todavía).
- */
-export const crearPublicidadService = async (idUsuario, body) => {
-  const {
-    id_ubicacion,
-    titulo,
-    descripcion,
-    url_destino,
-    fecha_inicio,
-    fecha_fin,
-    costo_creditos,
-  } = body;
-
-  if (
-    !id_ubicacion ||
-    !titulo ||
-    !fecha_inicio ||
-    !fecha_fin ||
-    !costo_creditos
-  ) {
-    const err = new Error("Faltan datos obligatorios de publicidad");
+export async function crearIntercambioService({
+  idComprador,
+  id_publicacion,
+  creditos, // opcional, el SP usa PUBLICACION.valor_creditos
+}) {
+  if (!id_publicacion) {
+    const err = new Error("id_publicacion es obligatorio");
     err.status = 400;
     throw err;
   }
 
-  await prisma.$queryRaw`
-    INSERT INTO PUBLICIDAD (
-      id_usuario,
-      id_ubicacion,
-      estado,
-      titulo,
-      descripcion,
-      url_destino,
-      fecha_inicio,
-      fecha_fin,
-      costo_creditos
-    )
-    VALUES (
-      ${idUsuario},
-      ${id_ubicacion},
-      'PROGRAMADA',
-      ${titulo},
-      ${descripcion || null},
-      ${url_destino || null},
-      ${fecha_inicio},
-      ${fecha_fin},
-      ${costo_creditos}
-    )
+  // Validación suave de 'creditos' por si el front lo envía
+  if (creditos != null) {
+    const creditosNum = Number(creditos);
+    if (!Number.isFinite(creditosNum) || creditosNum <= 0) {
+      const err = new Error("creditos debe ser un número mayor a 0");
+      err.status = 400;
+      throw err;
+    }
+  }
+
+  // ✅ Llamamos al SP con retención
+  await prisma.$executeRawUnsafe(
+    "CALL sp_iniciar_intercambio_retencion(?, ?)",
+    idComprador,
+    id_publicacion
+  );
+
+  // Devolvemos la última transacción del comprador (la recién creada)
+  const [tx] = await prisma.$queryRaw`
+    SELECT t.*, p.titulo
+    FROM TRANSACCION t
+    JOIN PUBLICACION p ON p.id_publicacion = t.id_publicacion
+    WHERE t.id_comprador = ${idComprador}
+    ORDER BY t.creado_en DESC, t.id_transaccion DESC
+    LIMIT 1
   `;
 
+  return tx;
+}
+
+/**
+ * Confirma un intercambio con retención:
+ * - Libera créditos bloqueados del comprador
+ * - Acredita al vendedor
+ * - Marca la transacción como COMPLETADA
+ */
+export async function confirmarIntercambioService({
+  idUsuarioAccion,
+  idTransaccion,
+}) {
+  await prisma.$executeRawUnsafe(
+    "CALL sp_confirmar_intercambio_retencion(?, ?)",
+    idTransaccion,
+    idUsuarioAccion
+  );
+
+  const [tx] = await prisma.$queryRaw`
+    SELECT t.*, p.titulo
+    FROM TRANSACCION t
+    JOIN PUBLICACION p ON p.id_publicacion = t.id_publicacion
+    WHERE t.id_transaccion = ${idTransaccion}
+    LIMIT 1
+  `;
+
+  return tx;
+}
+
+/**
+ * Cancela un intercambio con retención:
+ * - Devuelve créditos al comprador
+ * - Reduce creditos_bloqueados
+ * - Marca la transacción como CANCELADA
+ */
+export async function cancelarIntercambioService({
+  idUsuarioAccion,
+  idTransaccion,
+}) {
+  await prisma.$executeRawUnsafe(
+    "CALL sp_cancelar_intercambio_retencion(?, ?)",
+    idTransaccion,
+    idUsuarioAccion
+  );
+
+  const [tx] = await prisma.$queryRaw`
+    SELECT t.*, p.titulo
+    FROM TRANSACCION t
+    JOIN PUBLICACION p ON p.id_publicacion = t.id_publicacion
+    WHERE t.id_transaccion = ${idTransaccion}
+    LIMIT 1
+  `;
+
+  return tx;
+}
+
+/**
+ * Lista de compras del usuario (como comprador)
+ */
+export async function misComprasService(idUsuario) {
+  return prisma.$queryRaw`
+    SELECT t.*, p.titulo
+    FROM TRANSACCION t
+    JOIN PUBLICACION p ON p.id_publicacion = t.id_publicacion
+    WHERE t.id_comprador = ${idUsuario}
+    ORDER BY t.creado_en DESC
+  `;
+}
+
+/**
+ * Lista de ventas del usuario (como vendedor)
+ */
+export async function misVentasService(idUsuario) {
+  return prisma.$queryRaw`
+    SELECT t.*, p.titulo
+    FROM TRANSACCION t
+    JOIN PUBLICACION p ON p.id_publicacion = t.id_publicacion
+    WHERE t.id_vendedor = ${idUsuario}
+    ORDER BY t.creado_en DESC
+  `;
+}
+
+/**
+ * Detalle de una transacción específica
+ */
+export async function detalleTransaccionService(idTransaccion) {
   const [row] = await prisma.$queryRaw`
-    SELECT *
-    FROM PUBLICIDAD
-    WHERE id_publicidad = LAST_INSERT_ID()
+    SELECT
+      t.*,
+      p.titulo,
+      p.descripcion,
+      p.valor_creditos
+    FROM TRANSACCION t
+    JOIN PUBLICACION p ON p.id_publicacion = t.id_publicacion
+    WHERE t.id_transaccion = ${idTransaccion}
     LIMIT 1
   `;
 
-  return row;
-};
-
-/* =====================================================
-   CAMBIAR ESTADO (ADMIN)
-   - Si pasa a ACTIVA: cobra créditos al dueño
-===================================================== */
-export const cambiarEstadoPublicidadService = async (idPublicidad, estado) => {
-  if (!ESTADOS.includes(estado)) {
-    const err = new Error(`Estado inválido. Permitidos: ${ESTADOS.join(", ")}`);
-    err.status = 400;
-    throw err;
-  }
-
-  // Traemos info actual de la campaña
-  const [pub] = await prisma.$queryRaw`
-    SELECT id_usuario, estado, costo_creditos
-    FROM PUBLICIDAD
-    WHERE id_publicidad = ${idPublicidad}
-    LIMIT 1
-  `;
-
-  if (!pub) {
-    const err = new Error("Publicidad no encontrada");
+  if (!row) {
+    const err = new Error("Transacción no encontrada");
     err.status = 404;
     throw err;
   }
 
-  // Si el admin quiere ACTIVAR la campaña
-  if (estado === "ACTIVA") {
-    if (pub.estado === "ACTIVA") {
-      const err = new Error("La publicidad ya está activa");
-      err.status = 400;
-      throw err;
-    }
-
-    const idUsuarioDueno = pub.id_usuario;
-    const costo = pub.costo_creditos;
-
-    // Insertamos un MOVIMIENTO_CREDITOS NEGATIVO
-    // - Tipo movimiento: AJUSTE_ADMIN_NEGATIVO (ya existe y es NEGATIVO)
-    // - Tipo referencia: PUBLICIDAD
-    // El trigger trg_movcred_before_ins:
-    //   * Verifica saldo
-    //   * Calcula saldo_anterior / saldo_posterior
-    //   * Lanza error si no alcanza
-    await prisma.$queryRaw`
-      INSERT INTO MOVIMIENTO_CREDITOS
-        (id_usuario, id_tipo_movimiento, id_tipo_referencia,
-         cantidad, descripcion, saldo_anterior, saldo_posterior, id_referencia)
-      VALUES
-        (
-          ${idUsuarioDueno},
-          fn_get_tipo_mov('AJUSTE_ADMIN_NEGATIVO'),
-          (SELECT id_tipo_referencia 
-             FROM TIPO_REFERENCIA 
-            WHERE nombre = 'PUBLICIDAD'
-            LIMIT 1),
-          ${costo},
-          CONCAT('Costo de campaña de publicidad #', ${idPublicidad}),
-          0,
-          0,
-          ${idPublicidad}
-        )
-    `;
-    // Si aquí falla por saldo insuficiente, NO se actualiza el estado
-  }
-
-  // Actualizar al estado solicitado
-  await prisma.$queryRaw`
-    UPDATE PUBLICIDAD
-    SET estado = ${estado}
-    WHERE id_publicidad = ${idPublicidad}
-  `;
-
-  const [row] = await prisma.$queryRaw`
-    SELECT *
-    FROM PUBLICIDAD
-    WHERE id_publicidad = ${idPublicidad}
-    LIMIT 1
-  `;
-
   return row;
-};
-
-/* =====================================================
-   ELIMINAR (LÓGICO)
-===================================================== */
-export const eliminarPublicidadService = async (idPublicidad) => {
-  // La tratamos como un cambio de estado a ELIMINADA
-  return cambiarEstadoPublicidadService(idPublicidad, "ELIMINADA");
-};
+}
 </file>
 
 <file path="backend/src/modules/logros/logros.controller.js">
@@ -4054,6 +4067,9 @@ const ESTADOS = [
   "ELIMINADA",
 ];
 
+/**
+ * Lista de publicidad ACTIVA (para mostrar en el sistema)
+ */
 export const listarPublicidadActivaService = () =>
   prisma.$queryRaw`
     SELECT 
@@ -4062,12 +4078,16 @@ export const listarPublicidadActivaService = () =>
       up.nombre AS nombre_ubicacion
     FROM PUBLICIDAD p
     JOIN USUARIO u ON u.id_usuario = p.id_usuario
-    LEFT JOIN UBICACION_PUBLICIDAD up ON up.id_ubicacion = p.id_ubicacion
+    LEFT JOIN UBICACION_PUBLICIDAD up 
+      ON up.id_ubicacion = p.id_ubicacion
     WHERE p.estado = 'ACTIVA'
       AND NOW() BETWEEN p.fecha_inicio AND p.fecha_fin
     ORDER BY p.fecha_inicio DESC, p.id_publicidad DESC
   `;
 
+/**
+ * Listado completo (admin)
+ */
 export const listarPublicidadAdminService = () =>
   prisma.$queryRaw`
     SELECT 
@@ -4076,10 +4096,15 @@ export const listarPublicidadAdminService = () =>
       up.nombre AS nombre_ubicacion
     FROM PUBLICIDAD p
     JOIN USUARIO u ON u.id_usuario = p.id_usuario
-    LEFT JOIN UBICACION_PUBLICIDAD up ON up.id_ubicacion = p.id_ubicacion
+    LEFT JOIN UBICACION_PUBLICIDAD up 
+      ON up.id_ubicacion = p.id_ubicacion
     ORDER BY p.fecha_inicio DESC, p.id_publicidad DESC
   `;
 
+/**
+ * Crear nueva campaña de publicidad.
+ * Siempre se crea como PROGRAMADA (sin cobrar todavía).
+ */
 export const crearPublicidadService = async (idUsuario, body) => {
   const {
     id_ubicacion,
@@ -4089,23 +4114,24 @@ export const crearPublicidadService = async (idUsuario, body) => {
     fecha_inicio,
     fecha_fin,
     costo_creditos,
-    banner_url,
-    archivo_url,
   } = body;
+
+  const costo = Number(costo_creditos);
 
   if (
     !id_ubicacion ||
     !titulo ||
     !fecha_inicio ||
     !fecha_fin ||
-    !costo_creditos
+    !costo ||
+    !Number.isFinite(costo) ||
+    costo <= 0
   ) {
-    const err = new Error("Faltan datos obligatorios de publicidad");
+    const err = new Error("Faltan datos obligatorios o costo inválido en publicidad");
     err.status = 400;
     throw err;
   }
 
-  // Siempre se crea como PROGRAMADA
   await prisma.$queryRaw`
     INSERT INTO PUBLICIDAD (
       id_usuario,
@@ -4116,9 +4142,7 @@ export const crearPublicidadService = async (idUsuario, body) => {
       url_destino,
       fecha_inicio,
       fecha_fin,
-      costo_creditos,
-      banner_url,
-      archivo_url
+      costo_creditos
     )
     VALUES (
       ${idUsuario},
@@ -4129,9 +4153,7 @@ export const crearPublicidadService = async (idUsuario, body) => {
       ${url_destino || null},
       ${fecha_inicio},
       ${fecha_fin},
-      ${costo_creditos},
-      ${banner_url || null},
-      ${archivo_url || null}
+      ${costo}
     )
   `;
 
@@ -4141,49 +4163,78 @@ export const crearPublicidadService = async (idUsuario, body) => {
     WHERE id_publicidad = LAST_INSERT_ID()
     LIMIT 1
   `;
+
   return row;
 };
 
 /* =====================================================
-   CAMBIAR ESTADO
+   CAMBIAR ESTADO (ADMIN / DUEÑO)
+   Se apoya en los SP de retención:
+   - ACTIVA     -> sp_publicidad_activar_retencion
+   - FINALIZADA -> sp_publicidad_finalizar_retencion
+   - CANCELADA  -> sp_publicidad_cancelar_retencion
+   - Otros      -> UPDATE directo de estado
 ===================================================== */
-export const cambiarEstadoPublicidadService = async (
-  idPublicidad,
-  estado,
-  { esAdmin = false } = {}
-) => {
+export const cambiarEstadoPublicidadService = async (idPublicidad, estado) => {
   if (!ESTADOS.includes(estado)) {
     const err = new Error(`Estado inválido. Permitidos: ${ESTADOS.join(", ")}`);
     err.status = 400;
     throw err;
   }
 
-  // Solo ADMIN puede activar
-  if (estado === "ACTIVA" && !esAdmin) {
-    const err = new Error("Solo un administrador puede activar publicidad");
-    err.status = 403;
-    throw err;
-  }
-
-  // Validar que la publicidad exista
-  const [actual] = await prisma.$queryRaw`
-    SELECT estado
+  // Traemos info actual de la campaña
+  const [pub] = await prisma.$queryRaw`
+    SELECT id_usuario, estado, costo_creditos
     FROM PUBLICIDAD
     WHERE id_publicidad = ${idPublicidad}
     LIMIT 1
   `;
-  if (!actual) {
+
+  if (!pub) {
     const err = new Error("Publicidad no encontrada");
     err.status = 404;
     throw err;
   }
 
-  await prisma.$queryRaw`
-    UPDATE PUBLICIDAD
-    SET estado = ${estado}
-    WHERE id_publicidad = ${idPublicidad}
-  `;
+  const estadoActual = pub.estado;
+  const idUsuarioDueno = pub.id_usuario;
 
+  // Evitar cambios redundantes
+  if (estado === estadoActual) {
+    return pub; // no hacemos nada
+  }
+
+  // Según el nuevo estado, llamamos al SP apropiado
+  if (estado === "ACTIVA") {
+    // Activa campaña + retiene créditos
+    await prisma.$executeRawUnsafe(
+      "CALL sp_publicidad_activar_retencion(?, ?)",
+      idPublicidad,
+      idUsuarioDueno
+    );
+  } else if (estado === "FINALIZADA") {
+    // Finaliza campaña + consume definitivamente lo bloqueado
+    await prisma.$executeRawUnsafe(
+      "CALL sp_publicidad_finalizar_retencion(?)",
+      idPublicidad
+    );
+  } else if (estado === "CANCELADA") {
+    // Cancela campaña + devuelve créditos si estaban retenidos
+    await prisma.$executeRawUnsafe(
+      "CALL sp_publicidad_cancelar_retencion(?, ?)",
+      idPublicidad,
+      idUsuarioDueno
+    );
+  } else {
+    // PROGRAMADA, PAUSADA, ELIMINADA -> solo cambio de estado
+    await prisma.$queryRaw`
+      UPDATE PUBLICIDAD
+      SET estado = ${estado}
+      WHERE id_publicidad = ${idPublicidad}
+    `;
+  }
+
+  // Volvemos a leer la campaña ya actualizada
   const [row] = await prisma.$queryRaw`
     SELECT *
     FROM PUBLICIDAD
@@ -4198,9 +4249,8 @@ export const cambiarEstadoPublicidadService = async (
    ELIMINAR (LÓGICO)
 ===================================================== */
 export const eliminarPublicidadService = async (idPublicidad) => {
-  return cambiarEstadoPublicidadService(idPublicidad, "ELIMINADA", {
-    esAdmin: true,
-  });
+  // La tratamos como un cambio de estado a ELIMINADA
+  return cambiarEstadoPublicidadService(idPublicidad, "ELIMINADA");
 };
 </file>
 
@@ -8201,10 +8251,15 @@ import { useNavigate } from "react-router-dom";
 import hoja from "../assets/hoja.png";
 import { api } from "../services/api";
 
+// 🔹 nuevos imports de publicidad
+import PublicidadSlot from "../components/PublicidadSlot.jsx";
+import FloatingAd from "../components/FloatingAd.jsx";
+
 export default function Home() {
   const [estado, setEstado] = useState(null);
   const [misCreditos, setMisCreditos] = useState(0);
   const [actividadReciente, setActividadReciente] = useState([]);
+  const [anuncios, setAnuncios] = useState([]); // 👈 publicidad activa
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -8219,11 +8274,12 @@ export default function Home() {
       setLoading(true);
       setError("");
 
+      // Estado API
       const estadoRes = await api("/health");
       setEstado(estadoRes);
 
+      // Mis créditos
       const creditos = await api("/wallet/mis-creditos");
-
       const saldo =
         creditos?.saldo_creditos ??
         creditos?.saldo ??
@@ -8232,8 +8288,16 @@ export default function Home() {
 
       setMisCreditos(Number(saldo) || 0);
 
+      // Movimientos recientes
       const act = await api("/wallet/mis-movimientos");
       setActividadReciente(Array.isArray(act) ? act.slice(0, 8) : []);
+
+      // Publicidad ACTIVA (para mostrar en Home + flotante)
+      const pubActivas = await api("/publicidad/activa");
+      const listaPub = Array.isArray(pubActivas)
+        ? pubActivas
+        : pubActivas?.data || [];
+      setAnuncios(listaPub);
     } catch (err) {
       console.error(err);
       setError("No se pudo cargar la información de inicio.");
@@ -8292,8 +8356,8 @@ export default function Home() {
         <img src={hoja} alt="logo" className="w-10 h-10 drop-shadow-lg" />
       </header>
 
-      {/* ESTADO API + SALDO */}
-      <section className="grid gap-4 md:grid-cols-3 mb-8">
+      {/* ESTADO API + SALDO + ACCESOS */}
+      <section className="grid gap-4 md:grid-cols-3 mb-6">
         <div className="bg-[#0f3f2d] rounded-xl p-5 border border-emerald-700 shadow-md">
           <p className="text-sm text-emerald-200 mb-1">Estado del sistema</p>
           <p className="text-lg font-semibold text-emerald-300">
@@ -8342,6 +8406,11 @@ export default function Home() {
             </button>
           </div>
         </div>
+      </section>
+
+      {/* BANNER DE PUBLICIDAD EN HOME (ubicación lógica: HOME_MIDDLE) */}
+      <section className="mb-6">
+        <PublicidadSlot ubicacion="HOME_MIDDLE" />
       </section>
 
       {/* ACTIVIDAD RECIENTE */}
@@ -8415,6 +8484,14 @@ export default function Home() {
           </div>
         )}
       </section>
+
+      {/* OPCIONAL: OTRO SLOT DE PUBLICIDAD AL FINAL (HOME_BOTTOM) */}
+      <section className="mt-6">
+        <PublicidadSlot ubicacion="HOME_BOTTOM" variant="card" />
+      </section>
+
+      {/* BANNER FLOTANTE (usa TODA la publicidad activa que haya) */}
+      <FloatingAd anuncios={anuncios} intervaloMs={8000} />
     </div>
   );
 }
@@ -10647,10 +10724,12 @@ export default function Promociones() {
 </file>
 
 <file path="frontend/src/pages/Publicaciones.jsx">
+// frontend/src/pages/Publicaciones.jsx
 // digital-barder/frontend/src/pages/Publicaciones.jsx
 import { useEffect, useState } from "react";
-import { api, crearIntercambio } from "../services/api";
+import { api, crearIntercambio, buildUploadUrl } from "../services/api";
 import hoja from "../assets/hoja.png";
+import PublicidadSlot from "../components/PublicidadSlot.jsx";
 
 // Base de la API (ej: http://localhost:4000/api)
 const API_BASE_URL =
@@ -10683,7 +10762,7 @@ export default function Publicaciones() {
     }
   }
 
-  // Lista de categorías únicas
+  // Lista de categorías únicas + "TODAS"
   const categorias = [
     "TODAS",
     ...Array.from(
@@ -10750,12 +10829,13 @@ export default function Publicaciones() {
   return (
     <div className="min-h-screen bg-[#082b1f] text-white p-6 md:p-10">
       {/* HEADER + FILTROS SUPERIORES */}
-      <div className="flex flex-col gap-4 mb-8">
+      <div className="flex flex-col gap-4 mb-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-3">
             <img src={hoja} alt="logo" className="w-10 h-10 drop-shadow-lg" />
             <h1 className="text-3xl font-bold text-emerald-400">Marketplace</h1>
           </div>
+
           <div className="w-full md:flex-1">
             <div className="flex flex-col md:flex-row md:items-end gap-4">
               {/* Buscador */}
@@ -10765,18 +10845,19 @@ export default function Publicaciones() {
                     type="text"
                     value={filtroTexto}
                     onChange={(e) => setFiltroTexto(e.target.value)}
-                    placeholder="Buscar..."
-                    className="w-full md:max-w-md bg-[#0e4330] border border-emerald-600 rounded-lg px-3 py-2 pl-3 outline-none focus:ring-2 focus:ring-emerald-400"
+                    placeholder="Buscar por título o descripción..."
+                    className="w-full md:max-w-md bg-[#0e4330] border border-emerald-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-emerald-400"
                   />
                 </div>
               </div>
+
               {/* Categoría */}
               <div className="w-full md:w-64">
                 <div className="relative">
                   <select
                     value={filtroCategoria}
                     onChange={(e) => setFiltroCategoria(e.target.value)}
-                    className="appearance-none w-full bg-[#038547] border border-[#026636] rounded-lg px-3 py-2 pr-12 text-sm text-white outline-none focus:ring-2 focus:ring-emerald-400"
+                    className="appearance-none w-full bg-[#038547] border border-emerald-800 rounded-lg px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-emerald-400"
                   >
                     {categorias.map((c) => (
                       <option key={c} value={c}>
@@ -10784,7 +10865,7 @@ export default function Publicaciones() {
                       </option>
                     ))}
                   </select>
-                  <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none">
+                  <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
                     <svg
                       className="h-4 w-4 text-white"
                       xmlns="http://www.w3.org/2000/svg"
@@ -10803,19 +10884,25 @@ export default function Publicaciones() {
         </div>
       </div>
 
+      {/* PUBLICIDAD SUPERIOR PARA LA SECCIÓN PUBLICACIONES */}
+      <section className="mb-6">
+        {/* Usa el nombre de ubicación que hayas definido en UBICACION_PUBLICIDAD.nombre */}
+        <PublicidadSlot ubicacion="PUBLICACIONES_TOP" />
+      </section>
+
       {/* BOTONES SUPERIORES */}
       <div className="rounded-xl p-4 mb-6">
         <div className="flex flex-wrap gap-3">
           <a
             href="/publicaciones/nueva"
-            className="flex items-center gap-2 bg-[#038547] hover:bg-[#026636] px-4 py-2 rounded-lg font-semibold text-sm shadow-md transition-all"
+            className="flex items-center gap-2 bg-[#038547] hover:bg-[#02a355] px-4 py-2 rounded-lg font-semibold text-sm shadow-md transition-all"
           >
             <span className="text-lg">＋</span>
             <span>Crear Publicación</span>
           </a>
           <a
             href="/publicaciones/mias"
-            className="flex items-center gap-2 bg-[#038547] hover:bg-[#026636] px-4 py-2 rounded-lg font-semibold text-sm shadow-md transition-all"
+            className="flex items-center gap-2 bg-[#038547] hover:bg-[#02a355] px-4 py-2 rounded-lg font-semibold text-sm shadow-md transition-all"
           >
             <span className="text-lg">📁</span>
             <span>Mis Publicaciones</span>
@@ -10843,19 +10930,18 @@ export default function Publicaciones() {
             const estado = (p.estado || "").toUpperCase();
             const esActiva = estado === "PUBLICADA";
 
-            // Construir URL completa del archivo
+            // Construir URL completa del archivo usando helper
             let archivoUrl = null;
+
             if (p.imagen_url) {
-              const path = p.imagen_url.startsWith("/")
-                ? p.imagen_url
-                : "/" + p.imagen_url;
-              archivoUrl = p.imagen_url.startsWith("http")
-                ? p.imagen_url
-                : FILE_BASE_URL + path;
+              archivoUrl = buildUploadUrl(p.imagen_url);
+            } else if (p.archivo_url) {
+              archivoUrl = buildUploadUrl(p.archivo_url);
             }
 
             const esImagenVisible =
-              archivoUrl && /\.(png|jpe?g|gif|webp|bmp)$/i.test(archivoUrl || "");
+              archivoUrl &&
+              /\.(png|jpe?g|gif|webp|bmp)$/i.test(archivoUrl || "");
             const esVideoVisible =
               archivoUrl &&
               /\.(mp4|webm|ogg|mov|avi|m4v)$/i.test(archivoUrl || "");
@@ -10866,7 +10952,7 @@ export default function Publicaciones() {
                 className="bg-[#E9FFD9] text-[#013726] rounded-3xl shadow-lg overflow-hidden flex flex-col min-h-[360px]"
               >
                 {/* MEDIA (imagen o video) */}
-                <div className="w-full h-40 bg-[#E9FFD9] border-b border-[#c5f0b8] overflow-hidden flex items-center justify-center">
+                <div className="w-full h-40 bg-[#E9FFD9] border border-[#c5f0b8] overflow-hidden flex items-center justify-center">
                   {esImagenVisible && (
                     <img
                       src={archivoUrl}
@@ -10876,7 +10962,7 @@ export default function Publicaciones() {
                   )}
                   {!esImagenVisible && esVideoVisible && (
                     <video
-                      src={archivoUrl}
+                      src={archivoUrl || undefined}
                       className="w-full h-full object-cover"
                       controls
                       muted
@@ -10940,8 +11026,10 @@ export default function Publicaciones() {
                     <button
                       onClick={() => esActiva && handleIntercambiar(p)}
                       disabled={!esActiva}
-                      className={`w-full py-3 rounded-lg bg-[#0b7a35] hover:bg-[#0cb652] text-white font-semibold text-sm transition-all ${
-                        !esActiva ? "opacity-60 cursor-not-allowed" : ""
+                      className={`w-full py-3 rounded-lg text-white font-semibold text-sm transition-all ${
+                        esActiva
+                          ? "bg-[#0cb652] hover:bg-[#0aa144]"
+                          : "bg-[#0cb652] opacity-60 cursor-not-allowed"
                       }`}
                     >
                       Intercambiar
@@ -10953,6 +11041,11 @@ export default function Publicaciones() {
           })}
         </div>
       )}
+
+      {/* PUBLICIDAD INFERIOR OPCIONAL PARA PUBLICACIONES */}
+      <section className="mt-6">
+        <PublicidadSlot ubicacion="PUBLICACIONES_BOTTOM" variant="card" />
+      </section>
     </div>
   );
 }
@@ -14041,7 +14134,7 @@ export default function ReportesImpactoAcumulado() {
 </file>
 
 <file path="frontend/src/pages/ReportesImpactoCategoria.jsx">
-// src/pages/ReportesImpactoCategoria.jsx
+// frontend/src/pages/ReportesImpactoCategoria.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { getReporteImpactoPorCategoria } from "../services/api";
 import {
@@ -14063,19 +14156,28 @@ import {
   Bolt,
   BarChart3,
   PieChart as PieChartIcon,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
+const COLORS = ["#047857", "#1e3a8a", "#0d9488", "#6d28d9", "#f59e0b"];
+
+const formatNumber = (n) =>
+  Number(n || 0).toLocaleString("es-BO", { maximumFractionDigits: 2 });
+
 export default function ReportesImpactoCategoria() {
-  const [idPeriodo, setIdPeriodo] = useState("1");
+  const [idPeriodo, setIdPeriodo] = useState(1);
   const [datos, setDatos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function cargar() {
+  async function cargar(customPeriodo = idPeriodo) {
     try {
       setLoading(true);
       setError("");
-      const res = await getReporteImpactoPorCategoria({ idPeriodo });
+      const res = await getReporteImpactoPorCategoria({
+        idPeriodo: customPeriodo,
+      });
       setDatos(Array.isArray(res) ? res : []);
     } catch (e) {
       console.error(e);
@@ -14088,9 +14190,15 @@ export default function ReportesImpactoCategoria() {
 
   // Carga inicial
   useEffect(() => {
-    cargar();
+    cargar(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function cambiarPeriodo(delta) {
+    const nuevo = Math.max(1, Number(idPeriodo || 1) + delta);
+    setIdPeriodo(nuevo);
+    cargar(nuevo);
+  }
 
   // =========================
   // MÉTRICAS GLOBALES
@@ -14136,33 +14244,44 @@ export default function ReportesImpactoCategoria() {
     return { totalCo2, totalAgua, totalEnergia, categorias, topCategoria };
   }, [datos]);
 
+  const hasData = datos.length > 0;
+
   // =========================
   // DATOS PARA GRÁFICOS
   // =========================
   const barData = useMemo(
     () =>
-      datos.map((c) => ({
-        categoria: c.categoria,
-        co2: Number(c.co2_total || 0),
-        agua: Number(c.agua_total || 0),
-        energia: Number(c.energia_total || 0),
-      })),
+      datos
+        .map((c) => ({
+          categoria: c.categoria,
+          co2: Number(c.co2_total || 0),
+          agua: Number(c.agua_total || 0),
+          energia: Number(c.energia_total || 0),
+          total:
+            Number(c.co2_total || 0) +
+            Number(c.agua_total || 0) +
+            Number(c.energia_total || 0),
+        }))
+        .sort((a, b) => b.total - a.total),
     [datos]
   );
 
   const pieData = useMemo(() => {
     if (!datos.length) return [];
-    return datos.map((c) => ({
-      name: c.categoria,
-      value:
-        Number(c.co2_total || 0) +
-        Number(c.agua_total || 0) +
-        Number(c.energia_total || 0),
-    }));
+    return datos
+      .map((c) => ({
+        name: c.categoria,
+        value:
+          Number(c.co2_total || 0) +
+          Number(c.agua_total || 0) +
+          Number(c.energia_total || 0),
+      }))
+      .filter((d) => d.value > 0);
   }, [datos]);
 
-  const COLORS = ["#047857", "#1e3a8a", "#0d9488", "#6d28d9", "#f59e0b"];
-  const hasData = datos.length > 0;
+  // Label personalizada para el pie (nombre + %)
+  const renderPieLabel = ({ name, percent }) =>
+    `${name}: ${(percent * 100).toFixed(1)}%`;
 
   return (
     <div
@@ -14214,7 +14333,7 @@ export default function ReportesImpactoCategoria() {
           </div>
 
           {/* Filtros */}
-          <div className="bg-white/85 backdrop-blur rounded-2xl shadow-lg border border-emerald-100 px-4 py-3 flex flex-col gap-3 min-w-[240px]">
+          <div className="bg-white/85 backdrop-blur rounded-2xl shadow-lg border border-emerald-100 px-4 py-3 flex flex-col gap-3 min-w-[260px]">
             <p className="text-xs font-semibold text-emerald-900 tracking-wide">
               Filtros
             </p>
@@ -14223,17 +14342,37 @@ export default function ReportesImpactoCategoria() {
                 <label className="mb-1 text-xs font-semibold text-emerald-900">
                   ID período
                 </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={idPeriodo}
-                  onChange={(e) => setIdPeriodo(e.target.value)}
-                  className="border border-emerald-200 rounded-lg px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/70 focus:border-emerald-500"
-                />
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => cambiarPeriodo(-1)}
+                    className="p-1 rounded-full border border-emerald-200 bg-white hover:bg-emerald-50 text-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={loading || idPeriodo <= 1}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <input
+                    type="number"
+                    min="1"
+                    value={idPeriodo}
+                    onChange={(e) =>
+                      setIdPeriodo(Math.max(1, Number(e.target.value) || 1))
+                    }
+                    className="border border-emerald-200 rounded-lg px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/70 focus:border-emerald-500 w-20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => cambiarPeriodo(1)}
+                    className="p-1 rounded-full border border-emerald-200 bg-white hover:bg-emerald-50 text-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={loading}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
               <button
                 type="button"
-                onClick={cargar}
+                onClick={() => cargar()}
                 disabled={loading}
                 className={`px-4 py-2 rounded-xl text-sm font-semibold shadow-md flex items-center gap-2 transition
                 ${
@@ -14270,7 +14409,7 @@ export default function ReportesImpactoCategoria() {
                   CO₂ total (kg)
                 </p>
                 <p className="mt-2 text-3xl font-extrabold text-emerald-900 tabular-nums">
-                  {metrics.totalCo2.toLocaleString()}
+                  {formatNumber(metrics.totalCo2)}
                 </p>
               </div>
               <span className="inline-flex items-center justify-center rounded-full bg-emerald-50 p-2">
@@ -14289,7 +14428,7 @@ export default function ReportesImpactoCategoria() {
                   Agua total (L)
                 </p>
                 <p className="mt-2 text-3xl font-extrabold text-sky-900 tabular-nums">
-                  {metrics.totalAgua.toLocaleString()}
+                  {formatNumber(metrics.totalAgua)}
                 </p>
               </div>
               <span className="inline-flex items-center justify-center rounded-full bg-sky-50 p-2">
@@ -14308,7 +14447,7 @@ export default function ReportesImpactoCategoria() {
                   Energía total (kWh)
                 </p>
                 <p className="mt-2 text-3xl font-extrabold text-teal-900 tabular-nums">
-                  {metrics.totalEnergia.toLocaleString()}
+                  {formatNumber(metrics.totalEnergia)}
                 </p>
               </div>
               <span className="inline-flex items-center justify-center rounded-full bg-teal-50 p-2">
@@ -14383,12 +14522,29 @@ export default function ReportesImpactoCategoria() {
                       tickLine={false}
                       axisLine={{ stroke: "#e5e7eb" }}
                     />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip />
+                    <YAxis
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={formatNumber}
+                    />
+                    <Tooltip
+                      formatter={(value, key) => {
+                        const labelMap = {
+                          co2: "CO₂ (kg)",
+                          agua: "Agua (L)",
+                          energia: "Energía (kWh)",
+                        };
+                        return [formatNumber(value), labelMap[key] || key];
+                      }}
+                      labelFormatter={(label) => `Categoría: ${label}`}
+                    />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     <Bar dataKey="co2" name="CO₂ (kg)" fill="#047857" />
                     <Bar dataKey="agua" name="Agua (L)" fill="#1e3a8a" />
-                    <Bar dataKey="energia" name="Energía (kWh)" fill="#0d9488" />
+                    <Bar
+                      dataKey="energia"
+                      name="Energía (kWh)"
+                      fill="#0d9488"
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
@@ -14423,7 +14579,8 @@ export default function ReportesImpactoCategoria() {
                       cx="50%"
                       cy="50%"
                       outerRadius={90}
-                      label
+                      labelLine={false}
+                      label={renderPieLabel}
                       dataKey="value"
                     >
                       {pieData.map((entry, index) => (
@@ -14433,7 +14590,12 @@ export default function ReportesImpactoCategoria() {
                         />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip
+                      formatter={(value, name, props) => [
+                        `${formatNumber(value)} (CO₂ + Agua + Energía)`,
+                        props?.payload?.name || name,
+                      ]}
+                    />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                   </PieChart>
                 </ResponsiveContainer>
@@ -14489,13 +14651,13 @@ export default function ReportesImpactoCategoria() {
                       {c.categoria}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
-                      {c.co2_total}
+                      {formatNumber(c.co2_total)}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
-                      {c.agua_total}
+                      {formatNumber(c.agua_total)}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
-                      {c.energia_total}
+                      {formatNumber(c.energia_total)}
                     </td>
                   </tr>
                 ))}
@@ -14535,16 +14697,34 @@ import {
   Legend,
 } from "recharts";
 import hoja from "../assets/hoja.png";
-import { CreditCard, Wallet, Calendar, TrendingUp } from "lucide-react";
+import {
+  CreditCard,
+  Wallet,
+  Calendar,
+  TrendingUp,
+  BarChart3,
+} from "lucide-react";
 
 function hoyISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function hace30DiasISO() {
-  const d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+function haceNDiasISO(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - (n - 1));
   return d.toISOString().slice(0, 10);
 }
+
+function hace30DiasISO() {
+  return haceNDiasISO(30);
+}
+
+const RANGOS_RAPIDOS = [
+  { id: "7d", label: "Últimos 7 días", dias: 7 },
+  { id: "30d", label: "Últimos 30 días", dias: 30 },
+  { id: "90d", label: "Últimos 90 días", dias: 90 },
+  { id: "1y", label: "Último año", dias: 365 },
+];
 
 export default function ReportesIngresosCreditos() {
   const [desde, setDesde] = useState(hace30DiasISO());
@@ -14552,12 +14732,16 @@ export default function ReportesIngresosCreditos() {
   const [datos, setDatos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [rangoActivo, setRangoActivo] = useState("30d");
 
-  async function cargar() {
+  async function cargar(customDesde = desde, customHasta = hasta) {
     try {
       setLoading(true);
       setError("");
-      const res = await getReporteIngresosCreditos({ desde, hasta });
+      const res = await getReporteIngresosCreditos({
+        desde: customDesde,
+        hasta: customHasta,
+      });
       setDatos(Array.isArray(res) ? res : []);
     } catch (e) {
       console.error(e);
@@ -14569,13 +14753,24 @@ export default function ReportesIngresosCreditos() {
   }
 
   useEffect(() => {
-    cargar();
+    // Carga inicial con el rango por defecto (30 días)
+    cargar(desde, hasta);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleSubmit(e) {
     e.preventDefault();
-    cargar();
+    setRangoActivo(null); // el usuario escogió fechas manuales
+    cargar(desde, hasta);
+  }
+
+  function aplicarRangoRapido(rango) {
+    const nuevoHasta = hoyISO();
+    const nuevoDesde = haceNDiasISO(rango.dias);
+    setDesde(nuevoDesde);
+    setHasta(nuevoHasta);
+    setRangoActivo(rango.id);
+    cargar(nuevoDesde, nuevoHasta);
   }
 
   const sinDatos = !loading && datos.length === 0;
@@ -14590,6 +14785,7 @@ export default function ReportesIngresosCreditos() {
         totalBs: 0,
         diasConVentas: 0,
         promedioTicket: 0,
+        mejorDia: null,
       };
     }
 
@@ -14607,7 +14803,16 @@ export default function ReportesIngresosCreditos() {
     const promedioTicket =
       diasConVentas > 0 ? totalBs / diasConVentas : 0;
 
-    return { totalCreditos, totalBs, diasConVentas, promedioTicket };
+    const mejorDia = datos.reduce(
+      (best, r) =>
+        Number(r.total_bs || 0) >
+        Number(best?.total_bs || 0)
+          ? r
+          : best,
+      null
+    );
+
+    return { totalCreditos, totalBs, diasConVentas, promedioTicket, mejorDia };
   }, [datos]);
 
   // =========================
@@ -14667,48 +14872,64 @@ export default function ReportesIngresosCreditos() {
             </div>
           </div>
 
-          {/* FILTROS (fechas) */}
-          <form
-            onSubmit={handleSubmit}
-            className="flex flex-wrap gap-3 items-end bg-white/90 px-4 py-3 rounded-2xl shadow border border-emerald-100 backdrop-blur-sm text-sm w-full md:w-auto"
-          >
-            <div className="flex flex-col">
-              <label className="mb-1 font-semibold text-emerald-900 text-xs">
-                Desde
-              </label>
-              <input
-                type="date"
-                value={desde}
-                onChange={(e) => setDesde(e.target.value)}
-                className="border border-emerald-200 rounded-lg px-2 py-1 text-xs md:text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
-              />
+          {/* FILTROS (rangos rápidos + fechas) */}
+          <div className="flex flex-col gap-3 items-stretch md:items-end">
+            {/* Rangos rápidos */}
+            <div className="flex flex-wrap gap-2 justify-end">
+              {RANGOS_RAPIDOS.map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => aplicarRangoRapido(r)}
+                  className={`px-3 py-1 rounded-full text-[11px] font-semibold border transition ${
+                    rangoActivo === r.id
+                      ? "bg-emerald-700 text-white border-emerald-700 shadow-sm"
+                      : "bg-white text-emerald-800 border-emerald-200 hover:bg-emerald-50"
+                  }`}
+                  disabled={loading}
+                >
+                  {r.label}
+                </button>
+              ))}
             </div>
-            <div className="flex flex-col">
-              <label className="mb-1 font-semibold text-emerald-900 text-xs">
-                Hasta
-              </label>
-              <input
-                type="date"
-                value={hasta}
-                onChange={(e) => setHasta(e.target.value)}
-                className="border border-emerald-200 rounded-lg px-2 py-1 text-xs md:text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-xl font-semibold shadow-md flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed text-xs md:text-sm"
+
+            {/* Fechas manuales */}
+            <form
+              onSubmit={handleSubmit}
+              className="flex flex-wrap gap-3 items-end bg-white/90 px-4 py-3 rounded-2xl shadow border border-emerald-100 backdrop-blur-sm text-sm w-full md:w-auto"
             >
-              {loading ? (
-                <>
-                  <span className="h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                  Actualizando…
-                </>
-              ) : (
-                <>Actualizar</>
-              )}
-            </button>
-          </form>
+              <div className="flex flex-col">
+                <label className="mb-1 font-semibold text-emerald-900 text-xs">
+                  Desde
+                </label>
+                <input
+                  type="date"
+                  value={desde}
+                  onChange={(e) => setDesde(e.target.value)}
+                  className="border border-emerald-200 rounded-lg px-2 py-1 text-xs md:text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
+                />
+              </div>
+              <div className="flex flex-col">
+                <label className="mb-1 font-semibold text-emerald-900 text-xs">
+                  Hasta
+                </label>
+                <input
+                  type="date"
+                  value={hasta}
+                  onChange={(e) => setHasta(e.target.value)}
+                  className="border border-emerald-200 rounded-lg px-2 py-1 text-xs md:text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-xl font-semibold shadow-md flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed text-xs md:text-sm"
+              >
+                <BarChart3 className="w-4 h-4" />
+                {loading ? "Actualizando…" : "Aplicar fechas"}
+              </button>
+            </form>
+          </div>
         </header>
 
         {/* SUBINFO RANGO */}
@@ -14724,6 +14945,13 @@ export default function ReportesIngresosCreditos() {
             </span>
           )}
         </div>
+
+        {loading && (
+          <div className="bg-emerald-50 border border-emerald-100 text-emerald-800 text-xs px-3 py-2 rounded-xl shadow-sm inline-flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Cargando datos de ingresos…
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-2 rounded-xl shadow-sm">
@@ -14781,7 +15009,7 @@ export default function ReportesIngresosCreditos() {
             </p>
           </div>
 
-          {/* Ticket promedio */}
+          {/* Ticket promedio + mejor día */}
           <div className="bg-white shadow-sm border border-slate-200/80 rounded-2xl p-4 flex flex-col justify-between hover:shadow-md transition">
             <div className="flex items-center justify-between">
               <p className="text-[11px] font-semibold text-slate-800 uppercase">
@@ -14792,11 +15020,28 @@ export default function ReportesIngresosCreditos() {
             <p className="mt-2 text-2xl md:text-3xl font-extrabold text-slate-900">
               {formatBs(metrics.promedioTicket)}
             </p>
-            <p className="text-[11px] text-slate-900/70 mt-1">
-              Promedio de ingreso por día con ventas.
-            </p>
+            {metrics.mejorDia && (
+              <p className="mt-2 text-[11px] text-slate-900/80">
+                Mejor día:{" "}
+                <span className="font-semibold">{metrics.mejorDia.fecha}</span>{" "}
+                ({formatBs(metrics.mejorDia.total_bs)} Bs)
+              </p>
+            )}
+            {!metrics.mejorDia && (
+              <p className="text-[11px] text-slate-900/70 mt-1">
+                Aún no hay días con ventas en el rango.
+              </p>
+            )}
           </div>
         </section>
+
+        {/* Mensaje cuando no hay datos */}
+        {!loading && !error && sinDatos && (
+          <div className="bg-emerald-50 border border-emerald-100 text-emerald-800 text-sm px-4 py-3 rounded-xl shadow-sm">
+            No se registraron compras de créditos en el rango seleccionado.
+            Ajusta las fechas o el rango rápido para ver más información.
+          </div>
+        )}
 
         {/* GRÁFICOS */}
         <section className="grid lg:grid-cols-2 gap-6">
@@ -14814,7 +15059,13 @@ export default function ReportesIngresosCreditos() {
                   <BarChart data={chartData}>
                     <XAxis dataKey="fecha" hide />
                     <YAxis allowDecimals={false} />
-                    <Tooltip />
+                    <Tooltip
+                      formatter={(value, name) =>
+                        name === "Créditos"
+                          ? [formatInt(value), "Créditos"]
+                          : [value, name]
+                      }
+                    />
                     <Bar
                       dataKey="creditos"
                       name="Créditos"
@@ -14845,7 +15096,13 @@ export default function ReportesIngresosCreditos() {
                   <LineChart data={chartData}>
                     <XAxis dataKey="fecha" hide />
                     <YAxis />
-                    <Tooltip />
+                    <Tooltip
+                      formatter={(value, name) =>
+                        name === "Monto (Bs)"
+                          ? [formatBs(value), "Monto (Bs)"]
+                          : [value, name]
+                      }
+                    />
                     <Legend />
                     <Line
                       type="monotone"
@@ -14958,29 +15215,44 @@ import {
   Layers,
   BarChart3,
   PieChart as PieChartIcon,
+  Calendar,
 } from "lucide-react";
 
 function hoyISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function hace30DiasISO() {
-  const d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+function haceNDiasISO(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - (n - 1));
   return d.toISOString().slice(0, 10);
 }
 
+const RANGOS_RAPIDOS = [
+  { id: "7d", label: "Últimos 7 días", dias: 7 },
+  { id: "30d", label: "Últimos 30 días", dias: 30 },
+  { id: "90d", label: "Últimos 90 días", dias: 90 },
+  { id: "1y", label: "Último año", dias: 365 },
+];
+
+const COLORS = ["#047857", "#1e3a8a", "#0d9488", "#6d28d9", "#f59e0b"];
+
 export default function ReportesIntercambiosCategoria() {
-  const [desde, setDesde] = useState(hace30DiasISO());
+  const [desde, setDesde] = useState(haceNDiasISO(30));
   const [hasta, setHasta] = useState(hoyISO());
   const [datos, setDatos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [rangoActivo, setRangoActivo] = useState("30d");
 
-  async function cargar() {
+  async function cargar(customDesde = desde, customHasta = hasta) {
     try {
       setLoading(true);
       setError("");
-      const res = await getReporteIntercambiosCategoria({ desde, hasta });
+      const res = await getReporteIntercambiosCategoria({
+        desde: customDesde,
+        hasta: customHasta,
+      });
       setDatos(Array.isArray(res) ? res : []);
     } catch (e) {
       console.error(e);
@@ -14992,13 +15264,24 @@ export default function ReportesIntercambiosCategoria() {
   }
 
   useEffect(() => {
-    cargar();
+    // carga inicial
+    cargar(desde, hasta);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleSubmit(e) {
     e.preventDefault();
-    cargar();
+    setRangoActivo(null); // el usuario eligió fechas manuales
+    cargar(desde, hasta);
+  }
+
+  function aplicarRangoRapido(rango) {
+    const nuevoHasta = hoyISO();
+    const nuevoDesde = haceNDiasISO(rango.dias);
+    setDesde(nuevoDesde);
+    setHasta(nuevoHasta);
+    setRangoActivo(rango.id);
+    cargar(nuevoDesde, nuevoHasta);
   }
 
   // =========================
@@ -15039,24 +15322,32 @@ export default function ReportesIntercambiosCategoria() {
   // =========================
   const barData = useMemo(
     () =>
-      datos.map((c) => ({
-        categoria: c.categoria,
-        intercambios: Number(c.total_intercambios || 0),
-      })),
+      datos
+        .map((c) => ({
+          categoria: c.categoria,
+          intercambios: Number(c.total_intercambios || 0),
+        }))
+        .sort((a, b) => b.intercambios - a.intercambios),
     [datos]
   );
 
   const pieData = useMemo(
     () =>
-      datos.map((c) => ({
-        name: c.categoria,
-        value: Number(c.total_intercambios || 0),
-      })),
+      datos
+        .map((c) => ({
+          name: c.categoria,
+          value: Number(c.total_intercambios || 0),
+        }))
+        .filter((d) => d.value > 0),
     [datos]
   );
 
-  const COLORS = ["#047857", "#1e3a8a", "#0d9488", "#6d28d9", "#f59e0b"];
   const hasData = datos.length > 0;
+
+  const rangoLabel = `Del ${desde} al ${hasta}`;
+
+  const formatInt = (n) =>
+    Number(n || 0).toLocaleString("es-BO", { maximumFractionDigits: 0 });
 
   return (
     <div
@@ -15087,7 +15378,7 @@ export default function ReportesIntercambiosCategoria() {
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-emerald-900/80">
                 <span className="inline-flex items-center gap-1 bg-white/80 px-2.5 py-1 rounded-full shadow-sm border border-emerald-200/60">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <Calendar className="w-3 h-3" />
                   Rango:{" "}
                   <span className="font-semibold">
                     {desde} &nbsp;–&nbsp; {hasta}
@@ -15099,6 +15390,10 @@ export default function ReportesIntercambiosCategoria() {
                     <span className="font-semibold">
                       {metrics.topCategoria.categoria}
                     </span>
+                    <span className="ml-1 text-[11px]">
+                      ({formatInt(metrics.topCategoria.total_intercambios)}{" "}
+                      intercambios)
+                    </span>
                   </span>
                 )}
               </div>
@@ -15106,57 +15401,80 @@ export default function ReportesIntercambiosCategoria() {
           </div>
 
           {/* Filtros */}
-          <form
-            onSubmit={handleSubmit}
-            className="bg-white/85 backdrop-blur rounded-2xl shadow-lg border border-emerald-100 px-4 py-3 flex flex-col gap-3 min-w-[260px]"
-          >
-            <p className="text-xs font-semibold text-emerald-900 tracking-wide">
-              Filtros
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <div className="flex flex-col flex-1 min-w-[120px]">
-                <label className="mb-1 text-xs font-semibold text-emerald-900">
-                  Desde
-                </label>
-                <input
-                  type="date"
-                  value={desde}
-                  onChange={(e) => setDesde(e.target.value)}
-                  className="border border-emerald-200 rounded-lg px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/70 focus:border-emerald-500"
-                />
-              </div>
-              <div className="flex flex-col flex-1 min-w-[120px]">
-                <label className="mb-1 text-xs font-semibold text-emerald-900">
-                  Hasta
-                </label>
-                <input
-                  type="date"
-                  value={hasta}
-                  onChange={(e) => setHasta(e.target.value)}
-                  className="border border-emerald-200 rounded-lg px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/70 focus:border-emerald-500"
-                />
-              </div>
+          <div className="flex flex-col gap-3 items-stretch md:items-end min-w-[260px]">
+            {/* Rangos rápidos */}
+            <div className="flex flex-wrap gap-2 justify-end">
+              {RANGOS_RAPIDOS.map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => aplicarRangoRapido(r)}
+                  disabled={loading}
+                  className={`px-3 py-1 rounded-full text-[11px] font-semibold border transition
+                    ${
+                      rangoActivo === r.id
+                        ? "bg-emerald-700 text-white border-emerald-700 shadow-sm"
+                        : "bg-white text-emerald-800 border-emerald-200 hover:bg-emerald-50"
+                    }`}
+                >
+                  {r.label}
+                </button>
+              ))}
             </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className={`mt-1 px-4 py-2 rounded-xl text-sm font-semibold shadow-md flex items-center gap-2 transition
-              ${
-                loading
-                  ? "bg-emerald-300 text-emerald-900 cursor-wait"
-                  : "bg-emerald-700 hover:bg-emerald-800 text-white"
-              }`}
+
+            {/* Fechas manuales */}
+            <form
+              onSubmit={handleSubmit}
+              className="bg-white/85 backdrop-blur rounded-2xl shadow-lg border border-emerald-100 px-4 py-3 flex flex-col gap-3"
             >
-              <BarChart3 className="w-4 h-4" />
-              {loading ? "Cargando…" : "Actualizar"}
-            </button>
-            {loading && (
-              <p className="text-[11px] text-emerald-700/80 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                Calculando intercambios para el rango…
+              <p className="text-xs font-semibold text-emerald-900 tracking-wide">
+                Filtros personalizados
               </p>
-            )}
-          </form>
+              <div className="flex flex-wrap gap-3">
+                <div className="flex flex-col flex-1 min-w-[120px]">
+                  <label className="mb-1 text-xs font-semibold text-emerald-900">
+                    Desde
+                  </label>
+                  <input
+                    type="date"
+                    value={desde}
+                    onChange={(e) => setDesde(e.target.value)}
+                    className="border border-emerald-200 rounded-lg px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/70 focus:border-emerald-500"
+                  />
+                </div>
+                <div className="flex flex-col flex-1 min-w-[120px]">
+                  <label className="mb-1 text-xs font-semibold text-emerald-900">
+                    Hasta
+                  </label>
+                  <input
+                    type="date"
+                    value={hasta}
+                    onChange={(e) => setHasta(e.target.value)}
+                    className="border border-emerald-200 rounded-lg px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/70 focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className={`mt-1 px-4 py-2 rounded-xl text-sm font-semibold shadow-md flex items-center gap-2 transition
+                ${
+                  loading
+                    ? "bg-emerald-300 text-emerald-900 cursor-wait"
+                    : "bg-emerald-700 hover:bg-emerald-800 text-white"
+                }`}
+              >
+                <BarChart3 className="w-4 h-4" />
+                {loading ? "Cargando…" : "Aplicar fechas"}
+              </button>
+              {loading && (
+                <p className="text-[11px] text-emerald-700/80 flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Calculando intercambios para el rango…
+                </p>
+              )}
+            </form>
+          </div>
         </header>
 
         {error && (
@@ -15164,6 +15482,20 @@ export default function ReportesIntercambiosCategoria() {
             {error}
           </div>
         )}
+
+        {/* INFO RANGO / RESUMEN */}
+        <div className="flex items-center justify-between gap-2 text-xs text-emerald-900/70">
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100">
+            <Calendar className="w-3 h-3" />
+            <span>Rango analizado:</span>
+            <span className="font-semibold">{rangoLabel}</span>
+          </span>
+          {hasData && !loading && (
+            <span className="hidden sm:inline text-[11px]">
+              {datos.length} categoría(s) con actividad.
+            </span>
+          )}
+        </div>
 
         {/* KPIs */}
         <section className="grid md:grid-cols-4 gap-4 md:gap-6">
@@ -15174,7 +15506,7 @@ export default function ReportesIntercambiosCategoria() {
                   Intercambios totales
                 </p>
                 <p className="mt-2 text-3xl font-extrabold text-emerald-900 tabular-nums">
-                  {metrics.totalIntercambios.toLocaleString()}
+                  {formatInt(metrics.totalIntercambios)}
                 </p>
               </div>
               <span className="inline-flex items-center justify-center rounded-full bg-emerald-50 p-2">
@@ -15230,7 +15562,8 @@ export default function ReportesIntercambiosCategoria() {
                     {metrics.topCategoria.categoria}
                   </p>
                   <p className="text-xs text-emerald-700/80">
-                    {metrics.topCategoria.total_intercambios} intercambios
+                    {formatInt(metrics.topCategoria.total_intercambios)}{" "}
+                    intercambios
                   </p>
                 </>
               ) : (
@@ -15283,7 +15616,9 @@ export default function ReportesIntercambiosCategoria() {
                       axisLine={{ stroke: "#e5e7eb" }}
                     />
                     <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                    <Tooltip />
+                    <Tooltip
+                      formatter={(value) => [formatInt(value), "Intercambios"]}
+                    />
                     <Bar
                       dataKey="intercambios"
                       name="Intercambios"
@@ -15333,7 +15668,12 @@ export default function ReportesIntercambiosCategoria() {
                         />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip
+                      formatter={(value, name) => [
+                        formatInt(value),
+                        `Intercambios en ${name}`,
+                      ]}
+                    />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                   </PieChart>
                 </ResponsiveContainer>
@@ -15369,27 +15709,42 @@ export default function ReportesIntercambiosCategoria() {
                   <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">
                     Intercambios
                   </th>
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">
+                    % participación
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {datos.map((c, i) => (
-                  <tr
-                    key={i}
-                    className={i % 2 === 0 ? "bg-white" : "bg-slate-50/60"}
-                  >
-                    <td className="px-3 py-2 text-slate-800">
-                      {c.categoria}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {c.total_intercambios}
-                    </td>
-                  </tr>
-                ))}
+                {datos.map((c, i) => {
+                  const val = Number(c.total_intercambios || 0);
+                  const porcentaje =
+                    metrics.totalIntercambios > 0
+                      ? (val / metrics.totalIntercambios) * 100
+                      : 0;
+                  return (
+                    <tr
+                      key={i}
+                      className={
+                        i % 2 === 0 ? "bg-white" : "bg-slate-50/60"
+                      }
+                    >
+                      <td className="px-3 py-2 text-slate-800">
+                        {c.categoria}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {formatInt(c.total_intercambios)}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-slate-700">
+                        {porcentaje.toFixed(1)}%
+                      </td>
+                    </tr>
+                  );
+                })}
                 {datos.length === 0 && (
                   <tr>
                     <td
                       className="px-3 py-4 text-center text-gray-400 text-sm"
-                      colSpan={2}
+                      colSpan={3}
                     >
                       No hay intercambios en el rango.
                     </td>
@@ -15434,25 +15789,36 @@ function hoyISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function hace30DiasISO() {
-  const d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+function haceNDiasISO(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - (n - 1));
   return d.toISOString().slice(0, 10);
 }
 
+const RANGOS_RAPIDOS = [
+  { id: "7d", label: "Últimos 7 días", dias: 7 },
+  { id: "30d", label: "Últimos 30 días", dias: 30 },
+  { id: "90d", label: "Últimos 90 días", dias: 90 },
+  { id: "1y", label: "Último año", dias: 365 },
+];
+
+const COLORS = ["#047857", "#1e3a8a", "#0d9488", "#6d28d9", "#f59e0b"];
+
 export default function ReportesPublicacionesIntercambios() {
-  const [desde, setDesde] = useState(hace30DiasISO());
+  const [desde, setDesde] = useState(haceNDiasISO(30));
   const [hasta, setHasta] = useState(hoyISO());
   const [datos, setDatos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [rangoActivo, setRangoActivo] = useState("30d");
 
-  async function cargar() {
+  async function cargar(customDesde = desde, customHasta = hasta) {
     try {
       setLoading(true);
       setError("");
       const res = await getReportePublicacionesVsIntercambios({
-        desde,
-        hasta,
+        desde: customDesde,
+        hasta: customHasta,
       });
       setDatos(Array.isArray(res) ? res : []);
     } catch (e) {
@@ -15465,13 +15831,23 @@ export default function ReportesPublicacionesIntercambios() {
   }
 
   useEffect(() => {
-    cargar();
+    cargar(desde, hasta);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleSubmit(e) {
     e.preventDefault();
-    cargar();
+    setRangoActivo(null); // el usuario puso fechas manuales
+    cargar(desde, hasta);
+  }
+
+  function aplicarRangoRapido(rango) {
+    const nuevoHasta = hoyISO();
+    const nuevoDesde = haceNDiasISO(rango.dias);
+    setDesde(nuevoDesde);
+    setHasta(nuevoHasta);
+    setRangoActivo(rango.id);
+    cargar(nuevoDesde, nuevoHasta);
   }
 
   const sinDatos = !loading && datos.length === 0;
@@ -15487,6 +15863,7 @@ export default function ReportesPublicacionesIntercambios() {
         categorias: 0,
         promedioRatio: 0,
         mejorCategoria: null,
+        tasaConversionGlobal: 0,
       };
     }
 
@@ -15518,12 +15895,18 @@ export default function ReportesPublicacionesIntercambios() {
       null
     );
 
+    const tasaConversionGlobal =
+      totalPublicaciones > 0
+        ? (totalIntercambios / totalPublicaciones) * 100
+        : 0;
+
     return {
       totalPublicaciones,
       totalIntercambios,
       categorias,
       promedioRatio,
       mejorCategoria,
+      tasaConversionGlobal,
     };
   }, [datos]);
 
@@ -15532,11 +15915,14 @@ export default function ReportesPublicacionesIntercambios() {
   // ======================
   const barData = useMemo(
     () =>
-      datos.map((p) => ({
-        categoria: p.categoria,
-        publicaciones: Number(p.publicaciones || 0),
-        intercambios: Number(p.intercambios || 0),
-      })),
+      datos
+        .map((p) => ({
+          categoria: p.categoria,
+          publicaciones: Number(p.publicaciones || 0),
+          intercambios: Number(p.intercambios || 0),
+        }))
+        // Ordenamos por más intercambios (de mayor a menor)
+        .sort((a, b) => b.intercambios - a.intercambios),
     [datos]
   );
 
@@ -15551,15 +15937,12 @@ export default function ReportesPublicacionesIntercambios() {
     [datos]
   );
 
-  const COLORS = ["#047857", "#1e3a8a", "#0d9488", "#6d28d9", "#f59e0b"];
-
   const formatInt = (n) =>
     Number(n || 0).toLocaleString("es-BO", {
       maximumFractionDigits: 0,
     });
 
-  const formatRatio = (n) =>
-    `${Number(n || 0).toFixed(2)} : 1`;
+  const formatRatio = (n) => `${Number(n || 0).toFixed(2)} : 1`;
 
   const rangoLabel = `Del ${desde} al ${hasta}`;
 
@@ -15594,48 +15977,71 @@ export default function ReportesPublicacionesIntercambios() {
             </div>
           </div>
 
-          {/* FILTRO DE FECHAS */}
-          <form
-            onSubmit={handleSubmit}
-            className="flex flex-wrap gap-3 items-end bg-white/90 px-4 py-3 rounded-2xl shadow border border-emerald-100 backdrop-blur-sm text-sm w-full md:w-auto"
-          >
-            <div className="flex flex-col">
-              <label className="mb-1 font-semibold text-emerald-900 text-xs">
-                Desde
-              </label>
-              <input
-                type="date"
-                value={desde}
-                onChange={(e) => setDesde(e.target.value)}
-                className="border border-emerald-200 rounded-lg px-2 py-1 text-xs md:text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
-              />
+          {/* RANGOS RÁPIDOS + FILTRO DE FECHAS */}
+          <div className="flex flex-col gap-3 items-stretch md:items-end min-w-[260px]">
+            {/* Botones de rango rápido */}
+            <div className="flex flex-wrap gap-2 justify-end">
+              {RANGOS_RAPIDOS.map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => aplicarRangoRapido(r)}
+                  disabled={loading}
+                  className={`px-3 py-1 rounded-full text-[11px] font-semibold border transition
+                    ${
+                      rangoActivo === r.id
+                        ? "bg-emerald-700 text-white border-emerald-700 shadow-sm"
+                        : "bg-white text-emerald-800 border-emerald-200 hover:bg-emerald-50"
+                    }`}
+                >
+                  {r.label}
+                </button>
+              ))}
             </div>
-            <div className="flex flex-col">
-              <label className="mb-1 font-semibold text-emerald-900 text-xs">
-                Hasta
-              </label>
-              <input
-                type="date"
-                value={hasta}
-                onChange={(e) => setHasta(e.target.value)}
-                className="border border-emerald-200 rounded-lg px-2 py-1 text-xs md:text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-xl font-semibold shadow-md flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed text-xs md:text-sm"
+
+            {/* Fechas manuales */}
+            <form
+              onSubmit={handleSubmit}
+              className="flex flex-wrap gap-3 items-end bg-white/90 px-4 py-3 rounded-2xl shadow border border-emerald-100 backdrop-blur-sm text-sm w-full md:w-auto"
             >
-              {loading ? (
-                <>
-                  <span className="h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                  Actualizando…
-                </>
-              ) : (
-                <>Actualizar</>
-              )}
-            </button>
-          </form>
+              <div className="flex flex-col">
+                <label className="mb-1 font-semibold text-emerald-900 text-xs">
+                  Desde
+                </label>
+                <input
+                  type="date"
+                  value={desde}
+                  onChange={(e) => setDesde(e.target.value)}
+                  className="border border-emerald-200 rounded-lg px-2 py-1 text-xs md:text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
+                />
+              </div>
+              <div className="flex flex-col">
+                <label className="mb-1 font-semibold text-emerald-900 text-xs">
+                  Hasta
+                </label>
+                <input
+                  type="date"
+                  value={hasta}
+                  onChange={(e) => setHasta(e.target.value)}
+                  className="border border-emerald-200 rounded-lg px-2 py-1 text-xs md:text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-xl font-semibold shadow-md flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed text-xs md:text-sm"
+              >
+                {loading ? (
+                  <>
+                    <span className="h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                    Actualizando…
+                  </>
+                ) : (
+                  <>Aplicar fechas</>
+                )}
+              </button>
+            </form>
+          </div>
         </header>
 
         {/* RANGO INFO */}
@@ -15708,7 +16114,7 @@ export default function ReportesPublicacionesIntercambios() {
             </p>
           </div>
 
-          {/* Ratio promedio */}
+          {/* Ratio promedio + tasa global */}
           <div className="bg-white shadow-sm border border-emerald-200/70 rounded-2xl p-4 flex flex-col justify-between hover:shadow-md transition">
             <div className="flex items-center justify-between">
               <p className="text-[11px] font-semibold text-emerald-800 uppercase">
@@ -15716,16 +16122,23 @@ export default function ReportesPublicacionesIntercambios() {
               </p>
               <Percent className="w-4 h-4 text-emerald-700/80" />
             </div>
-            <p className="mt-2 text-2xl md:text-3xl font-extrabold text-emerald-900">
+            <p className="mt-1 text-xl md:text-2xl font-extrabold text-emerald-900">
               {formatRatio(metrics.promedioRatio)}
+            </p>
+            <p className="mt-1 text-[11px] text-emerald-900/80">
+              Tasa global de conversión:{" "}
+              <span className="font-semibold">
+                {metrics.tasaConversionGlobal.toFixed(1)}%
+              </span>
             </p>
             {metrics.mejorCategoria ? (
               <p className="mt-1 text-[11px] text-emerald-900/80">
                 Mejor categoría:{" "}
                 <span className="font-semibold">
                   {metrics.mejorCategoria.categoria} (
-                  {formatRatio(metrics.mejorCategoria.ratio_intercambio)})
+                  {formatRatio(metrics.mejorCategoria.ratio_intercambio)}
                 </span>
+                )
               </p>
             ) : (
               <p className="mt-1 text-[11px] text-emerald-900/70">
@@ -15751,9 +16164,23 @@ export default function ReportesPublicacionesIntercambios() {
               {barData.length > 0 ? (
                 <ResponsiveContainer>
                   <BarChart data={barData}>
-                    <XAxis dataKey="categoria" hide />
+                    <XAxis
+                      dataKey="categoria"
+                      tick={{ fontSize: 11 }}
+                      interval={0}
+                      height={50}
+                      tickLine={false}
+                      axisLine={{ stroke: "#e5e7eb" }}
+                    />
                     <YAxis allowDecimals={false} />
-                    <Tooltip />
+                    <Tooltip
+                      formatter={(value, name) => [
+                        formatInt(value),
+                        name === "publicaciones"
+                          ? "Publicaciones"
+                          : "Intercambios",
+                      ]}
+                    />
                     <Legend />
                     <Bar
                       dataKey="publicaciones"
@@ -15806,7 +16233,12 @@ export default function ReportesPublicacionesIntercambios() {
                         />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip
+                      formatter={(value, name) => [
+                        formatInt(value),
+                        `Intercambios en ${name}`,
+                      ]}
+                    />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
@@ -15900,7 +16332,7 @@ export default function ReportesPublicacionesIntercambios() {
 
 <file path="frontend/src/pages/ReportesRankingUsuarios.jsx">
 // src/pages/ReportesRankingUsuarios.jsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { getReporteRankingUsuarios } from "../services/api";
 import {
   BarChart,
@@ -15928,6 +16360,18 @@ export default function ReportesRankingUsuarios() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const hasData = datos.length > 0;
+
+  const formatNumber = (n) =>
+    Number(n || 0).toLocaleString("es-BO", {
+      maximumFractionDigits: 2,
+    });
+
+  const formatInt = (n) =>
+    Number(n || 0).toLocaleString("es-BO", {
+      maximumFractionDigits: 0,
+    });
+
   async function cargar() {
     try {
       setLoading(true);
@@ -15942,6 +16386,12 @@ export default function ReportesRankingUsuarios() {
       setLoading(false);
     }
   }
+
+  // Carga inicial
+  useEffect(() => {
+    cargar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // =========================
   // MÉTRICAS GLOBALES
@@ -16006,26 +16456,28 @@ export default function ReportesRankingUsuarios() {
   // =========================
   const chartImpacto = useMemo(
     () =>
-      datos.map((r) => ({
-        usuario: `U${r.id_usuario}`,
-        impacto:
-          Number(r.co2_total || 0) +
-          Number(r.agua_total || 0) +
-          Number(r.energia_total || 0),
-      })),
+      datos
+        .map((r) => ({
+          usuario: `U${r.id_usuario}`,
+          impacto:
+            Number(r.co2_total || 0) +
+            Number(r.agua_total || 0) +
+            Number(r.energia_total || 0),
+        }))
+        .sort((a, b) => b.impacto - a.impacto),
     [datos]
   );
 
   const chartTransacciones = useMemo(
     () =>
-      datos.map((r) => ({
-        usuario: `U${r.id_usuario}`,
-        transacciones: Number(r.transacciones || 0),
-      })),
+      datos
+        .map((r) => ({
+          usuario: `U${r.id_usuario}`,
+          transacciones: Number(r.transacciones || 0),
+        }))
+        .sort((a, b) => b.transacciones - a.transacciones),
     [datos]
   );
-
-  const hasData = datos.length > 0;
 
   return (
     <div
@@ -16105,6 +16557,9 @@ export default function ReportesRankingUsuarios() {
                   className="border border-emerald-200 rounded-lg px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/70 focus:border-emerald-500"
                   placeholder="ej. 1"
                 />
+                <span className="mt-1 text-[10px] text-emerald-800/70">
+                  Corresponde al período de REPORTE_IMPACTO.
+                </span>
               </div>
 
               <div className="flex flex-col flex-1 min-w-[110px]">
@@ -16120,6 +16575,9 @@ export default function ReportesRankingUsuarios() {
                   }
                   className="border border-emerald-200 rounded-lg px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/70 focus:border-emerald-500"
                 />
+                <span className="mt-1 text-[10px] text-emerald-800/70">
+                  Cantidad máxima de usuarios en el ranking.
+                </span>
               </div>
             </div>
 
@@ -16148,7 +16606,7 @@ export default function ReportesRankingUsuarios() {
         </header>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl shadow-sm">
+          <div className="bg-emerald-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl shadow-sm">
             {error}
           </div>
         )}
@@ -16162,7 +16620,7 @@ export default function ReportesRankingUsuarios() {
                   CO₂ total (kg)
                 </p>
                 <p className="mt-2 text-3xl font-extrabold text-emerald-900 tabular-nums">
-                  {metrics.totalCo2.toLocaleString()}
+                  {formatNumber(metrics.totalCo2)}
                 </p>
               </div>
               <span className="inline-flex items-center justify-center rounded-full bg-emerald-50 p-2">
@@ -16181,7 +16639,7 @@ export default function ReportesRankingUsuarios() {
                   Agua total (L)
                 </p>
                 <p className="mt-2 text-3xl font-extrabold text-sky-900 tabular-nums">
-                  {metrics.totalAgua.toLocaleString()}
+                  {formatNumber(metrics.totalAgua)}
                 </p>
               </div>
               <span className="inline-flex items-center justify-center rounded-full bg-sky-50 p-2">
@@ -16200,7 +16658,7 @@ export default function ReportesRankingUsuarios() {
                   Energía total (kWh)
                 </p>
                 <p className="mt-2 text-3xl font-extrabold text-teal-900 tabular-nums">
-                  {metrics.totalEnergia.toLocaleString()}
+                  {formatNumber(metrics.totalEnergia)}
                 </p>
               </div>
               <span className="inline-flex items-center justify-center rounded-full bg-teal-50 p-2">
@@ -16218,7 +16676,7 @@ export default function ReportesRankingUsuarios() {
                 Transacciones
               </p>
               <p className="mt-2 text-3xl font-extrabold text-slate-900 tabular-nums">
-                {metrics.totalTransacciones.toLocaleString()}
+                {formatInt(metrics.totalTransacciones)}
               </p>
             </div>
             <p className="mt-2 text-[11px] text-slate-600/80">
@@ -16287,7 +16745,9 @@ export default function ReportesRankingUsuarios() {
                       axisLine={{ stroke: "#e5e7eb" }}
                     />
                     <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip />
+                    <Tooltip
+                      formatter={(value) => [formatNumber(value), "Impacto"]}
+                    />
                     <Bar
                       dataKey="impacto"
                       name="Impacto total (unidades combinadas)"
@@ -16329,7 +16789,9 @@ export default function ReportesRankingUsuarios() {
                       axisLine={{ stroke: "#e5e7eb" }}
                     />
                     <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                    <Tooltip />
+                    <Tooltip
+                      formatter={(value) => [formatInt(value), "Transacciones"]}
+                    />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     <Bar
                       dataKey="transacciones"
@@ -16391,17 +16853,19 @@ export default function ReportesRankingUsuarios() {
                     <td className="px-3 py-2 text-slate-800">
                       U{r.id_usuario}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {r.co2_total}
+
+                    {/* 🔽 AQUÍ AÑADÍ text-slate-800 PARA QUE SE VEAN BIEN */}
+                    <td className="px-3 py-2 text-right tabular-nums text-slate-800">
+                      {formatNumber(r.co2_total)}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {r.agua_total}
+                    <td className="px-3 py-2 text-right tabular-nums text-slate-800">
+                      {formatNumber(r.agua_total)}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {r.energia_total}
+                    <td className="px-3 py-2 text-right tabular-nums text-slate-800">
+                      {formatNumber(r.energia_total)}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {r.transacciones}
+                    <td className="px-3 py-2 text-right tabular-nums text-slate-800">
+                      {formatInt(r.transacciones)}
                     </td>
                   </tr>
                 ))}
@@ -16477,6 +16941,7 @@ export default function ReportesSaldosUsuarios() {
   }, []);
 
   const sinDatos = !loading && datos.length === 0;
+  const hasData = datos.length > 0;
 
   // =========================
   // MÉTRICAS
@@ -16516,11 +16981,13 @@ export default function ReportesSaldosUsuarios() {
   // =========================
   const barData = useMemo(
     () =>
-      datos.map((u, index) => ({
-        etiqueta: `U${index + 1}`,
-        nombre: u.nombre,
-        saldo: Number(u.saldo_creditos || 0),
-      })),
+      datos
+        .map((u, index) => ({
+          etiqueta: `U${index + 1}`,
+          nombre: u.nombre,
+          saldo: Number(u.saldo_creditos || 0),
+        }))
+        .sort((a, b) => b.saldo - a.saldo),
     [datos]
   );
 
@@ -16540,6 +17007,11 @@ export default function ReportesSaldosUsuarios() {
   const formatCredits = (n) =>
     Number(n || 0).toLocaleString("es-BO", {
       maximumFractionDigits: 2,
+    });
+
+  const formatInt = (n) =>
+    Number(n || 0).toLocaleString("es-BO", {
+      maximumFractionDigits: 0,
     });
 
   return (
@@ -16593,6 +17065,9 @@ export default function ReportesSaldosUsuarios() {
                 }
                 className="border border-emerald-200 rounded-lg px-2 py-1 text-xs md:text-sm w-24 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
               />
+              <span className="mt-1 text-[10px] text-emerald-800/70">
+                Se consultan los usuarios con mayor saldo.
+              </span>
             </div>
             <button
               type="button"
@@ -16618,6 +17093,16 @@ export default function ReportesSaldosUsuarios() {
           </div>
         )}
 
+        {/* Mensaje vacío global */}
+        {!loading && !error && sinDatos && (
+          <div className="bg-emerald-50 border border-emerald-100 text-emerald-800 text-sm px-4 py-3 rounded-xl shadow-sm flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            No hay datos de saldos para mostrar. Ajusta el{" "}
+            <strong className="ml-1">Top N</strong> y vuelve a actualizar,
+            o verifica que existan billeteras con saldo.
+          </div>
+        )}
+
         {/* KPIs PRINCIPALES */}
         <section className="grid md:grid-cols-3 gap-4">
           <div className="bg-white shadow-sm border border-emerald-200/60 rounded-2xl p-4 flex flex-col justify-between hover:shadow-md transition">
@@ -16628,7 +17113,7 @@ export default function ReportesSaldosUsuarios() {
               <Users className="w-4 h-4 text-emerald-700/80" />
             </div>
             <p className="mt-2 text-2xl md:text-3xl font-extrabold text-emerald-900">
-              {metrics.totalUsuarios}
+              {formatInt(metrics.totalUsuarios)}
             </p>
             <p className="mt-1 text-[11px] text-emerald-900/70">
               Usuarios incluidos en el Top {limit}.
@@ -16894,6 +17379,12 @@ function hace30DiasISO() {
   return d.toISOString().slice(0, 10);
 }
 
+// pequeño helper para fechas (si viene null o vacío, devuelve "-")
+function formatFecha(v) {
+  if (!v) return "-";
+  return String(v);
+}
+
 export default function ReportesUsuarios() {
   const [desde, setDesde] = useState(hace30DiasISO());
   const [hasta, setHasta] = useState(hoyISO());
@@ -16976,7 +17467,10 @@ export default function ReportesUsuarios() {
   );
 
   const hasData =
-    metrics.totalActivos + metrics.totalAbandonados + metrics.totalNuevos > 0;
+    metrics.totalActivos +
+      metrics.totalAbandonados +
+      metrics.totalNuevos >
+    0;
 
   return (
     <div
@@ -17194,25 +17688,31 @@ export default function ReportesUsuarios() {
               Comparación entre usuarios activos, abandonados y nuevos.
             </p>
             <div className="h-72">
-              <ResponsiveContainer>
-                <BarChart data={chartResumen}>
-                  <XAxis
-                    dataKey="tipo"
-                    tick={{ fontSize: 11 }}
-                    tickLine={false}
-                    axisLine={{ stroke: "#e5e7eb" }}
-                  />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar
-                    dataKey="cantidad"
-                    name="Usuarios"
-                    radius={[8, 8, 0, 0]}
-                    fill="#047857"
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+              {hasData ? (
+                <ResponsiveContainer>
+                  <BarChart data={chartResumen}>
+                    <XAxis
+                      dataKey="tipo"
+                      tick={{ fontSize: 11 }}
+                      tickLine={false}
+                      axisLine={{ stroke: "#e5e7eb" }}
+                    />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                    <Tooltip />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Bar
+                      dataKey="cantidad"
+                      name="Usuarios"
+                      radius={[8, 8, 0, 0]}
+                      fill="#047857"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-xs text-gray-400">
+                  Sin datos para mostrar el gráfico.
+                </div>
+              )}
             </div>
           </div>
 
@@ -17258,9 +17758,9 @@ export default function ReportesUsuarios() {
               Usuarios activos ({activos.length})
             </h2>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[320px]">
             <table className="min-w-full text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200/80">
+              <thead className="bg-slate-50 border-b border-slate-200/80 sticky top-0 z-10">
                 <tr>
                   <th className="px-2 py-1 text-left font-semibold text-slate-600">
                     Usuario
@@ -17291,13 +17791,13 @@ export default function ReportesUsuarios() {
                     <td className="px-2 py-1 text-slate-800">
                       {u.correo}
                     </td>
-                    <td className="px-2 py-1 text-right tabular-nums">
-                      {u.primera_actividad || "-"}
+                    <td className="px-2 py-1 text-right text-slate-800 tabular-nums">
+                      {formatFecha(u.primera_actividad)}
                     </td>
-                    <td className="px-2 py-1 text-right tabular-nums">
-                      {u.ultima_actividad || "-"}
+                    <td className="px-2 py-1 text-right text-slate-800 tabular-nums">
+                      {formatFecha(u.ultima_actividad)}
                     </td>
-                    <td className="px-2 py-1 text-right tabular-nums">
+                    <td className="px-2 py-1 text-right text-slate-800 tabular-nums">
                       {u.total_acciones}
                     </td>
                   </tr>
@@ -17324,9 +17824,9 @@ export default function ReportesUsuarios() {
               Usuarios abandonados ({abandonados.length})
             </h2>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[320px]">
             <table className="min-w-full text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200/80">
+              <thead className="bg-slate-50 border-b border-slate-200/80 sticky top-0 z-10">
                 <tr>
                   <th className="px-2 py-1 text-left font-semibold text-slate-600">
                     Usuario
@@ -17340,22 +17840,32 @@ export default function ReportesUsuarios() {
                 </tr>
               </thead>
               <tbody>
-                {abandonados.map((u, i) => (
-                  <tr
-                    key={i}
-                    className={i % 2 === 0 ? "bg-white" : "bg-slate-50/70"}
-                  >
-                    <td className="px-2 py-1 text-slate-800">
-                      {u.nombre}
-                    </td>
-                    <td className="px-2 py-1 text-slate-800">
-                      {u.correo}
-                    </td>
-                    <td className="px-2 py-1 text-right tabular-nums">
-                      {u.ultima_actividad || "-"}
-                    </td>
-                  </tr>
-                ))}
+                {abandonados.map((u, i) => {
+                  // intentamos varias propiedades por si el backend usa nombres distintos
+                  const ultima =
+                    u.ultima_actividad ??
+                    u.ultimaActividad ??
+                    u.fecha_ultima ??
+                    u.ultimaAccion ??
+                    null;
+
+                  return (
+                    <tr
+                      key={i}
+                      className={i % 2 === 0 ? "bg-white" : "bg-slate-50/70"}
+                    >
+                      <td className="px-2 py-1 text-slate-800">
+                        {u.nombre}
+                      </td>
+                      <td className="px-2 py-1 text-slate-800">
+                        {u.correo}
+                      </td>
+                      <td className="px-2 py-1 text-right text-slate-800 tabular-nums">
+                        {formatFecha(ultima)}
+                      </td>
+                    </tr>
+                  );
+                })}
                 {abandonados.length === 0 && (
                   <tr>
                     <td
@@ -17378,9 +17888,9 @@ export default function ReportesUsuarios() {
               Usuarios nuevos (primer login) ({nuevos.length})
             </h2>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[320px]">
             <table className="min-w-full text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200/80">
+              <thead className="bg-slate-50 border-b border-slate-200/80 sticky top-0 z-10">
                 <tr>
                   <th className="px-2 py-1 text-left font-semibold text-slate-600">
                     Usuario
@@ -17405,8 +17915,8 @@ export default function ReportesUsuarios() {
                     <td className="px-2 py-1 text-slate-800">
                       {u.correo}
                     </td>
-                    <td className="px-2 py-1 text-right tabular-nums">
-                      {u.fecha_primer_login || "-"}
+                    <td className="px-2 py-1 text-right text-slate-800 tabular-nums">
+                      {formatFecha(u.fecha_primer_login)}
                     </td>
                   </tr>
                 ))}
@@ -17442,17 +17952,11 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
-  LineChart,
   Line,
+  ComposedChart, // 👈 usamos ComposedChart para combinar barra + línea
 } from "recharts";
 import hoja from "../assets/hoja.png";
-import {
-  Crown,
-  Users,
-  TrendingUp,
-  Wallet,
-  Calendar,
-} from "lucide-react";
+import { Crown, Users, TrendingUp, Wallet, Calendar } from "lucide-react";
 
 function hoyISO() {
   return new Date().toISOString().slice(0, 10);
@@ -17576,8 +18080,7 @@ export default function ReportesUsuariosPremium() {
       maximumFractionDigits: 0,
     });
 
-  const formatPercent = (n) =>
-    `${Number(n || 0).toFixed(1)}%`;
+  const formatPercent = (n) => `${Number(n || 0).toFixed(1)}%`;
 
   const rangoLabel = `Del ${desde} al ${hasta}`;
 
@@ -17606,8 +18109,8 @@ export default function ReportesUsuariosPremium() {
                 Usuarios premium
               </h1>
               <p className="text-sm text-emerald-800/80 mt-1">
-                Adopción del plan premium e ingresos por suscripción en el
-                rango seleccionado.
+                Adopción del plan premium e ingresos por suscripción en el rango
+                seleccionado.
               </p>
             </div>
           </div>
@@ -17673,6 +18176,16 @@ export default function ReportesUsuariosPremium() {
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-2 rounded-xl shadow-sm">
             {error}
+          </div>
+        )}
+
+        {/* MENSAJE SIN DATOS */}
+        {!loading && !error && sinDatos && (
+          <div className="bg-emerald-50 border border-emerald-100 text-emerald-800 text-sm px-4 py-3 rounded-xl shadow-sm flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            No se encontraron datos de suscripciones premium para el rango
+            seleccionado. Prueba con otras fechas o revisa la actividad
+            registrada.
           </div>
         )}
 
@@ -17794,7 +18307,8 @@ export default function ReportesUsuariosPremium() {
             <div className="h-72">
               {chartPorPeriodo.length > 0 ? (
                 <ResponsiveContainer>
-                  <LineChart data={chartPorPeriodo}>
+                  {/* 👇 ComposedChart para combinar barra + línea */}
+                  <ComposedChart data={chartPorPeriodo}>
                     <XAxis dataKey="label" hide />
                     <YAxis
                       yAxisId="left"
@@ -17833,7 +18347,7 @@ export default function ReportesUsuariosPremium() {
                       strokeWidth={2}
                       dot={false}
                     />
-                  </LineChart>
+                  </ComposedChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="h-full flex items-center justify-center text-xs text-gray-400">
@@ -17996,7 +18510,7 @@ export default function Wallet() {
   if (cargando) {
     return (
       <div className="min-h-screen bg-[#082b1f] text-white flex items-center justify-center">
-        Cargando billeterat.
+        Cargando billetera...
       </div>
     );
   }
@@ -18022,9 +18536,20 @@ export default function Wallet() {
         <div className="rounded-2xl border border-emerald-700 bg-[#0f3f2d] p-6 shadow-lg">
           <p className="text-emerald-200 text-sm mb-2">Créditos disponibles</p>
           <p className="text-4xl font-bold text-emerald-300">{saldo}</p>
+          <p className="text-xs text-emerald-100/70 mt-2">
+            Créditos que puedes usar ahora mismo para compras, intercambios o publicidad.
+          </p>
         </div>
 
-        
+        {/* Créditos retenidos */}
+        <div className="rounded-2xl border border-emerald-700 bg-[#0f3f2d] p-6 shadow-lg">
+          <p className="text-emerald-200 text-sm mb-2">Créditos retenidos</p>
+          <p className="text-4xl font-bold text-amber-300">{bloqueado}</p>
+          <p className="text-xs text-emerald-100/70 mt-2">
+            Créditos reservados por intercambios o campañas de publicidad en curso.
+          </p>
+        </div>
+
         {/* Acciones rápidas */}
         <div className="rounded-2xl border border-emerald-700 bg-[#0f3f2d] p-6 shadow-lg flex flex-col justify-between">
           <div>
@@ -18077,9 +18602,10 @@ export default function Wallet() {
         ) : (
           <div className="mt-3 space-y-3 text-sm">
             {movimientos.map((m) => {
-              const fecha = m.creado_en || m.fecha || m.fecha_movimiento || null;
+              const fecha =
+                m.creado_en || m.fecha || m.fecha_movimiento || null;
 
-              // 👇 AQUÍ DEFINIMOS SI ES NEGATIVO O POSITIVO
+              // Determinar si es un movimiento negativo o positivo
               const esNegativo =
                 m.signo_mov === "NEGATIVO" ||
                 m.tipo_movimiento?.includes("OUT") ||
@@ -18111,8 +18637,7 @@ export default function Wallet() {
                       {esNegativo ? "-" : "+"} {cantidad} cr.
                     </p>
                     <p className="text-[11px] text-emerald-100/60 mt-1">
-                      Saldo:{" "}
-                      {m.saldo_posterior ?? m.saldo ?? "-"} cr.
+                      Saldo: {m.saldo_posterior ?? m.saldo ?? "-"} cr.
                     </p>
                   </div>
                 </div>

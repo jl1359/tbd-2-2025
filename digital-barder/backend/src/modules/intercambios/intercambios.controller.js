@@ -4,6 +4,8 @@ import {
   misComprasService,
   misVentasService,
   detalleTransaccionService,
+  confirmarIntercambioService,
+  cancelarIntercambioService,
 } from "./intercambios.service.js";
 
 export const crearIntercambioController = async (req, res, next) => {
@@ -23,9 +25,56 @@ export const crearIntercambioController = async (req, res, next) => {
       creditos,
     });
 
-    res
-      .status(201)
-      .json({ message: "Intercambio creado correctamente", transaccion: tx });
+    res.status(201).json({
+      message: "Intercambio solicitado correctamente",
+      transaccion: tx,
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const confirmarIntercambioController = async (req, res, next) => {
+  try {
+    const idUsuarioAccion = req.user.id_usuario;
+    const id = Number(req.params.id);
+
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ message: "ID de transacción inválido" });
+    }
+
+    const tx = await confirmarIntercambioService({
+      idUsuarioAccion,
+      idTransaccion: id,
+    });
+
+    res.json({
+      message: "Intercambio confirmado correctamente",
+      transaccion: tx,
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const cancelarIntercambioController = async (req, res, next) => {
+  try {
+    const idUsuarioAccion = req.user.id_usuario;
+    const id = Number(req.params.id);
+
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ message: "ID de transacción inválido" });
+    }
+
+    const tx = await cancelarIntercambioService({
+      idUsuarioAccion,
+      idTransaccion: id,
+    });
+
+    res.json({
+      message: "Intercambio cancelado correctamente",
+      transaccion: tx,
+    });
   } catch (e) {
     next(e);
   }

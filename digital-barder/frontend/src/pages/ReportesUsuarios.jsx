@@ -32,6 +32,12 @@ function hace30DiasISO() {
   return d.toISOString().slice(0, 10);
 }
 
+// pequeño helper para fechas (si viene null o vacío, devuelve "-")
+function formatFecha(v) {
+  if (!v) return "-";
+  return String(v);
+}
+
 export default function ReportesUsuarios() {
   const [desde, setDesde] = useState(hace30DiasISO());
   const [hasta, setHasta] = useState(hoyISO());
@@ -438,13 +444,13 @@ export default function ReportesUsuarios() {
                     <td className="px-2 py-1 text-slate-800">
                       {u.correo}
                     </td>
-                    <td className="px-2 py-1 text-right tabular-nums">
-                      {u.primera_actividad || "-"}
+                    <td className="px-2 py-1 text-right text-slate-800 tabular-nums">
+                      {formatFecha(u.primera_actividad)}
                     </td>
-                    <td className="px-2 py-1 text-right tabular-nums">
-                      {u.ultima_actividad || "-"}
+                    <td className="px-2 py-1 text-right text-slate-800 tabular-nums">
+                      {formatFecha(u.ultima_actividad)}
                     </td>
-                    <td className="px-2 py-1 text-right tabular-nums">
+                    <td className="px-2 py-1 text-right text-slate-800 tabular-nums">
                       {u.total_acciones}
                     </td>
                   </tr>
@@ -487,22 +493,32 @@ export default function ReportesUsuarios() {
                 </tr>
               </thead>
               <tbody>
-                {abandonados.map((u, i) => (
-                  <tr
-                    key={i}
-                    className={i % 2 === 0 ? "bg-white" : "bg-slate-50/70"}
-                  >
-                    <td className="px-2 py-1 text-slate-800">
-                      {u.nombre}
-                    </td>
-                    <td className="px-2 py-1 text-slate-800">
-                      {u.correo}
-                    </td>
-                    <td className="px-2 py-1 text-right tabular-nums">
-                      {u.ultima_actividad || "-"}
-                    </td>
-                  </tr>
-                ))}
+                {abandonados.map((u, i) => {
+                  // intentamos varias propiedades por si el backend usa nombres distintos
+                  const ultima =
+                    u.ultima_actividad ??
+                    u.ultimaActividad ??
+                    u.fecha_ultima ??
+                    u.ultimaAccion ??
+                    null;
+
+                  return (
+                    <tr
+                      key={i}
+                      className={i % 2 === 0 ? "bg-white" : "bg-slate-50/70"}
+                    >
+                      <td className="px-2 py-1 text-slate-800">
+                        {u.nombre}
+                      </td>
+                      <td className="px-2 py-1 text-slate-800">
+                        {u.correo}
+                      </td>
+                      <td className="px-2 py-1 text-right text-slate-800 tabular-nums">
+                        {formatFecha(ultima)}
+                      </td>
+                    </tr>
+                  );
+                })}
                 {abandonados.length === 0 && (
                   <tr>
                     <td
@@ -552,8 +568,8 @@ export default function ReportesUsuarios() {
                     <td className="px-2 py-1 text-slate-800">
                       {u.correo}
                     </td>
-                    <td className="px-2 py-1 text-right tabular-nums">
-                      {u.fecha_primer_login || "-"}
+                    <td className="px-2 py-1 text-right text-slate-800 tabular-nums">
+                      {formatFecha(u.fecha_primer_login)}
                     </td>
                   </tr>
                 ))}

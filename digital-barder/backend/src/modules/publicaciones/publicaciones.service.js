@@ -337,9 +337,9 @@ export async function crearPublicacionServicioService(idUsuario, body) {
   });
 }
 
-/* ============================================================
-   BÚSQUEDA FULLTEXT
-   ============================================================ */
+/* 
+  BÚSQUEDA FULLTEXT
+   */
 
 export async function buscarPublicacionesService(q) {
   if (!q.trim()) return [];
@@ -361,9 +361,9 @@ export async function buscarPublicacionesService(q) {
   );
 }
 
-/* ============================================================
-   CALIFICACIONES
-   ============================================================ */
+/* 
+  CALIFICACIONES
+    */
 
 export async function crearCalificacionService({
   idUsuario,
@@ -405,9 +405,9 @@ export async function listarCalificacionesService(idPublicacion) {
   `;
 }
 
-/* ============================================================
-   NUEVO: EDITAR / ESTADO / ELIMINAR
-   ============================================================ */
+/* 
+  NUEVO: EDITAR / ESTADO / ELIMINAR
+   */
 
 // Helper: verificar que el usuario sea dueño o ADMIN
 async function assertPuedeEditar(idUsuario, rol, idPublicacion) {

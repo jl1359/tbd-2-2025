@@ -273,7 +273,7 @@ export default function ReportesRankingUsuarios() {
         </header>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl shadow-sm">
+          <div className="bg-emerald-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl shadow-sm">
             {error}
           </div>
         )}
@@ -520,16 +520,18 @@ export default function ReportesRankingUsuarios() {
                     <td className="px-3 py-2 text-slate-800">
                       U{r.id_usuario}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
+
+                    {/* 🔽 AQUÍ AÑADÍ text-slate-800 PARA QUE SE VEAN BIEN */}
+                    <td className="px-3 py-2 text-right tabular-nums text-slate-800">
                       {formatNumber(r.co2_total)}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
+                    <td className="px-3 py-2 text-right tabular-nums text-slate-800">
                       {formatNumber(r.agua_total)}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
+                    <td className="px-3 py-2 text-right tabular-nums text-slate-800">
                       {formatNumber(r.energia_total)}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
+                    <td className="px-3 py-2 text-right tabular-nums text-slate-800">
                       {formatInt(r.transacciones)}
                     </td>
                   </tr>

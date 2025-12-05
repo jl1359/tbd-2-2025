@@ -311,17 +311,12 @@ export function rechazarActividad(idActividad) {
   });
 }
 
-// =====================================================
-// ======================== LOGROS ======================
-// =====================================================
+//  LOGROS 
 
 export function getMisLogros() {
   return api("/logros/mios");
 }
-
-// =====================================================
-// ===================== PROMOCIONES ====================
-// =====================================================
+//  PROMOCIONES 
 
 // catálogo: tipos de promoción
 export function getTiposPromocion() {
@@ -354,9 +349,7 @@ export function vincularPublicacionPromocion(id_promocion, id_publicacion) {
   });
 }
 
-// =====================================================
-// ======================= PUBLICIDAD ===================
-// =====================================================
+//  PUBLICIDAD 
 
 // Público: lista de publicidad ACTIVA dentro de fecha_inicio/fecha_fin
 export function getPublicidadActiva() {
@@ -406,10 +399,7 @@ export function getUbicacionesPublicidad() {
   return api("/catalogos/ubicaciones-publicidad");
 }
 
-
-// =====================================================
-// ===================== UTILIDADES =====================
-// =====================================================
+//  UTILIDADES 
 
 export function buildUploadUrl(url) {
   if (!url) return "";

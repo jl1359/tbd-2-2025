@@ -14,16 +14,16 @@ import {
 
 const router = Router();
 
-/* ===========================
+/* 
    RUTAS PÚBLICAS
-   =========================== */
+    */
 
 // Publicidad visible en el sistema (HOME, publicaciones, etc.)
 router.get("/activa", listarPublicidadActivaController);
 
-/* ===========================
+/* 
    USUARIO AUTENTICADO
-   =========================== */
+    */
 
 // Desde aquí, solo usuarios logueados
 router.use(authMiddleware);
@@ -31,9 +31,9 @@ router.use(authMiddleware);
 // Cualquier usuario logueado puede CREAR su campaña (queda PROGRAMADA)
 router.post("/", crearPublicidadController);
 
-/* ===========================
+/* 
    SOLO ADMIN (GESTIÓN)
-   =========================== */
+    */
 
 // Desde aquí, además debe ser ADMIN
 router.use(isAdmin);

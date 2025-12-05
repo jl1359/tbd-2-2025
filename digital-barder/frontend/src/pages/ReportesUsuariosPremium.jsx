@@ -9,17 +9,11 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
-  LineChart,
   Line,
+  ComposedChart, // 👈 usamos ComposedChart para combinar barra + línea
 } from "recharts";
 import hoja from "../assets/hoja.png";
-import {
-  Crown,
-  Users,
-  TrendingUp,
-  Wallet,
-  Calendar,
-} from "lucide-react";
+import { Crown, Users, TrendingUp, Wallet, Calendar } from "lucide-react";
 
 function hoyISO() {
   return new Date().toISOString().slice(0, 10);
@@ -370,7 +364,8 @@ export default function ReportesUsuariosPremium() {
             <div className="h-72">
               {chartPorPeriodo.length > 0 ? (
                 <ResponsiveContainer>
-                  <LineChart data={chartPorPeriodo}>
+                  {/* 👇 ComposedChart para combinar barra + línea */}
+                  <ComposedChart data={chartPorPeriodo}>
                     <XAxis dataKey="label" hide />
                     <YAxis
                       yAxisId="left"
@@ -409,7 +404,7 @@ export default function ReportesUsuariosPremium() {
                       strokeWidth={2}
                       dot={false}
                     />
-                  </LineChart>
+                  </ComposedChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="h-full flex items-center justify-center text-xs text-gray-400">

@@ -25,9 +25,9 @@ function toPlain(value) {
   return value;
 }
 
-/* =====================================================
+/* 
    PUBLICAS
-===================================================== */
+ */
 export const listarPublicidadActivaController = async (req, res, next) => {
   try {
     const data = await listarPublicidadActivaService();
@@ -37,9 +37,9 @@ export const listarPublicidadActivaController = async (req, res, next) => {
   }
 };
 
-/* =====================================================
+/* 
    ADMIN
-===================================================== */
+ */
 export const crearPublicidadController = async (req, res, next) => {
   try {
     const idUsuario = req.user.id_usuario;
@@ -73,9 +73,9 @@ export const buscarPublicacionesParaPublicidadController = async (
   }
 };
 
-/* =====================================================
-   CAMBIAR ESTADO (SOLO ADMIN)
-===================================================== */
+/* 
+  CAMBIAR ESTADO (SOLO ADMIN)
+ */
 export const cambiarEstadoPublicidadController = async (req, res, next) => {
   try {
     const idPublicidad = Number(req.params.id);
@@ -94,9 +94,9 @@ export const cambiarEstadoPublicidadController = async (req, res, next) => {
   }
 };
 
-/* =====================================================
-   ELIMINAR (LÓGICO)
-===================================================== */
+/* 
+  ELIMINAR (LÓGICO)
+ */
 export const eliminarPublicidadController = async (req, res, next) => {
   try {
     const idPublicidad = Number(req.params.id);

@@ -143,6 +143,10 @@ export default function ReportesImpactoCategoria() {
       .filter((d) => d.value > 0);
   }, [datos]);
 
+  // Label personalizada para el pie (nombre + %)
+  const renderPieLabel = ({ name, percent }) =>
+    `${name}: ${(percent * 100).toFixed(1)}%`;
+
   return (
     <div
       className="min-h-screen p-6 md:p-8"
@@ -382,8 +386,21 @@ export default function ReportesImpactoCategoria() {
                       tickLine={false}
                       axisLine={{ stroke: "#e5e7eb" }}
                     />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip />
+                    <YAxis
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={formatNumber}
+                    />
+                    <Tooltip
+                      formatter={(value, key) => {
+                        const labelMap = {
+                          co2: "CO₂ (kg)",
+                          agua: "Agua (L)",
+                          energia: "Energía (kWh)",
+                        };
+                        return [formatNumber(value), labelMap[key] || key];
+                      }}
+                      labelFormatter={(label) => `Categoría: ${label}`}
+                    />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     <Bar dataKey="co2" name="CO₂ (kg)" fill="#047857" />
                     <Bar dataKey="agua" name="Agua (L)" fill="#1e3a8a" />
@@ -426,7 +443,8 @@ export default function ReportesImpactoCategoria() {
                       cx="50%"
                       cy="50%"
                       outerRadius={90}
-                      label
+                      labelLine={false}
+                      label={renderPieLabel}
                       dataKey="value"
                     >
                       {pieData.map((entry, index) => (
@@ -436,7 +454,12 @@ export default function ReportesImpactoCategoria() {
                         />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip
+                      formatter={(value, name, props) => [
+                        `${formatNumber(value)} (CO₂ + Agua + Energía)`,
+                        props?.payload?.name || name,
+                      ]}
+                    />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                   </PieChart>
                 </ResponsiveContainer>

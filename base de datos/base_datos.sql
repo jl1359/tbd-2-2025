@@ -3210,7 +3210,6 @@ BEGIN
     END IF;
 
     -- Si estaba PROGRAMADA, no hubo consumo ni bloqueo → solo estado
-
     -- 3) Marcar publicidad como CANCELADA
     UPDATE PUBLICIDAD
     SET estado = 'CANCELADA'

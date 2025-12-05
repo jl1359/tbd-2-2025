@@ -1,9 +1,8 @@
 // backend/src/modules/wallet/wallet.service.js
 import { prisma } from "../../config/prisma.js";
 
-// =======================================
 // Helper: convertir BigInt / Decimal a Number
-// =======================================
+
 function toNumberSafe(value, def = 0) {
   if (value == null) return def;
 
@@ -17,9 +16,8 @@ function toNumberSafe(value, def = 0) {
   return Number.isNaN(num) ? def : num;
 }
 
-// =======================================
+
 // Normalizadores
-// =======================================
 
 // Saldo de billetera
 function normalizeBilleteraRow(row) {
@@ -89,9 +87,7 @@ function normalizeCompraRow(row) {
   };
 }
 
-// =======================================
 // Servicios públicos del módulo
-// =======================================
 
 // Saldo actual de la billetera del usuario logueado
 export async function obtenerMisCreditosService(idUsuario) {
@@ -136,7 +132,6 @@ export async function obtenerMisMovimientosService(idUsuario) {
 
   return rows.map(normalizeMovimientoRow);
 }
-
 
 // Compra de un paquete de créditos (llama al SP y devuelve la billetera actualizada)
 export async function comprarCreditosService({

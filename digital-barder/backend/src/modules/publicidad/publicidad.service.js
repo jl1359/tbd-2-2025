@@ -57,6 +57,9 @@ export const crearPublicidadService = async (idUsuario, body) => {
     fecha_inicio,
     fecha_fin,
     costo_creditos,
+    // 🔹 vienen del front y hay que guardarlos
+    banner_url,
+    archivo_url,
   } = body;
 
   const costo = Number(costo_creditos);
@@ -70,7 +73,9 @@ export const crearPublicidadService = async (idUsuario, body) => {
     !Number.isFinite(costo) ||
     costo <= 0
   ) {
-    const err = new Error("Faltan datos obligatorios o costo inválido en publicidad");
+    const err = new Error(
+      "Faltan datos obligatorios o costo inválido en publicidad"
+    );
     err.status = 400;
     throw err;
   }
@@ -85,7 +90,9 @@ export const crearPublicidadService = async (idUsuario, body) => {
       url_destino,
       fecha_inicio,
       fecha_fin,
-      costo_creditos
+      costo_creditos,
+      banner_url,
+      archivo_url
     )
     VALUES (
       ${idUsuario},
@@ -96,7 +103,9 @@ export const crearPublicidadService = async (idUsuario, body) => {
       ${url_destino || null},
       ${fecha_inicio},
       ${fecha_fin},
-      ${costo}
+      ${costo},
+      ${banner_url || null},
+      ${archivo_url || null}
     )
   `;
 
@@ -110,7 +119,7 @@ export const crearPublicidadService = async (idUsuario, body) => {
   return row;
 };
 
-/* =====================================================
+/* 
    CAMBIAR ESTADO (ADMIN / DUEÑO)
    Se apoya en los SP de retención:
    - ACTIVA     -> sp_publicidad_activar_retencion
@@ -188,9 +197,9 @@ export const cambiarEstadoPublicidadService = async (idPublicidad, estado) => {
   return row;
 };
 
-/* =====================================================
+/* 
    ELIMINAR (LÓGICO)
-===================================================== */
+ */
 export const eliminarPublicidadService = async (idPublicidad) => {
   // La tratamos como un cambio de estado a ELIMINADA
   return cambiarEstadoPublicidadService(idPublicidad, "ELIMINADA");

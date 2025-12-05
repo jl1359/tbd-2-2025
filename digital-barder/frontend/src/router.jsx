@@ -70,9 +70,7 @@ export default function AppRouter() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
-      {/* ------------------------------- */}
       {/*         RUTAS PROTEGIDAS        */}
-      {/* ------------------------------- */}
 
       {/* HOME */}
       <Route

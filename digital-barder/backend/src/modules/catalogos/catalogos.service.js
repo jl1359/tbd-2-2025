@@ -1,8 +1,8 @@
 import { prisma } from "../../config/prisma.js";
 
-/* =======================
+/* 
    LISTADOS
-   ======================= */
+    */
 
 export const listarCategorias = () =>
   prisma.$queryRaw`SELECT * FROM CATEGORIA ORDER BY nombre`;
@@ -25,9 +25,9 @@ export const listarUbicacionesPublicidad = () =>
 export const listarTiposLogro = () =>
   prisma.$queryRaw`SELECT * FROM TIPO_LOGRO ORDER BY nombre`;
 
-/* =======================
+/* 
    CRUD OPCIONAL (ADMIN)
-   ======================= */
+    */
 
 /**
  * Solo catálogos "simples" (id, nombre, descripcion opcional)
@@ -50,7 +50,7 @@ const tablasPermitidas = {
     tabla: "TIPO_LOGRO",
     idCol: "id_tipo_logro",
   },
-  // NOTA:
+
   // UNIDAD_MEDIDA y UBICACION_PUBLICIDAD quedan solo lectura,
   // porque requieren más campos (simbolo, precio_base, etc.).
 };

@@ -1,3 +1,4 @@
+// src/pages/Wallet.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../services/api";
@@ -7,7 +8,10 @@ export default function Wallet() {
   const [saldo, setSaldo] = useState(0);
   const [bloqueado, setBloqueado] = useState(0);
   const [movimientos, setMovimientos] = useState([]);
+  const [pendientesComprador, setPendientesComprador] = useState([]);
+  const [pendientesVendedor, setPendientesVendedor] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [operando, setOperando] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
@@ -20,9 +24,11 @@ export default function Wallet() {
       setCargando(true);
       setError("");
 
-      const [resCreditos, resMovs] = await Promise.all([
+      const [resCreditos, resMovs, resCompras, resVentas] = await Promise.all([
         api("/wallet/mis-creditos"),
         api("/wallet/mis-movimientos"),
+        api("/intercambios/mis-compras"),
+        api("/intercambios/mis-ventas"),
       ]);
 
       const saldoDisponible =
@@ -40,13 +46,65 @@ export default function Wallet() {
       setBloqueado(saldoBloqueado);
 
       setMovimientos(Array.isArray(resMovs) ? resMovs.slice(0, 10) : []);
+
+      const compras = Array.isArray(resCompras) ? resCompras : [];
+      const ventas = Array.isArray(resVentas) ? resVentas : [];
+
+      setPendientesComprador(
+        compras.filter((t) => t.estado === "SOLICITADA")
+      );
+      setPendientesVendedor(
+        ventas.filter((t) => t.estado === "SOLICITADA")
+      );
     } catch (err) {
       console.error("Error cargando billetera:", err);
       setError(
-        err.message || "Error al cargar la información de la billetera."
+        err?.response?.data?.message ||
+          err.message ||
+          "Error al cargar la información de la billetera."
       );
     } finally {
       setCargando(false);
+    }
+  }
+
+  async function confirmarIntercambio(idTransaccion) {
+    try {
+      setOperando(true);
+      setError("");
+      await api(`/intercambios/${idTransaccion}/confirmar`, {
+        method: "POST",
+      });
+      await cargarDatos();
+    } catch (err) {
+      console.error("Error confirmando intercambio:", err);
+      setError(
+        err?.response?.data?.message ||
+          err.message ||
+          "No se pudo confirmar el intercambio."
+      );
+    } finally {
+      setOperando(false);
+    }
+  }
+
+  async function cancelarIntercambio(idTransaccion) {
+    try {
+      setOperando(true);
+      setError("");
+      await api(`/intercambios/${idTransaccion}/cancelar`, {
+        method: "POST",
+      });
+      await cargarDatos();
+    } catch (err) {
+      console.error("Error cancelando intercambio:", err);
+      setError(
+        err?.response?.data?.message ||
+          err.message ||
+          "No se pudo cancelar el intercambio."
+      );
+    } finally {
+      setOperando(false);
     }
   }
 
@@ -85,38 +143,16 @@ export default function Wallet() {
           </p>
         </div>
 
-        {/* Créditos retenidos */}
+        {/* Créditos retenidos + info */}
         <div className="rounded-2xl border border-emerald-700 bg-[#0f3f2d] p-6 shadow-lg flex flex-col justify-between">
           <div>
             <p className="text-emerald-200 text-sm mb-2">Créditos retenidos</p>
             <p className="text-4xl font-bold text-amber-300">{bloqueado}</p>
             <p className="text-xs text-emerald-100/70 mt-2">
               Créditos reservados por intercambios o campañas de publicidad en
-              curso.
+              curso. Se liberan al confirmar o cancelar las operaciones.
             </p>
           </div>
-
-          {/* 🔘 BOTONES PARA GESTIONAR RETENCIONES */}
-          {bloqueado > 0 && (
-            <div className="mt-4 flex flex-wrap gap-2 text-xs">
-              <button
-                className="bg-amber-400 hover:bg-amber-500 text-amber-950 px-3 py-1.5 rounded-lg font-semibold"
-                onClick={() =>
-                  navigate("/intercambios?filtro=pending-retencion")
-                }
-              >
-                Retenciones de intercambios
-              </button>
-              <button
-                className="bg-amber-400 hover:bg-amber-500 text-amber-950 px-3 py-1.5 rounded-lg font-semibold"
-                onClick={() =>
-                  navigate("/wallet/historial-compras?filtro=pending-retencion")
-                }
-              >
-                Retenciones de compras
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Acciones rápidas */}
@@ -150,6 +186,100 @@ export default function Wallet() {
         </div>
       </div>
 
+      {/* PANEL DE INTERCAMBIOS PENDIENTES (RETENCIÓN) */}
+      {(pendientesComprador.length > 0 || pendientesVendedor.length > 0) && (
+        <section className="bg-[#0f3f2d] rounded-2xl border border-amber-600 p-6 shadow-lg mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-amber-300">
+              Intercambios con créditos retenidos
+            </h2>
+            {operando && (
+              <span className="text-[11px] text-amber-200">
+                Procesando acción...
+              </span>
+            )}
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 text-sm">
+            {/* Como COMPRADOR: puedo cancelar para recuperar créditos */}
+            <div>
+              <h3 className="font-semibold text-emerald-200 mb-2">
+                Como comprador (puedes cancelar)
+              </h3>
+              {pendientesComprador.length === 0 ? (
+                <p className="text-xs text-emerald-100/70">
+                  No tienes intercambios pendientes como comprador.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {pendientesComprador.map((t) => (
+                    <div
+                      key={t.id_transaccion}
+                      className="flex items-center justify-between border border-emerald-800/70 rounded-xl px-3 py-2"
+                    >
+                      <div className="mr-2">
+                        <p className="font-semibold text-emerald-100">
+                          {t.titulo || "Intercambio"}
+                        </p>
+                        <p className="text-[11px] text-emerald-100/70">
+                          #{t.id_transaccion} · {t.cantidad_creditos} cr. ·{" "}
+                          {new Date(t.creado_en).toLocaleString()}
+                        </p>
+                      </div>
+                      <button
+                        disabled={operando}
+                        onClick={() => cancelarIntercambio(t.id_transaccion)}
+                        className="text-xs bg-red-500 hover:bg-red-600 disabled:bg-red-900/60 text-white px-3 py-1.5 rounded-lg font-semibold"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Como VENDEDOR: puedo aceptar para recibir créditos */}
+            <div>
+              <h3 className="font-semibold text-emerald-200 mb-2">
+                Como vendedor (puedes aceptar)
+              </h3>
+              {pendientesVendedor.length === 0 ? (
+                <p className="text-xs text-emerald-100/70">
+                  No tienes intercambios pendientes como vendedor.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {pendientesVendedor.map((t) => (
+                    <div
+                      key={t.id_transaccion}
+                      className="flex items-center justify-between border border-emerald-800/70 rounded-xl px-3 py-2"
+                    >
+                      <div className="mr-2">
+                        <p className="font-semibold text-emerald-100">
+                          {t.titulo || "Intercambio"}
+                        </p>
+                        <p className="text-[11px] text-emerald-100/70">
+                          #{t.id_transaccion} · {t.cantidad_creditos} cr. ·{" "}
+                          {new Date(t.creado_en).toLocaleString()}
+                        </p>
+                      </div>
+                      <button
+                        disabled={operando}
+                        onClick={() => confirmarIntercambio(t.id_transaccion)}
+                        className="text-xs bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-900/60 text-emerald-950 px-3 py-1.5 rounded-lg font-semibold"
+                      >
+                        Aceptar
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* LISTA MOVIMIENTOS RECIENTES */}
       <section className="bg-[#0f3f2d] rounded-2xl border border-emerald-700 p-6 shadow-lg">
         <div className="flex items-center justify-between mb-4">
@@ -174,7 +304,6 @@ export default function Wallet() {
               const fecha =
                 m.creado_en || m.fecha || m.fecha_movimiento || null;
 
-              // Determinar si es un movimiento negativo o positivo
               const esNegativo =
                 m.signo_mov === "NEGATIVO" ||
                 m.tipo_movimiento?.includes("OUT") ||

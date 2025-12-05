@@ -26,7 +26,7 @@ export async function crearIntercambioService({
     }
   }
 
-  // ✅ Llamamos al SP con retención
+  //  Llamamos al SP con retención
   await prisma.$executeRawUnsafe(
     "CALL sp_iniciar_intercambio_retencion(?, ?)",
     idComprador,

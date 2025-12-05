@@ -95,30 +95,6 @@ backend/src/modules/wallet/wallet.routes.js
 backend/src/modules/wallet/wallet.service.js
 backend/src/routes/index.js
 backend/src/server.js
-backend/uploads_storage/064e7ccb-e4e2-4b47-9867-b32e9accc039.mp4
-backend/uploads_storage/093f543f-7ba6-440f-900e-2b055435207d.png
-backend/uploads_storage/1717f8c0-ba65-48b3-80da-d06a474dd514.png
-backend/uploads_storage/1814c878-9e38-43ac-b657-1ed3a8e7acd7.png
-backend/uploads_storage/2a95213c-f89f-41a8-bc1f-253271c41a43.jpeg
-backend/uploads_storage/4803c3ca-c557-4d22-a0e0-780fda14abbc.png
-backend/uploads_storage/4805af34-3583-48c5-b95a-c3ced3dcffc3.jpeg
-backend/uploads_storage/5278aab6-8023-4bf0-9785-58c3d0f88e21.png
-backend/uploads_storage/5ec162af-5dcc-410f-9c9b-e75890e67e71.png
-backend/uploads_storage/6f3f9968-67eb-4486-a063-3215906da168.png
-backend/uploads_storage/76fd0077-c268-499a-ada0-2f2fe153cf08.png
-backend/uploads_storage/77c19012-3587-46dc-8287-e06d943d5157.png
-backend/uploads_storage/7e690878-a660-4faf-8cb3-684d5bd7632f.jpeg
-backend/uploads_storage/8187d9c8-fe66-4c7d-a4a3-3b7368b39c0d.jpeg
-backend/uploads_storage/8647a7f2-f3aa-4460-acc7-614520f86ab0.png
-backend/uploads_storage/8bfa307e-655c-4951-8926-fc3f154b0ef7.png
-backend/uploads_storage/8e1a1ff4-cf6c-4637-89c6-58391488bf2e.mp4
-backend/uploads_storage/92ebb3af-ed3c-4d5c-84b4-6da43ea646dc.jpeg
-backend/uploads_storage/ae36f97d-b4c1-4ee1-b661-e587a49f346b.jpeg
-backend/uploads_storage/cb6b319f-881d-4f8a-8a5e-9f8eecd10402.png
-backend/uploads_storage/d6b3b8be-16ba-41bc-b958-7ab0c3e14e38.png
-backend/uploads_storage/e5242857-81b5-48f2-8cd2-03108be9244f.png
-backend/uploads_storage/ebcf5445-a6b4-49d4-8f70-20b51c821123.png
-backend/uploads_storage/fc1090e9-4161-4b16-bd33-44e34e431740.png
 backend/utils/jsonBigInt.js
 docker-compose.yml
 frontend/index.html
@@ -854,45 +830,39 @@ import { fileURLToPath } from "url";
 
 const app = express();
 
-// -------------------------------------------------------------
 // Necesario para rutas absolutas (uploads y archivos estáticos)
-// -------------------------------------------------------------
+// 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// -------------------------------------------------------------
 // Middlewares globales
-// -------------------------------------------------------------
+
 app.use(cors());                // permitir peticiones de tu frontend
 app.use(morgan("dev"));         // logs en consola
 app.use(express.json());        // permite JSON en body
 app.use(express.urlencoded({ extended: true })); // formularios
 
-// -------------------------------------------------------------
+
 // Servir archivos estáticos (subidas de imágenes)
 // Ruta final: http://localhost:4000/uploads/<nombre-archivo>
-// -------------------------------------------------------------
+
 app.use(
   "/uploads",
   express.static(path.join(__dirname, "..", "uploads_storage"))
 );
 
-// -------------------------------------------------------------
 // Registrar todas las rutas del backend
-// -------------------------------------------------------------
+
 app.use("/api", routes);
 
-// -------------------------------------------------------------
 // Middleware para rutas no encontradas
-// -------------------------------------------------------------
+
 app.use((req, res, next) => {
   res.status(404).json({ message: "Ruta no encontrada" });
 });
 
-// -------------------------------------------------------------
 // Middleware global de manejo de errores
 // (Siempre debe ir al final)
-// -------------------------------------------------------------
 app.use(errorHandler);
 
 export default app;
@@ -2038,8 +2008,8 @@ import {
 } from "./catalogos.service.js";
 
 // Helper para respuestas limpias
-// 🔴 ANTES: devolvía { ok: true, data }
-// 🔵 AHORA: devolvemos directamente data (array/objeto)
+//  ANTES: devolvía { ok: true, data }
+//  AHORA: devolvemos directamente data (array/objeto)
 function ok(res, data) {
   return res.json(data);
 }
@@ -2176,9 +2146,9 @@ export default router;
 <file path="backend/src/modules/catalogos/catalogos.service.js">
 import { prisma } from "../../config/prisma.js";
 
-/* =======================
+/* 
    LISTADOS
-   ======================= */
+    */
 
 export const listarCategorias = () =>
   prisma.$queryRaw`SELECT * FROM CATEGORIA ORDER BY nombre`;
@@ -2201,9 +2171,9 @@ export const listarUbicacionesPublicidad = () =>
 export const listarTiposLogro = () =>
   prisma.$queryRaw`SELECT * FROM TIPO_LOGRO ORDER BY nombre`;
 
-/* =======================
+/* 
    CRUD OPCIONAL (ADMIN)
-   ======================= */
+    */
 
 /**
  * Solo catálogos "simples" (id, nombre, descripcion opcional)
@@ -2226,7 +2196,7 @@ const tablasPermitidas = {
     tabla: "TIPO_LOGRO",
     idCol: "id_tipo_logro",
   },
-  // NOTA:
+
   // UNIDAD_MEDIDA y UBICACION_PUBLICIDAD quedan solo lectura,
   // porque requieren más campos (simbolo, precio_base, etc.).
 };
@@ -2478,7 +2448,7 @@ export async function crearIntercambioService({
     }
   }
 
-  // ✅ Llamamos al SP con retención
+  //  Llamamos al SP con retención
   await prisma.$executeRawUnsafe(
     "CALL sp_iniciar_intercambio_retencion(?, ?)",
     idComprador,
@@ -3715,9 +3685,9 @@ export async function crearPublicacionServicioService(idUsuario, body) {
   });
 }
 
-/* ============================================================
-   BÚSQUEDA FULLTEXT
-   ============================================================ */
+/* 
+  BÚSQUEDA FULLTEXT
+   */
 
 export async function buscarPublicacionesService(q) {
   if (!q.trim()) return [];
@@ -3739,9 +3709,9 @@ export async function buscarPublicacionesService(q) {
   );
 }
 
-/* ============================================================
-   CALIFICACIONES
-   ============================================================ */
+/* 
+  CALIFICACIONES
+    */
 
 export async function crearCalificacionService({
   idUsuario,
@@ -3783,9 +3753,9 @@ export async function listarCalificacionesService(idPublicacion) {
   `;
 }
 
-/* ============================================================
-   NUEVO: EDITAR / ESTADO / ELIMINAR
-   ============================================================ */
+/* 
+  NUEVO: EDITAR / ESTADO / ELIMINAR
+   */
 
 // Helper: verificar que el usuario sea dueño o ADMIN
 async function assertPuedeEditar(idUsuario, rol, idPublicacion) {
@@ -3908,9 +3878,9 @@ function toPlain(value) {
   return value;
 }
 
-/* =====================================================
+/* 
    PUBLICAS
-===================================================== */
+ */
 export const listarPublicidadActivaController = async (req, res, next) => {
   try {
     const data = await listarPublicidadActivaService();
@@ -3920,9 +3890,9 @@ export const listarPublicidadActivaController = async (req, res, next) => {
   }
 };
 
-/* =====================================================
+/* 
    ADMIN
-===================================================== */
+ */
 export const crearPublicidadController = async (req, res, next) => {
   try {
     const idUsuario = req.user.id_usuario;
@@ -3956,9 +3926,9 @@ export const buscarPublicacionesParaPublicidadController = async (
   }
 };
 
-/* =====================================================
-   CAMBIAR ESTADO (SOLO ADMIN)
-===================================================== */
+/* 
+  CAMBIAR ESTADO (SOLO ADMIN)
+ */
 export const cambiarEstadoPublicidadController = async (req, res, next) => {
   try {
     const idPublicidad = Number(req.params.id);
@@ -3977,9 +3947,9 @@ export const cambiarEstadoPublicidadController = async (req, res, next) => {
   }
 };
 
-/* =====================================================
-   ELIMINAR (LÓGICO)
-===================================================== */
+/* 
+  ELIMINAR (LÓGICO)
+ */
 export const eliminarPublicidadController = async (req, res, next) => {
   try {
     const idPublicidad = Number(req.params.id);
@@ -4012,16 +3982,16 @@ import {
 
 const router = Router();
 
-/* ===========================
+/* 
    RUTAS PÚBLICAS
-   =========================== */
+    */
 
 // Publicidad visible en el sistema (HOME, publicaciones, etc.)
 router.get("/activa", listarPublicidadActivaController);
 
-/* ===========================
+/* 
    USUARIO AUTENTICADO
-   =========================== */
+    */
 
 // Desde aquí, solo usuarios logueados
 router.use(authMiddleware);
@@ -4029,9 +3999,9 @@ router.use(authMiddleware);
 // Cualquier usuario logueado puede CREAR su campaña (queda PROGRAMADA)
 router.post("/", crearPublicidadController);
 
-/* ===========================
+/* 
    SOLO ADMIN (GESTIÓN)
-   =========================== */
+    */
 
 // Desde aquí, además debe ser ADMIN
 router.use(isAdmin);
@@ -4114,6 +4084,9 @@ export const crearPublicidadService = async (idUsuario, body) => {
     fecha_inicio,
     fecha_fin,
     costo_creditos,
+    // 🔹 vienen del front y hay que guardarlos
+    banner_url,
+    archivo_url,
   } = body;
 
   const costo = Number(costo_creditos);
@@ -4127,7 +4100,9 @@ export const crearPublicidadService = async (idUsuario, body) => {
     !Number.isFinite(costo) ||
     costo <= 0
   ) {
-    const err = new Error("Faltan datos obligatorios o costo inválido en publicidad");
+    const err = new Error(
+      "Faltan datos obligatorios o costo inválido en publicidad"
+    );
     err.status = 400;
     throw err;
   }
@@ -4142,7 +4117,9 @@ export const crearPublicidadService = async (idUsuario, body) => {
       url_destino,
       fecha_inicio,
       fecha_fin,
-      costo_creditos
+      costo_creditos,
+      banner_url,
+      archivo_url
     )
     VALUES (
       ${idUsuario},
@@ -4153,7 +4130,9 @@ export const crearPublicidadService = async (idUsuario, body) => {
       ${url_destino || null},
       ${fecha_inicio},
       ${fecha_fin},
-      ${costo}
+      ${costo},
+      ${banner_url || null},
+      ${archivo_url || null}
     )
   `;
 
@@ -4167,7 +4146,7 @@ export const crearPublicidadService = async (idUsuario, body) => {
   return row;
 };
 
-/* =====================================================
+/* 
    CAMBIAR ESTADO (ADMIN / DUEÑO)
    Se apoya en los SP de retención:
    - ACTIVA     -> sp_publicidad_activar_retencion
@@ -4245,9 +4224,9 @@ export const cambiarEstadoPublicidadService = async (idPublicidad, estado) => {
   return row;
 };
 
-/* =====================================================
+/* 
    ELIMINAR (LÓGICO)
-===================================================== */
+ */
 export const eliminarPublicidadService = async (idPublicidad) => {
   // La tratamos como un cambio de estado a ELIMINADA
   return cambiarEstadoPublicidadService(idPublicidad, "ELIMINADA");
@@ -5243,9 +5222,8 @@ export default router;
 // backend/src/modules/wallet/wallet.service.js
 import { prisma } from "../../config/prisma.js";
 
-// =======================================
 // Helper: convertir BigInt / Decimal a Number
-// =======================================
+
 function toNumberSafe(value, def = 0) {
   if (value == null) return def;
 
@@ -5259,9 +5237,8 @@ function toNumberSafe(value, def = 0) {
   return Number.isNaN(num) ? def : num;
 }
 
-// =======================================
+
 // Normalizadores
-// =======================================
 
 // Saldo de billetera
 function normalizeBilleteraRow(row) {
@@ -5331,9 +5308,7 @@ function normalizeCompraRow(row) {
   };
 }
 
-// =======================================
 // Servicios públicos del módulo
-// =======================================
 
 // Saldo actual de la billetera del usuario logueado
 export async function obtenerMisCreditosService(idUsuario) {
@@ -5378,7 +5353,6 @@ export async function obtenerMisMovimientosService(idUsuario) {
 
   return rows.map(normalizeMovimientoRow);
 }
-
 
 // Compra de un paquete de créditos (llama al SP y devuelve la billetera actualizada)
 export async function comprarCreditosService({
@@ -11451,10 +11425,12 @@ export default function PublicacionNueva() {
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  getPublicidadActiva,
+  api,
+  getPublicidadAdmin,
   crearPublicidad,
   getUbicacionesPublicidad,
   buildUploadUrl,
+  cambiarEstadoPublicidad,
 } from "../services/api";
 import {
   ArrowLeft,
@@ -11468,41 +11444,53 @@ import {
 } from "lucide-react";
 import hoja from "../assets/hoja.png";
 
-// Para subir archivos reutilizamos el mismo patrón que en Publicaciones.jsx
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000/api";
-const FILE_BASE_URL = API_URL.replace(/\/api\/?$/, "");
-
-// helper para subida a /uploads
+// helper para subida a /api/uploads
 async function subirArchivoBackend(file) {
   const formData = new FormData();
   formData.append("archivo", file); // 👈 debe llamarse igual que en el backend
 
-  const token = localStorage.getItem("token") || "";
-
-  const res = await fetch(`${FILE_BASE_URL}/uploads`, {
+  // usamos el helper api, que ya pone VITE_API_URL + /api
+  const resUpload = await api("/uploads", {
     method: "POST",
-    headers: token
-      ? {
-          Authorization: `Bearer ${token}`,
-        }
-      : {},
     body: formData,
   });
 
-  const text = await res.text();
-  if (!res.ok) {
-    throw new Error(text || "Error al subir archivo/imagen.");
+  // el backend responde: { message, data: { url, path, ... } }
+  const payload = resUpload?.data ?? resUpload;
+
+  const relativeUrl =
+    payload?.url ||
+    payload?.imagen_url ||
+    payload?.path ||
+    null;
+
+  if (!relativeUrl) {
+    throw new Error("El backend no devolvió la URL del archivo.");
   }
 
-  let data = {};
-  try {
-    data = JSON.parse(text);
-  } catch {
-    // por si el backend devuelve texto plano
-  }
+  // normalmente algo tipo "/uploads/archivo.png"
+  return relativeUrl;
+}
 
-  // normalmente: { url: "/uploads/archivo.png" }
-  return data.url || data.path || text;
+function badgeEstado(estado) {
+  const base =
+    "inline-flex items-center px-2 py-1 rounded-full text-[10px] font-semibold border";
+  switch (estado) {
+    case "PROGRAMADA":
+      return `${base} bg-slate-800/60 border-slate-500 text-slate-200`;
+    case "ACTIVA":
+      return `${base} bg-emerald-800/70 border-emerald-400 text-emerald-100`;
+    case "PAUSADA":
+      return `${base} bg-amber-800/60 border-amber-400 text-amber-100`;
+    case "FINALIZADA":
+      return `${base} bg-sky-800/60 border-sky-400 text-sky-100`;
+    case "CANCELADA":
+      return `${base} bg-red-800/60 border-red-400 text-red-100`;
+    case "ELIMINADA":
+      return `${base} bg-zinc-800/80 border-zinc-500 text-zinc-200`;
+    default:
+      return `${base} bg-slate-800/60 border-slate-500 text-slate-200`;
+  }
 }
 
 export default function Publicidad() {
@@ -11527,13 +11515,14 @@ export default function Publicidad() {
 
   // archivos
   const [bannerFile, setBannerFile] = useState(null);
-  const [bannerUrl, setBannerUrl] = useState("");
+  const [bannerUrl, setBannerUrl] = useState("");      // guardamos la URL RELATIVA ("/uploads/...")
   const [bannerPreview, setBannerPreview] = useState(null);
 
   const [archivoFile, setArchivoFile] = useState(null);
-  const [archivoUrl, setArchivoUrl] = useState("");
+  const [archivoUrl, setArchivoUrl] = useState("");    // también relativa
 
   const [subiendo, setSubiendo] = useState(false);
+  const [operandoId, setOperandoId] = useState(null); // para cambiar estado
 
   useEffect(() => {
     cargarPublicidad();
@@ -11544,11 +11533,13 @@ export default function Publicidad() {
     try {
       setLoading(true);
       setError("");
-      const data = await getPublicidadActiva();
+      setMensajeOk("");
+
+      const data = await getPublicidadAdmin();
       setAnuncios(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
-      setError(err.message || "No se pudo cargar la publicidad activa.");
+      setError(err.message || "No se pudo cargar la publicidad.");
     } finally {
       setLoading(false);
     }
@@ -11560,7 +11551,6 @@ export default function Publicidad() {
       setUbicaciones(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Error cargando ubicaciones de publicidad", err);
-      // no es crítico; simplemente no habrá opciones
     }
   }
 
@@ -11571,13 +11561,13 @@ export default function Publicidad() {
       setSubiendo(true);
       setError("");
 
-      const rawUrl = await subirArchivoBackend(file);
-      const finalUrl = buildUploadUrl(rawUrl); // arma URL absoluta
+      const relativeUrl = await subirArchivoBackend(file);
 
+      // guardamos la ruta RELATIVA en el estado
       if (tipo === "banner") {
-        setBannerUrl(finalUrl);
+        setBannerUrl(relativeUrl);
       } else {
-        setArchivoUrl(finalUrl);
+        setArchivoUrl(relativeUrl);
       }
     } catch (err) {
       console.error(err);
@@ -11645,6 +11635,7 @@ export default function Publicidad() {
         fecha_inicio: fechaInicio,
         fecha_fin: fechaFin,
         costo_creditos,
+        // mandamos lo que nos dio /uploads (ruta relativa)
         banner_url: bannerUrl || null,
         archivo_url: archivoUrl || null,
       });
@@ -11674,6 +11665,135 @@ export default function Publicidad() {
     }
   }
 
+  async function handleCambiarEstado(idPublicidad, nuevoEstado) {
+    try {
+      setOperandoId(idPublicidad);
+      setError("");
+      setMensajeOk("");
+
+      await cambiarEstadoPublicidad(idPublicidad, nuevoEstado);
+
+      setMensajeOk(`Estado actualizado a ${nuevoEstado}.`);
+      await cargarPublicidad();
+    } catch (err) {
+      console.error("Error cambiando estado de publicidad:", err);
+      setError(
+        err?.response?.data?.message ||
+          err.message ||
+          "No se pudo cambiar el estado de la publicidad."
+      );
+    } finally {
+      setOperandoId(null);
+    }
+  }
+
+  function renderAcciones(ad) {
+    const disabled = operandoId === ad.id_publicidad;
+
+    const btnBase =
+      "text-[11px] px-2 py-1 rounded-lg font-semibold disabled:opacity-60";
+
+    const acciones = [];
+
+    if (ad.estado === "PROGRAMADA") {
+      acciones.push(
+        <button
+          key="activar"
+          className={`${btnBase} bg-emerald-500 hover:bg-emerald-600 text-emerald-950`}
+          disabled={disabled}
+          onClick={() => handleCambiarEstado(ad.id_publicidad, "ACTIVA")}
+        >
+          Activar
+        </button>,
+        <button
+          key="cancelar"
+          className={`${btnBase} bg-red-500 hover:bg-red-600 text-white`}
+          disabled={disabled}
+          onClick={() => handleCambiarEstado(ad.id_publicidad, "CANCELADA")}
+        >
+          Cancelar
+        </button>,
+        <button
+          key="eliminar"
+          className={`${btnBase} bg-zinc-600 hover:bg-zinc-700 text-zinc-50`}
+          disabled={disabled}
+          onClick={() => handleCambiarEstado(ad.id_publicidad, "ELIMINADA")}
+        >
+          Eliminar
+        </button>
+      );
+    } else if (ad.estado === "ACTIVA") {
+      acciones.push(
+        <button
+          key="pausar"
+          className={`${btnBase} bg-amber-500 hover:bg-amber-600 text-amber-950`}
+          disabled={disabled}
+          onClick={() => handleCambiarEstado(ad.id_publicidad, "PAUSADA")}
+        >
+          Pausar
+        </button>,
+        <button
+          key="finalizar"
+          className={`${btnBase} bg-sky-500 hover:bg-sky-600 text-sky-950`}
+          disabled={disabled}
+          onClick={() => handleCambiarEstado(ad.id_publicidad, "FINALIZADA")}
+        >
+          Finalizar
+        </button>,
+        <button
+          key="cancelar"
+          className={`${btnBase} bg-red-500 hover:bg-red-600 text-white`}
+          disabled={disabled}
+          onClick={() => handleCambiarEstado(ad.id_publicidad, "CANCELADA")}
+        >
+          Cancelar
+        </button>
+      );
+    } else if (ad.estado === "PAUSADA") {
+      acciones.push(
+        <button
+          key="activar"
+          className={`${btnBase} bg-emerald-500 hover:bg-emerald-600 text-emerald-950`}
+          disabled={disabled}
+          onClick={() => handleCambiarEstado(ad.id_publicidad, "ACTIVA")}
+        >
+          Reanudar
+        </button>,
+        <button
+          key="cancelar"
+          className={`${btnBase} bg-red-500 hover:bg-red-600 text-white`}
+          disabled={disabled}
+          onClick={() => handleCambiarEstado(ad.id_publicidad, "CANCELADA")}
+        >
+          Cancelar
+        </button>
+      );
+    } else if (ad.estado === "FINALIZADA" || ad.estado === "CANCELADA") {
+      acciones.push(
+        <button
+          key="eliminar"
+          className={`${btnBase} bg-zinc-600 hover:bg-zinc-700 text-zinc-50`}
+          disabled={disabled}
+          onClick={() => handleCambiarEstado(ad.id_publicidad, "ELIMINADA")}
+        >
+          Eliminar
+        </button>
+      );
+    }
+
+    return (
+      <div className="flex flex-wrap gap-2 mt-2">
+        {acciones}
+        {disabled && (
+          <span className="text-[10px] text-emerald-100/70 flex items-center gap-1">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            Procesando...
+          </span>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#082b1f] text-white p-6 md:p-10">
       {/* HEADER */}
@@ -11697,7 +11817,7 @@ export default function Publicidad() {
         <div className="flex items-center gap-3">
           <span className="text-sm text-emerald-100/80 flex items-center gap-1">
             <Monitor size={16} className="text-emerald-300" />
-            Activos:{" "}
+            Campañas:{" "}
             <span className="font-semibold text-emerald-300">
               {anuncios.length}
             </span>
@@ -11721,18 +11841,18 @@ export default function Publicidad() {
 
       {/* CONTENIDO: LISTADO + FORMULARIO */}
       <div className="grid gap-6 lg:grid-cols-[2fr,1.6fr]">
-        {/* LISTADO DE PUBLICIDAD ACTIVA */}
+        {/* LISTADO DE PUBLICIDAD (ADMIN) */}
         <section className="bg-[#0f3f2d] border border-emerald-700 rounded-2xl p-4 md:p-5 shadow-md">
           <h2 className="text-lg font-semibold text-emerald-200 flex items-center gap-2 mb-3">
             <Monitor size={18} className="text-emerald-300" />
-            Publicidad activa
+            Campañas de publicidad
           </h2>
 
           {loading ? (
             <p className="text-emerald-100/80 text-sm">Cargando anuncios...</p>
           ) : anuncios.length === 0 ? (
             <p className="text-emerald-100/80 text-sm">
-              No hay publicidad activa en este momento.
+              No hay campañas registradas.
             </p>
           ) : (
             <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
@@ -11741,7 +11861,7 @@ export default function Publicidad() {
                   key={ad.id_publicidad}
                   className="rounded-xl border border-emerald-700/70 bg-emerald-900/30 p-3 text-sm flex flex-col gap-2"
                 >
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-xs text-emerald-300/80">
                         ID #{ad.id_publicidad} · {ad.usuario || "Usuario"}
@@ -11756,12 +11876,17 @@ export default function Publicidad() {
                       )}
                     </div>
 
-                    {typeof ad.costo_creditos === "number" && (
-                      <div className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-emerald-800/70 border border-emerald-500/70">
-                        <Coins size={14} className="text-emerald-300" />
-                        <span>{ad.costo_creditos} cr.</span>
-                      </div>
-                    )}
+                    <div className="flex flex-col items-end gap-1">
+                      {typeof ad.costo_creditos === "number" && (
+                        <div className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-emerald-800/70 border border-emerald-500/70">
+                          <Coins size={14} className="text-emerald-300" />
+                          <span>{ad.costo_creditos} cr.</span>
+                        </div>
+                      )}
+                      <span className={badgeEstado(ad.estado)}>
+                        {ad.estado}
+                      </span>
+                    </div>
                   </div>
 
                   {ad.descripcion && (
@@ -11819,6 +11944,9 @@ export default function Publicidad() {
                       </a>
                     )}
                   </div>
+
+                  {/* Botones de cambio de estado */}
+                  {renderAcciones(ad)}
                 </article>
               ))}
             </div>
@@ -11986,7 +12114,7 @@ export default function Publicidad() {
                   <p className="mt-2 text-[11px] text-emerald-100/80 break-all">
                     Archivo subido:{" "}
                     <a
-                      href={archivoUrl}
+                      href={buildUploadUrl(archivoUrl)}
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex items-center gap-1 underline text-emerald-300 hover:text-emerald-100"
@@ -18455,6 +18583,7 @@ export default function ReportesUsuariosPremium() {
 </file>
 
 <file path="frontend/src/pages/Wallet.jsx">
+// src/pages/Wallet.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../services/api";
@@ -18464,7 +18593,10 @@ export default function Wallet() {
   const [saldo, setSaldo] = useState(0);
   const [bloqueado, setBloqueado] = useState(0);
   const [movimientos, setMovimientos] = useState([]);
+  const [pendientesComprador, setPendientesComprador] = useState([]);
+  const [pendientesVendedor, setPendientesVendedor] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [operando, setOperando] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
@@ -18477,9 +18609,11 @@ export default function Wallet() {
       setCargando(true);
       setError("");
 
-      const [resCreditos, resMovs] = await Promise.all([
+      const [resCreditos, resMovs, resCompras, resVentas] = await Promise.all([
         api("/wallet/mis-creditos"),
         api("/wallet/mis-movimientos"),
+        api("/intercambios/mis-compras"),
+        api("/intercambios/mis-ventas"),
       ]);
 
       const saldoDisponible =
@@ -18497,13 +18631,65 @@ export default function Wallet() {
       setBloqueado(saldoBloqueado);
 
       setMovimientos(Array.isArray(resMovs) ? resMovs.slice(0, 10) : []);
+
+      const compras = Array.isArray(resCompras) ? resCompras : [];
+      const ventas = Array.isArray(resVentas) ? resVentas : [];
+
+      setPendientesComprador(
+        compras.filter((t) => t.estado === "SOLICITADA")
+      );
+      setPendientesVendedor(
+        ventas.filter((t) => t.estado === "SOLICITADA")
+      );
     } catch (err) {
       console.error("Error cargando billetera:", err);
       setError(
-        err.message || "Error al cargar la información de la billetera."
+        err?.response?.data?.message ||
+          err.message ||
+          "Error al cargar la información de la billetera."
       );
     } finally {
       setCargando(false);
+    }
+  }
+
+  async function confirmarIntercambio(idTransaccion) {
+    try {
+      setOperando(true);
+      setError("");
+      await api(`/intercambios/${idTransaccion}/confirmar`, {
+        method: "POST",
+      });
+      await cargarDatos();
+    } catch (err) {
+      console.error("Error confirmando intercambio:", err);
+      setError(
+        err?.response?.data?.message ||
+          err.message ||
+          "No se pudo confirmar el intercambio."
+      );
+    } finally {
+      setOperando(false);
+    }
+  }
+
+  async function cancelarIntercambio(idTransaccion) {
+    try {
+      setOperando(true);
+      setError("");
+      await api(`/intercambios/${idTransaccion}/cancelar`, {
+        method: "POST",
+      });
+      await cargarDatos();
+    } catch (err) {
+      console.error("Error cancelando intercambio:", err);
+      setError(
+        err?.response?.data?.message ||
+          err.message ||
+          "No se pudo cancelar el intercambio."
+      );
+    } finally {
+      setOperando(false);
     }
   }
 
@@ -18537,17 +18723,21 @@ export default function Wallet() {
           <p className="text-emerald-200 text-sm mb-2">Créditos disponibles</p>
           <p className="text-4xl font-bold text-emerald-300">{saldo}</p>
           <p className="text-xs text-emerald-100/70 mt-2">
-            Créditos que puedes usar ahora mismo para compras, intercambios o publicidad.
+            Créditos que puedes usar ahora mismo para compras, intercambios o
+            publicidad.
           </p>
         </div>
 
-        {/* Créditos retenidos */}
-        <div className="rounded-2xl border border-emerald-700 bg-[#0f3f2d] p-6 shadow-lg">
-          <p className="text-emerald-200 text-sm mb-2">Créditos retenidos</p>
-          <p className="text-4xl font-bold text-amber-300">{bloqueado}</p>
-          <p className="text-xs text-emerald-100/70 mt-2">
-            Créditos reservados por intercambios o campañas de publicidad en curso.
-          </p>
+        {/* Créditos retenidos + info */}
+        <div className="rounded-2xl border border-emerald-700 bg-[#0f3f2d] p-6 shadow-lg flex flex-col justify-between">
+          <div>
+            <p className="text-emerald-200 text-sm mb-2">Créditos retenidos</p>
+            <p className="text-4xl font-bold text-amber-300">{bloqueado}</p>
+            <p className="text-xs text-emerald-100/70 mt-2">
+              Créditos reservados por intercambios o campañas de publicidad en
+              curso. Se liberan al confirmar o cancelar las operaciones.
+            </p>
+          </div>
         </div>
 
         {/* Acciones rápidas */}
@@ -18581,6 +18771,100 @@ export default function Wallet() {
         </div>
       </div>
 
+      {/* PANEL DE INTERCAMBIOS PENDIENTES (RETENCIÓN) */}
+      {(pendientesComprador.length > 0 || pendientesVendedor.length > 0) && (
+        <section className="bg-[#0f3f2d] rounded-2xl border border-amber-600 p-6 shadow-lg mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-amber-300">
+              Intercambios con créditos retenidos
+            </h2>
+            {operando && (
+              <span className="text-[11px] text-amber-200">
+                Procesando acción...
+              </span>
+            )}
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 text-sm">
+            {/* Como COMPRADOR: puedo cancelar para recuperar créditos */}
+            <div>
+              <h3 className="font-semibold text-emerald-200 mb-2">
+                Como comprador (puedes cancelar)
+              </h3>
+              {pendientesComprador.length === 0 ? (
+                <p className="text-xs text-emerald-100/70">
+                  No tienes intercambios pendientes como comprador.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {pendientesComprador.map((t) => (
+                    <div
+                      key={t.id_transaccion}
+                      className="flex items-center justify-between border border-emerald-800/70 rounded-xl px-3 py-2"
+                    >
+                      <div className="mr-2">
+                        <p className="font-semibold text-emerald-100">
+                          {t.titulo || "Intercambio"}
+                        </p>
+                        <p className="text-[11px] text-emerald-100/70">
+                          #{t.id_transaccion} · {t.cantidad_creditos} cr. ·{" "}
+                          {new Date(t.creado_en).toLocaleString()}
+                        </p>
+                      </div>
+                      <button
+                        disabled={operando}
+                        onClick={() => cancelarIntercambio(t.id_transaccion)}
+                        className="text-xs bg-red-500 hover:bg-red-600 disabled:bg-red-900/60 text-white px-3 py-1.5 rounded-lg font-semibold"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Como VENDEDOR: puedo aceptar para recibir créditos */}
+            <div>
+              <h3 className="font-semibold text-emerald-200 mb-2">
+                Como vendedor (puedes aceptar)
+              </h3>
+              {pendientesVendedor.length === 0 ? (
+                <p className="text-xs text-emerald-100/70">
+                  No tienes intercambios pendientes como vendedor.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {pendientesVendedor.map((t) => (
+                    <div
+                      key={t.id_transaccion}
+                      className="flex items-center justify-between border border-emerald-800/70 rounded-xl px-3 py-2"
+                    >
+                      <div className="mr-2">
+                        <p className="font-semibold text-emerald-100">
+                          {t.titulo || "Intercambio"}
+                        </p>
+                        <p className="text-[11px] text-emerald-100/70">
+                          #{t.id_transaccion} · {t.cantidad_creditos} cr. ·{" "}
+                          {new Date(t.creado_en).toLocaleString()}
+                        </p>
+                      </div>
+                      <button
+                        disabled={operando}
+                        onClick={() => confirmarIntercambio(t.id_transaccion)}
+                        className="text-xs bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-900/60 text-emerald-950 px-3 py-1.5 rounded-lg font-semibold"
+                      >
+                        Aceptar
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* LISTA MOVIMIENTOS RECIENTES */}
       <section className="bg-[#0f3f2d] rounded-2xl border border-emerald-700 p-6 shadow-lg">
         <div className="flex items-center justify-between mb-4">
@@ -18605,7 +18889,6 @@ export default function Wallet() {
               const fecha =
                 m.creado_en || m.fecha || m.fecha_movimiento || null;
 
-              // Determinar si es un movimiento negativo o positivo
               const esNegativo =
                 m.signo_mov === "NEGATIVO" ||
                 m.tipo_movimiento?.includes("OUT") ||
@@ -18724,9 +19007,7 @@ export default function AppRouter() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
-      {/* ------------------------------- */}
       {/*         RUTAS PROTEGIDAS        */}
-      {/* ------------------------------- */}
 
       {/* HOME */}
       <Route
@@ -19451,17 +19732,12 @@ export function rechazarActividad(idActividad) {
   });
 }
 
-// =====================================================
-// ======================== LOGROS ======================
-// =====================================================
+//  LOGROS 
 
 export function getMisLogros() {
   return api("/logros/mios");
 }
-
-// =====================================================
-// ===================== PROMOCIONES ====================
-// =====================================================
+//  PROMOCIONES 
 
 // catálogo: tipos de promoción
 export function getTiposPromocion() {
@@ -19494,9 +19770,7 @@ export function vincularPublicacionPromocion(id_promocion, id_publicacion) {
   });
 }
 
-// =====================================================
-// ======================= PUBLICIDAD ===================
-// =====================================================
+//  PUBLICIDAD 
 
 // Público: lista de publicidad ACTIVA dentro de fecha_inicio/fecha_fin
 export function getPublicidadActiva() {
@@ -19546,10 +19820,7 @@ export function getUbicacionesPublicidad() {
   return api("/catalogos/ubicaciones-publicidad");
 }
 
-
-// =====================================================
-// ===================== UTILIDADES =====================
-// =====================================================
+//  UTILIDADES 
 
 export function buildUploadUrl(url) {
   if (!url) return "";

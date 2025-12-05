@@ -13,8 +13,8 @@ import {
 } from "./catalogos.service.js";
 
 // Helper para respuestas limpias
-// 🔴 ANTES: devolvía { ok: true, data }
-// 🔵 AHORA: devolvemos directamente data (array/objeto)
+//  ANTES: devolvía { ok: true, data }
+//  AHORA: devolvemos directamente data (array/objeto)
 function ok(res, data) {
   return res.json(data);
 }

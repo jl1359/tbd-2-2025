@@ -2,10 +2,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  getPublicidadActiva,
+  api,
+  getPublicidadAdmin,
   crearPublicidad,
   getUbicacionesPublicidad,
   buildUploadUrl,
+  cambiarEstadoPublicidad,
 } from "../services/api";
 import {
   ArrowLeft,
@@ -19,41 +21,53 @@ import {
 } from "lucide-react";
 import hoja from "../assets/hoja.png";
 
-// Para subir archivos reutilizamos el mismo patrón que en Publicaciones.jsx
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000/api";
-const FILE_BASE_URL = API_URL.replace(/\/api\/?$/, "");
-
-// helper para subida a /uploads
+// helper para subida a /api/uploads
 async function subirArchivoBackend(file) {
   const formData = new FormData();
   formData.append("archivo", file); // 👈 debe llamarse igual que en el backend
 
-  const token = localStorage.getItem("token") || "";
-
-  const res = await fetch(`${FILE_BASE_URL}/uploads`, {
+  // usamos el helper api, que ya pone VITE_API_URL + /api
+  const resUpload = await api("/uploads", {
     method: "POST",
-    headers: token
-      ? {
-          Authorization: `Bearer ${token}`,
-        }
-      : {},
     body: formData,
   });
 
-  const text = await res.text();
-  if (!res.ok) {
-    throw new Error(text || "Error al subir archivo/imagen.");
+  // el backend responde: { message, data: { url, path, ... } }
+  const payload = resUpload?.data ?? resUpload;
+
+  const relativeUrl =
+    payload?.url ||
+    payload?.imagen_url ||
+    payload?.path ||
+    null;
+
+  if (!relativeUrl) {
+    throw new Error("El backend no devolvió la URL del archivo.");
   }
 
-  let data = {};
-  try {
-    data = JSON.parse(text);
-  } catch {
-    // por si el backend devuelve texto plano
-  }
+  // normalmente algo tipo "/uploads/archivo.png"
+  return relativeUrl;
+}
 
-  // normalmente: { url: "/uploads/archivo.png" }
-  return data.url || data.path || text;
+function badgeEstado(estado) {
+  const base =
+    "inline-flex items-center px-2 py-1 rounded-full text-[10px] font-semibold border";
+  switch (estado) {
+    case "PROGRAMADA":
+      return `${base} bg-slate-800/60 border-slate-500 text-slate-200`;
+    case "ACTIVA":
+      return `${base} bg-emerald-800/70 border-emerald-400 text-emerald-100`;
+    case "PAUSADA":
+      return `${base} bg-amber-800/60 border-amber-400 text-amber-100`;
+    case "FINALIZADA":
+      return `${base} bg-sky-800/60 border-sky-400 text-sky-100`;
+    case "CANCELADA":
+      return `${base} bg-red-800/60 border-red-400 text-red-100`;
+    case "ELIMINADA":
+      return `${base} bg-zinc-800/80 border-zinc-500 text-zinc-200`;
+    default:
+      return `${base} bg-slate-800/60 border-slate-500 text-slate-200`;
+  }
 }
 
 export default function Publicidad() {
@@ -78,13 +92,14 @@ export default function Publicidad() {
 
   // archivos
   const [bannerFile, setBannerFile] = useState(null);
-  const [bannerUrl, setBannerUrl] = useState("");
+  const [bannerUrl, setBannerUrl] = useState("");      // guardamos la URL RELATIVA ("/uploads/...")
   const [bannerPreview, setBannerPreview] = useState(null);
 
   const [archivoFile, setArchivoFile] = useState(null);
-  const [archivoUrl, setArchivoUrl] = useState("");
+  const [archivoUrl, setArchivoUrl] = useState("");    // también relativa
 
   const [subiendo, setSubiendo] = useState(false);
+  const [operandoId, setOperandoId] = useState(null); // para cambiar estado
 
   useEffect(() => {
     cargarPublicidad();
@@ -95,11 +110,13 @@ export default function Publicidad() {
     try {
       setLoading(true);
       setError("");
-      const data = await getPublicidadActiva();
+      setMensajeOk("");
+
+      const data = await getPublicidadAdmin();
       setAnuncios(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
-      setError(err.message || "No se pudo cargar la publicidad activa.");
+      setError(err.message || "No se pudo cargar la publicidad.");
     } finally {
       setLoading(false);
     }
@@ -111,7 +128,6 @@ export default function Publicidad() {
       setUbicaciones(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Error cargando ubicaciones de publicidad", err);
-      // no es crítico; simplemente no habrá opciones
     }
   }
 
@@ -122,13 +138,13 @@ export default function Publicidad() {
       setSubiendo(true);
       setError("");
 
-      const rawUrl = await subirArchivoBackend(file);
-      const finalUrl = buildUploadUrl(rawUrl); // arma URL absoluta
+      const relativeUrl = await subirArchivoBackend(file);
 
+      // guardamos la ruta RELATIVA en el estado
       if (tipo === "banner") {
-        setBannerUrl(finalUrl);
+        setBannerUrl(relativeUrl);
       } else {
-        setArchivoUrl(finalUrl);
+        setArchivoUrl(relativeUrl);
       }
     } catch (err) {
       console.error(err);
@@ -196,6 +212,7 @@ export default function Publicidad() {
         fecha_inicio: fechaInicio,
         fecha_fin: fechaFin,
         costo_creditos,
+        // mandamos lo que nos dio /uploads (ruta relativa)
         banner_url: bannerUrl || null,
         archivo_url: archivoUrl || null,
       });
@@ -225,6 +242,135 @@ export default function Publicidad() {
     }
   }
 
+  async function handleCambiarEstado(idPublicidad, nuevoEstado) {
+    try {
+      setOperandoId(idPublicidad);
+      setError("");
+      setMensajeOk("");
+
+      await cambiarEstadoPublicidad(idPublicidad, nuevoEstado);
+
+      setMensajeOk(`Estado actualizado a ${nuevoEstado}.`);
+      await cargarPublicidad();
+    } catch (err) {
+      console.error("Error cambiando estado de publicidad:", err);
+      setError(
+        err?.response?.data?.message ||
+          err.message ||
+          "No se pudo cambiar el estado de la publicidad."
+      );
+    } finally {
+      setOperandoId(null);
+    }
+  }
+
+  function renderAcciones(ad) {
+    const disabled = operandoId === ad.id_publicidad;
+
+    const btnBase =
+      "text-[11px] px-2 py-1 rounded-lg font-semibold disabled:opacity-60";
+
+    const acciones = [];
+
+    if (ad.estado === "PROGRAMADA") {
+      acciones.push(
+        <button
+          key="activar"
+          className={`${btnBase} bg-emerald-500 hover:bg-emerald-600 text-emerald-950`}
+          disabled={disabled}
+          onClick={() => handleCambiarEstado(ad.id_publicidad, "ACTIVA")}
+        >
+          Activar
+        </button>,
+        <button
+          key="cancelar"
+          className={`${btnBase} bg-red-500 hover:bg-red-600 text-white`}
+          disabled={disabled}
+          onClick={() => handleCambiarEstado(ad.id_publicidad, "CANCELADA")}
+        >
+          Cancelar
+        </button>,
+        <button
+          key="eliminar"
+          className={`${btnBase} bg-zinc-600 hover:bg-zinc-700 text-zinc-50`}
+          disabled={disabled}
+          onClick={() => handleCambiarEstado(ad.id_publicidad, "ELIMINADA")}
+        >
+          Eliminar
+        </button>
+      );
+    } else if (ad.estado === "ACTIVA") {
+      acciones.push(
+        <button
+          key="pausar"
+          className={`${btnBase} bg-amber-500 hover:bg-amber-600 text-amber-950`}
+          disabled={disabled}
+          onClick={() => handleCambiarEstado(ad.id_publicidad, "PAUSADA")}
+        >
+          Pausar
+        </button>,
+        <button
+          key="finalizar"
+          className={`${btnBase} bg-sky-500 hover:bg-sky-600 text-sky-950`}
+          disabled={disabled}
+          onClick={() => handleCambiarEstado(ad.id_publicidad, "FINALIZADA")}
+        >
+          Finalizar
+        </button>,
+        <button
+          key="cancelar"
+          className={`${btnBase} bg-red-500 hover:bg-red-600 text-white`}
+          disabled={disabled}
+          onClick={() => handleCambiarEstado(ad.id_publicidad, "CANCELADA")}
+        >
+          Cancelar
+        </button>
+      );
+    } else if (ad.estado === "PAUSADA") {
+      acciones.push(
+        <button
+          key="activar"
+          className={`${btnBase} bg-emerald-500 hover:bg-emerald-600 text-emerald-950`}
+          disabled={disabled}
+          onClick={() => handleCambiarEstado(ad.id_publicidad, "ACTIVA")}
+        >
+          Reanudar
+        </button>,
+        <button
+          key="cancelar"
+          className={`${btnBase} bg-red-500 hover:bg-red-600 text-white`}
+          disabled={disabled}
+          onClick={() => handleCambiarEstado(ad.id_publicidad, "CANCELADA")}
+        >
+          Cancelar
+        </button>
+      );
+    } else if (ad.estado === "FINALIZADA" || ad.estado === "CANCELADA") {
+      acciones.push(
+        <button
+          key="eliminar"
+          className={`${btnBase} bg-zinc-600 hover:bg-zinc-700 text-zinc-50`}
+          disabled={disabled}
+          onClick={() => handleCambiarEstado(ad.id_publicidad, "ELIMINADA")}
+        >
+          Eliminar
+        </button>
+      );
+    }
+
+    return (
+      <div className="flex flex-wrap gap-2 mt-2">
+        {acciones}
+        {disabled && (
+          <span className="text-[10px] text-emerald-100/70 flex items-center gap-1">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            Procesando...
+          </span>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#082b1f] text-white p-6 md:p-10">
       {/* HEADER */}
@@ -248,7 +394,7 @@ export default function Publicidad() {
         <div className="flex items-center gap-3">
           <span className="text-sm text-emerald-100/80 flex items-center gap-1">
             <Monitor size={16} className="text-emerald-300" />
-            Activos:{" "}
+            Campañas:{" "}
             <span className="font-semibold text-emerald-300">
               {anuncios.length}
             </span>
@@ -272,18 +418,18 @@ export default function Publicidad() {
 
       {/* CONTENIDO: LISTADO + FORMULARIO */}
       <div className="grid gap-6 lg:grid-cols-[2fr,1.6fr]">
-        {/* LISTADO DE PUBLICIDAD ACTIVA */}
+        {/* LISTADO DE PUBLICIDAD (ADMIN) */}
         <section className="bg-[#0f3f2d] border border-emerald-700 rounded-2xl p-4 md:p-5 shadow-md">
           <h2 className="text-lg font-semibold text-emerald-200 flex items-center gap-2 mb-3">
             <Monitor size={18} className="text-emerald-300" />
-            Publicidad activa
+            Campañas de publicidad
           </h2>
 
           {loading ? (
             <p className="text-emerald-100/80 text-sm">Cargando anuncios...</p>
           ) : anuncios.length === 0 ? (
             <p className="text-emerald-100/80 text-sm">
-              No hay publicidad activa en este momento.
+              No hay campañas registradas.
             </p>
           ) : (
             <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
@@ -292,7 +438,7 @@ export default function Publicidad() {
                   key={ad.id_publicidad}
                   className="rounded-xl border border-emerald-700/70 bg-emerald-900/30 p-3 text-sm flex flex-col gap-2"
                 >
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-xs text-emerald-300/80">
                         ID #{ad.id_publicidad} · {ad.usuario || "Usuario"}
@@ -307,12 +453,17 @@ export default function Publicidad() {
                       )}
                     </div>
 
-                    {typeof ad.costo_creditos === "number" && (
-                      <div className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-emerald-800/70 border border-emerald-500/70">
-                        <Coins size={14} className="text-emerald-300" />
-                        <span>{ad.costo_creditos} cr.</span>
-                      </div>
-                    )}
+                    <div className="flex flex-col items-end gap-1">
+                      {typeof ad.costo_creditos === "number" && (
+                        <div className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-emerald-800/70 border border-emerald-500/70">
+                          <Coins size={14} className="text-emerald-300" />
+                          <span>{ad.costo_creditos} cr.</span>
+                        </div>
+                      )}
+                      <span className={badgeEstado(ad.estado)}>
+                        {ad.estado}
+                      </span>
+                    </div>
                   </div>
 
                   {ad.descripcion && (
@@ -370,6 +521,9 @@ export default function Publicidad() {
                       </a>
                     )}
                   </div>
+
+                  {/* Botones de cambio de estado */}
+                  {renderAcciones(ad)}
                 </article>
               ))}
             </div>
@@ -537,7 +691,7 @@ export default function Publicidad() {
                   <p className="mt-2 text-[11px] text-emerald-100/80 break-all">
                     Archivo subido:{" "}
                     <a
-                      href={archivoUrl}
+                      href={buildUploadUrl(archivoUrl)}
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex items-center gap-1 underline text-emerald-300 hover:text-emerald-100"

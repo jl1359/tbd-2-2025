@@ -1,10 +1,7 @@
 USE CREDITOS_VERDES2;
 
--- =========================================================
--- 15) SEED MASIVO PARA PRUEBAS FUNCIONALES Y DE CARGA
---     (usuarios, billeteras, compras, intercambios, actividades,
+-- 15) (usuarios, billeteras, compras, intercambios, actividades,
 --      suscripciones, publicidad, impacto, reportes)
--- =========================================================
 
 -- 15.0) Asegurar TIPO_MOVIMIENTO BONO_BIENVENIDA con signo POSITIVO
 -- (por si no se creó antes; el trigger trg_usuario_after_ins_bono_bienvenida lo necesita)
@@ -30,9 +27,7 @@ FROM TIPO_MOVIMIENTO tm
 JOIN SIGNO_MOVIMIENTO sm ON sm.nombre = 'POSITIVO'
 WHERE tm.nombre IN ('BONO_PRIMERA_COMPRA','BONO_RECOMPRAS');
 
--- =========================================================
 -- 15.1) PROCEDIMIENTO PARA GENERAR DATOS MASIVOS
--- =========================================================
 
 DROP PROCEDURE IF EXISTS sp_seed_masivo;
 DELIMITER $$
@@ -59,9 +54,7 @@ BEGIN
     -- simple: ignorar y seguir con el siguiente loop
   END;
 
-  -- =====================================================
   -- 1) USUARIOS MASIVOS (50 usuarios demo adicionales)
-  -- =====================================================
   SET v_i = 1;
   WHILE v_i <= 50 DO
     INSERT INTO USUARIO (id_rol, estado, nombre, apellido, correo, telefono, url_perfil, password_hash)
@@ -112,9 +105,7 @@ BEGIN
     SET v_i = v_i + 1;
   END WHILE;
 
-  -- ===============================================
   -- 2) BITÁCORA DE ACCESO (actividad de logins)
-  -- ===============================================
   SET v_i = 1;
   WHILE v_i <= 80 DO
     SELECT id_usuario
@@ -134,10 +125,9 @@ BEGIN
     SET v_i = v_i + 1;
   END WHILE;
 
-  -- =================================================
   -- 3) PRODUCTOS Y SERVICIOS BASE POR CATEGORÍA
   --    (para asegurar que cada categoría tenga algo)
-  -- =================================================
+  
   INSERT IGNORE INTO PRODUCTO (id_categoria, nombre, descripcion, precio, peso)
   SELECT
     c.id_categoria,
@@ -157,9 +147,7 @@ BEGIN
     30 + (c.id_categoria * 2)
   FROM CATEGORIA c;
 
-  -- =================================================
   -- 4) PUBLICACIONES MASIVAS (≈ 200 publicaciones)
-  -- =================================================
   SET v_i = 1;
   WHILE v_i <= 200 DO
     -- Usuario aleatorio
@@ -229,9 +217,7 @@ BEGIN
     SET v_i = v_i + 1;
   END WHILE;
 
-  -- =================================================
   -- 5) PROMOCIONES ACTIVAS Y VINCULACIÓN A PUBLICACIONES
-  -- =================================================
   INSERT IGNORE INTO PROMOCION
     (id_tipo_promocion, nombre, descripcion, creditos_otorgados,
      fecha_inicio, fecha_fin, estado)
@@ -275,9 +261,8 @@ BEGIN
     SET v_i = v_i + 1;
   END WHILE;
 
-  -- =================================================
   -- 6) COMPRAS DE CRÉDITOS MASIVAS (recargas)
-  -- =================================================
+
   SET v_i = 1;
   WHILE v_i <= 150 DO
     SELECT id_usuario
@@ -301,9 +286,9 @@ BEGIN
     SET v_i = v_i + 1;
   END WHILE;
 
-  -- =================================================
+
   -- 7) INTERCAMBIOS MASIVOS (TRANSACCION + IMPACTO)
-  -- =================================================
+
   SET v_i = 1;
   WHILE v_i <= 120 DO
     -- Comprador con saldo positivo
@@ -329,9 +314,9 @@ BEGIN
     SET v_i = v_i + 1;
   END WHILE;
 
-  -- =================================================
+
   -- 8) ACTIVIDADES SOSTENIBLES MASIVAS
-  -- =================================================
+
   SET v_i = 1;
   WHILE v_i <= 80 DO
     SELECT id_usuario
@@ -357,9 +342,9 @@ BEGIN
     SET v_i = v_i + 1;
   END WHILE;
 
-  -- =================================================
+
   -- 9) SUSCRIPCIONES PREMIUM MASIVAS
-  -- =================================================
+
   SET v_i = 1;
   WHILE v_i <= 40 DO
     SELECT id_usuario
@@ -384,9 +369,8 @@ BEGIN
     SET v_i = v_i + 1;
   END WHILE;
 
-  -- =================================================
   -- 10) PUBLICIDAD MASIVA
-  -- =================================================
+
   SET v_i = 1;
   WHILE v_i <= 30 DO
     SELECT id_usuario
@@ -420,9 +404,9 @@ BEGIN
     SET v_i = v_i + 1;
   END WHILE;
 
-  -- =================================================
+
   -- 11) REPORTES DE IMPACTO (usando último PERIODO)
-  -- =================================================
+  
   SELECT id_tipo_reporte
   INTO v_id_tipo_rep_mensual
   FROM TIPO_REPORTE
@@ -460,19 +444,17 @@ BEGIN
 END$$
 DELIMITER ;
 
--- =========================================================
--- 15.2) EJECUTAR LA SEMILLA MASIVA
--- =========================================================
-CALL sp_seed_masivo();
-USE CREDITOS_VERDES2;
 
--- =========================================================
--- 15) SEED MASIVO PROFESIONAL (10x)
+-- 15.2) EJECUTAR LA SEMILLA MASIVA
+
+CALL sp_seed_masivo();
+
+USE CREDITOS_VERDES2;
 --     - Muchos usuarios
 --     - Mucha actividad (logins, compras, intercambios)
 --     - Publicaciones, actividades sostenibles, premium,
 --       publicidad, impacto, reportes
--- =========================================================
+-- 
 
 -- 15.0) Asegurar tipos de movimiento necesarios
 --      (por si en algún entorno aún no están creados)
@@ -496,9 +478,7 @@ FROM TIPO_MOVIMIENTO tm
 JOIN SIGNO_MOVIMIENTO sm ON sm.nombre = 'POSITIVO'
 WHERE tm.nombre IN ('BONO_PRIMERA_COMPRA','BONO_RECOMPRAS');
 
--- =========================================================
 -- 15.1) PROCEDIMIENTO DE SEED MASIVO PROFESIONAL
--- =========================================================
 
 DROP PROCEDURE IF EXISTS sp_seed_masivo_profesional;
 DELIMITER $$
@@ -524,12 +504,10 @@ BEGIN
     -- ignorar error puntual y continuar el loop
   END;
 
-  -- =====================================================
   -- 1) USUARIOS MASIVOS
   --    - 500 usuarios normales
   --    - 50 admins
   --    - 50 ONG
-  -- =====================================================
 
   -- 500 usuarios normales
   SET v_i = 1;
@@ -583,9 +561,8 @@ BEGIN
     SET v_i = v_i + 1;
   END WHILE;
 
-  -- ===============================================
   -- 2) BITÁCORA DE ACCESO (≈ 800 logins simulados)
-  -- ===============================================
+
   SET v_i = 1;
   WHILE v_i <= 800 DO
     SELECT id_usuario
@@ -605,10 +582,10 @@ BEGIN
     SET v_i = v_i + 1;
   END WHILE;
 
-  -- =================================================
+
   -- 3) PRODUCTOS Y SERVICIOS BASE POR CATEGORÍA
   --    (asegura que cada categoría tenga producto y servicio)
-  -- =================================================
+  
   INSERT IGNORE INTO PRODUCTO (id_categoria, nombre, descripcion, precio, peso)
   SELECT
     c.id_categoria,
@@ -628,9 +605,7 @@ BEGIN
     30 + (c.id_categoria * 2)
   FROM CATEGORIA c;
 
-  -- =================================================
   -- 4) PUBLICACIONES MASIVAS (≈ 2000 publicaciones)
-  -- =================================================
   SET v_i = 1;
   WHILE v_i <= 2000 DO
     -- Usuario aleatorio
@@ -700,9 +675,9 @@ BEGIN
     SET v_i = v_i + 1;
   END WHILE;
 
-  -- =================================================
+
   -- 5) PROMOCIONES ACTIVAS + VINCULACIÓN MASIVA
-  -- =================================================
+  
   INSERT IGNORE INTO PROMOCION
     (id_tipo_promocion, nombre, descripcion, creditos_otorgados,
      fecha_inicio, fecha_fin, estado)
@@ -746,9 +721,9 @@ BEGIN
     SET v_i = v_i + 1;
   END WHILE;
 
-  -- =================================================
+
   -- 6) COMPRAS DE CRÉDITOS MASIVAS (≈ 1500 recargas)
-  -- =================================================
+
   SET v_i = 1;
   WHILE v_i <= 1500 DO
     SELECT id_usuario
@@ -772,9 +747,9 @@ BEGIN
     SET v_i = v_i + 1;
   END WHILE;
 
-  -- =================================================
+
   -- 7) INTERCAMBIOS MASIVOS (≈ 1200 transacciones)
-  -- =================================================
+
   SET v_i = 1;
   WHILE v_i <= 1200 DO
     -- Comprador con saldo positivo
@@ -800,9 +775,9 @@ BEGIN
     SET v_i = v_i + 1;
   END WHILE;
 
-  -- =================================================
+
   -- 8) ACTIVIDADES SOSTENIBLES MASIVAS (≈ 800)
-  -- =================================================
+
   SET v_i = 1;
   WHILE v_i <= 800 DO
     SELECT id_usuario
@@ -828,9 +803,9 @@ BEGIN
     SET v_i = v_i + 1;
   END WHILE;
 
-  -- =================================================
+
   -- 9) SUSCRIPCIONES PREMIUM MASIVAS (≈ 400)
-  -- =================================================
+  
   SET v_i = 1;
   WHILE v_i <= 400 DO
     SELECT id_usuario
@@ -855,9 +830,9 @@ BEGIN
     SET v_i = v_i + 1;
   END WHILE;
 
-  -- =================================================
+  
   -- 10) PUBLICIDAD MASIVA (≈ 300 campañas)
-  -- =================================================
+  
   SET v_i = 1;
   WHILE v_i <= 300 DO
     SELECT id_usuario
@@ -891,9 +866,8 @@ BEGIN
     SET v_i = v_i + 1;
   END WHILE;
 
-  -- =================================================
   -- 11) REPORTES DE IMPACTO (último PERIODO)
-  -- =================================================
+  
   SELECT id_tipo_reporte
   INTO v_id_tipo_rep_mensual
   FROM TIPO_REPORTE
@@ -931,16 +905,8 @@ BEGIN
 END$$
 DELIMITER ;
 
--- =========================================================
--- 15.2) EJECUTAR LA SEMILLA MASIVA PROFESIONAL
--- =========================================================
 -- CALL sp_seed_masivo_profesional();
 
--- (Opcional) Si no quieres dejar el procedimiento en la BD:
--- DROP PROCEDURE IF EXISTS sp_seed_masivo_profesional;
-
--- Puedes borrar el procedimiento si ya no lo quieres en la BD:
--- DROP PROCEDURE IF EXISTS sp_seed_masivo;
 -- Usuarios
 SELECT COUNT(*) AS total_usuarios FROM USUARIO;
 
